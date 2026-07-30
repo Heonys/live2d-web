@@ -1,6 +1,41 @@
-// 코어 배럴 — pixi import 금지(계약 순수성 규칙, docs/architecture.md).
-// 어댑터는 서브패스로만 노출한다: live2d-jsx/adapters/pixi-v6
-export type { Live2DBackend, ModelHandle, StageHandle, StageOptions } from './core/contract'
+'use client'
+
+// Root entry: React + renderer-neutral core only. PIXI stays in its subpath.
+export type {
+  Live2DBackend,
+  LoadModelOptions,
+  ModelHandle,
+  ModelTransform,
+  Point,
+  Size,
+  StageHandle,
+  StageOptions,
+} from './core/contract'
 export { ensureCubismCore } from './core/ensureCubismCore'
 export { Live2DError } from './core/errors'
 export type { Live2DErrorCode } from './core/errors'
+export { fitModel } from './core/fit'
+export type { ModelFit } from './core/fit'
+export {
+  DEFAULT_AUTO_QUALITY_POLICY,
+  isMobileViewport,
+  resolveAutoQualityPolicy,
+  selectInitialResolution,
+  selectLowerResolution,
+} from './core/quality'
+export type {
+  AutoQualityPolicy,
+  QualityInput,
+  ResolvedAutoQualityPolicy,
+} from './core/quality'
+export {
+  useLive2DModel,
+  useLive2DParameter,
+  useParameterDriver,
+  useStage,
+} from './react/hooks'
+export { Live2DModel } from './react/Live2DModel'
+export type { Live2DModelProps } from './react/Live2DModel'
+export { Live2DStage } from './react/Live2DStage'
+export type { Live2DStageProps, StageQualityProps } from './react/Live2DStage'
+export type { LoadingStage, StageState } from './react/store'

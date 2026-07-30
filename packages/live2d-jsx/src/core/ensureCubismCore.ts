@@ -6,23 +6,83 @@ declare global {
   }
 }
 
+const pendingLoads = new Map<string, Promise<void>>()
+
+function coreMissingMessage() {
+  return 'Live2D Cubism Core is not loaded. Download it from the official Cubism SDK and either pass coreUrl to <Live2DStage> or load it before the model:\n'
+    + '  <script src="/path/to/live2dcubismcore.min.js"></script>\n'
+    + 'Official SDK: https://www.live2d.com/sdk/download/web/'
+}
+
+function assertBrowser(): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    throw new Live2DError(
+      'browser-only',
+      'live2d-jsx can only create a stage in a browser. Render it from a React client component.',
+    )
+  }
+}
+
 /**
- * Cubism Core는 라이선스상 npm 배포 불가 — 사용자가 <script>로 직접 로드해야 한다.
- * 하부 SDK는 Core 부재 시 조용히 실패하므로, 모델 로드 전에 여기서 명확한 에러로 표면화한다.
+ * Verifies the user-supplied Cubism Core global, optionally loading a user-hosted
+ * script first. Concurrent calls for the same URL share one script load.
  */
-export function ensureCubismCore(): void {
-  if (typeof window === 'undefined') {
-    throw new Live2DError(
-      'core-missing',
-      'live2d-jsx is browser-only. Render inside a client component (e.g. next/dynamic with ssr: false).',
-    )
+export async function ensureCubismCore(coreUrl?: string): Promise<void> {
+  assertBrowser()
+
+  if (window.Live2DCubismCore)
+    return
+
+  if (!coreUrl)
+    throw new Live2DError('core-missing', coreMissingMessage())
+
+  const absoluteUrl = new URL(coreUrl, document.baseURI).href
+  let load = pendingLoads.get(absoluteUrl)
+
+  if (!load) {
+    const createdLoad = new Promise<void>((resolve, reject) => {
+      const existing = Array.from(document.scripts).find(script => script.src === absoluteUrl)
+      const script = existing ?? document.createElement('script')
+      const ownedByLoader = !existing || script.dataset.live2dJsxCore === 'true'
+
+      const listener: EventListenerObject = {
+        handleEvent(event) {
+          script.removeEventListener('load', listener)
+          script.removeEventListener('error', listener)
+          if (event.type === 'load' && window.Live2DCubismCore) {
+            resolve()
+            return
+          }
+          if (ownedByLoader)
+            script.remove()
+          reject(event.type === 'load'
+            ? new Live2DError('core-missing', coreMissingMessage())
+            : new Live2DError(
+                'core-missing',
+                `Failed to load Live2D Cubism Core from ${absoluteUrl}.`,
+                { cause: event },
+              ))
+        },
+      }
+
+      script.addEventListener('load', listener, { once: true })
+      script.addEventListener('error', listener, { once: true })
+
+      if (!existing) {
+        script.src = absoluteUrl
+        script.async = true
+        script.dataset.live2dJsxCore = 'true'
+        document.head.appendChild(script)
+      }
+    })
+    load = createdLoad.finally(() => {
+      if (pendingLoads.get(absoluteUrl) === load)
+        pendingLoads.delete(absoluteUrl)
+    })
+    pendingLoads.set(absoluteUrl, load)
   }
-  if (!window.Live2DCubismCore) {
-    throw new Live2DError(
-      'core-missing',
-      'Live2D Cubism Core is not loaded. Its license does not permit bundling, so load it yourself before any model loads:\n'
-      + '  <script src="/path/to/live2dcubismcore.min.js"></script>\n'
-      + 'Download it from the official SDK: https://www.live2d.com/sdk/download/web/',
-    )
-  }
+
+  await load
+  if (!window.Live2DCubismCore)
+    throw new Live2DError('core-missing', coreMissingMessage())
 }

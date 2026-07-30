@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Cubism Core + Hiyori 샘플 모델 다운로드.
-// 라이선스상 재배포 금지 자산이라 커밋하지 않는다(.gitignore의 apps/playground/public/assets/).
+// Cubism Core + Hiyori 샘플 모델을 공식 배포처에서 준비한다.
+// 프로젝트가 배포하는 자산이 아니므로 커밋하지 않는다(.gitignore의 apps/playground/public/assets/).
 // 멱등: 이미 있으면 건너뛴다.
 
 import { Buffer } from 'node:buffer'
 import { execSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -14,12 +15,30 @@ const publicDir = path.join(root, 'apps/playground/public')
 const assetsDir = path.join(publicDir, 'assets')
 const cacheDir = path.join(root, 'tmp/asset-cache')
 
-const CUBISM_SDK_URL = 'https://cubism.live2d.com/sdk-web/bin/CubismSdkForWeb-5-r.3.zip'
-const HIYORI_URL = 'https://dist.ayaka.moe/live2d-models/hiyori_free_zh.zip'
+// Versioned Core URL: avoid the compatibility drift explicitly warned about
+// for Live2D's unversioned "Latest" URL.
+const CUBISM_CORE_URL = 'https://cubism.live2d.com/sdk-web/core/05/live2dcubismcore.min.js'
+const HIYORI_URL = 'https://cubism.live2d.com/sample-data/bin/hiyori/hiyori_en.zip'
+const TERMS = [
+  'https://www.live2d.com/en/sdk/download/web/',
+  'https://www.live2d.com/eula/live2d-free-material-license-agreement_en.html',
+  'https://www.live2d.com/en/learn/sample/momose-hiyori/',
+]
+
+function assertTermsAccepted() {
+  if (process.env.LIVE2D_ACCEPT_TERMS === '1')
+    return
+  throw new Error(
+    `공식 Cubism Core/Hiyori를 처음 내려받기 전에 아래 현재 약관을 확인한 뒤 `
+    + `\`LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets\`로 다시 실행하세요.\n${
+      TERMS.map(url => `- ${url}`).join('\n')}`,
+  )
+}
 
 async function download(url, dest) {
   if (existsSync(dest))
     return
+  assertTermsAccepted()
   console.log(`[download] ${url}`)
   const res = await fetch(url)
   if (!res.ok)
@@ -44,21 +63,13 @@ function findFile(dir, predicate) {
   return null
 }
 
-// 1. Cubism Core — layout.tsx의 <Script> 경로와 일치해야 한다
+// 1. Cubism Core — <Live2DStage coreUrl> 경로와 일치해야 한다
 const coreDest = path.join(assetsDir, 'js/cubism/live2dcubismcore.min.js')
 if (existsSync(coreDest)) {
   console.log('[skip] Cubism Core')
 }
 else {
-  const sdkZip = path.join(cacheDir, 'CubismSdkForWeb.zip')
-  await download(CUBISM_SDK_URL, sdkZip)
-  const sdkDir = path.join(cacheDir, 'cubism-sdk')
-  unzip(sdkZip, sdkDir)
-  const core = findFile(sdkDir, name => name === 'live2dcubismcore.min.js')
-  if (!core)
-    throw new Error('SDK zip에서 live2dcubismcore.min.js를 찾지 못했다')
-  mkdirSync(path.dirname(coreDest), { recursive: true })
-  copyFileSync(core, coreDest)
+  await download(CUBISM_CORE_URL, coreDest)
   console.log(`[ok] Cubism Core → ${path.relative(root, coreDest)}`)
 }
 
@@ -69,7 +80,7 @@ if (model3) {
   console.log('[skip] Hiyori')
 }
 else {
-  const zip = path.join(cacheDir, 'hiyori_free_zh.zip')
+  const zip = path.join(cacheDir, 'hiyori_en.zip')
   await download(HIYORI_URL, zip)
   unzip(zip, hiyoriDir)
   model3 = findFile(hiyoriDir, name => name.endsWith('.model3.json'))

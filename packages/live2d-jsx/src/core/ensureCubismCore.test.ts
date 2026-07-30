@@ -1,40 +1,57 @@
+// @vitest-environment jsdom
+
 import { afterEach, describe, expect, it } from 'vitest'
 import { ensureCubismCore } from './ensureCubismCore'
-import { Live2DError } from './errors'
-
-// node 환경 테스트 — window를 globalThis에 직접 심어 시뮬레이션한다
-const g = globalThis as { window?: { Live2DCubismCore?: unknown } }
 
 describe('ensureCubismCore', () => {
   afterEach(() => {
-    delete g.window
+    delete window.Live2DCubismCore
+    document.querySelectorAll('script[data-live2d-jsx-core]').forEach(script => script.remove())
   })
 
-  it('core가 전역에 있으면 통과한다', () => {
-    g.window = { Live2DCubismCore: {} }
-    expect(() => ensureCubismCore()).not.toThrow()
+  it('passes when the global is already available', async () => {
+    window.Live2DCubismCore = {}
+    await expect(ensureCubismCore()).resolves.toBeUndefined()
   })
 
-  it('window가 없으면(SSR) core-missing을 던진다', () => {
-    expect(() => ensureCubismCore()).toThrowError(Live2DError)
-    try {
-      ensureCubismCore()
-    }
-    catch (error) {
-      expect((error as Live2DError).code).toBe('core-missing')
-    }
+  it('surfaces a helpful core-missing error without a URL', async () => {
+    await expect(ensureCubismCore()).rejects.toMatchObject({
+      code: 'core-missing',
+    })
+    await expect(ensureCubismCore()).rejects.toThrow('live2d.com')
   })
 
-  it('core가 없으면 로드 방법을 담은 core-missing을 던진다', () => {
-    g.window = {}
-    try {
-      ensureCubismCore()
-      expect.unreachable('threw expected')
-    }
-    catch (error) {
-      expect(error).toBeInstanceOf(Live2DError)
-      expect((error as Live2DError).code).toBe('core-missing')
-      expect((error as Live2DError).message).toContain('live2d.com')
-    }
+  it('deduplicates concurrent script loads for the same URL', async () => {
+    const first = ensureCubismCore('/assets/core-a.js')
+    const second = ensureCubismCore('/assets/core-a.js')
+    const scripts = document.querySelectorAll('script[data-live2d-jsx-core]')
+
+    expect(scripts).toHaveLength(1)
+    window.Live2DCubismCore = {}
+    scripts[0]?.dispatchEvent(new Event('load'))
+
+    await expect(Promise.all([first, second])).resolves.toEqual([undefined, undefined])
+  })
+
+  it('rejects when a loaded script did not install the global', async () => {
+    const promise = ensureCubismCore('/assets/core-b.js')
+    const failedScript = document.querySelector<HTMLScriptElement>(
+      'script[data-live2d-jsx-core]',
+    )!
+    failedScript.dispatchEvent(new Event('load'))
+
+    await expect(promise).rejects.toMatchObject({
+      code: 'core-missing',
+    })
+    expect(failedScript.isConnected).toBe(false)
+
+    const retry = ensureCubismCore('/assets/core-b.js')
+    const retryScript = document.querySelector<HTMLScriptElement>(
+      'script[data-live2d-jsx-core]',
+    )!
+    expect(retryScript).not.toBe(failedScript)
+    window.Live2DCubismCore = {}
+    retryScript.dispatchEvent(new Event('load'))
+    await expect(retry).resolves.toBeUndefined()
   })
 })

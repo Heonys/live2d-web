@@ -5,9 +5,9 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     include: [
-      'packages/**/src/**/*.test.ts',
-      'packages/**/test/**/*.test.ts',
-      'apps/**/src/**/*.test.ts',
+      'packages/**/src/**/*.test.{ts,tsx}',
+      'packages/**/test/**/*.test.{ts,tsx}',
+      'apps/**/src/**/*.test.{ts,tsx}',
     ],
     exclude: ['**/*.browser.test.ts', '**/node_modules/**'],
   },

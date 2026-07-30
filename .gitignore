@@ -4,4 +4,6 @@ tmp/
 .DS_Store
 .next/
 apps/playground/public/assets/
+playwright-report/
+test-results/
 *.tsbuildinfo

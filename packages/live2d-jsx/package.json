@@ -1,14 +1,22 @@
 {
   "name": "live2d-jsx",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "Declarative Live2D for React",
+  "license": "MIT",
+  "homepage": "https://github.com/Heonys/live2d-jsx#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Heonys/live2d-jsx.git"
+  },
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./adapters/pixi-v6": "./src/adapters/pixi-v6/index.ts"
   },
   "publishConfig": {
+    "access": "public",
+    "provenance": true,
     "exports": {
       ".": {
         "types": "./dist/index.d.mts",
@@ -21,6 +29,7 @@
     }
   },
   "files": [
+    "THIRD_PARTY_NOTICES.md",
     "dist"
   ],
   "scripts": {
@@ -28,9 +37,68 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "@pixi/app": "^6.5.0",
+    "@pixi/core": "^6.5.0",
+    "@pixi/display": "^6.5.0",
+    "@pixi/extensions": "^6.5.0",
+    "@pixi/loaders": "^6.5.0",
+    "@pixi/math": "^6.5.0",
+    "@pixi/sprite": "^6.5.0",
+    "@pixi/ticker": "^6.5.0",
+    "@pixi/utils": "^6.5.0",
+    "pixi-live2d-display": "^0.4.0",
+    "react": ">=18.2 <20"
+  },
+  "peerDependenciesMeta": {
+    "@pixi/app": {
+      "optional": true
+    },
+    "@pixi/core": {
+      "optional": true
+    },
+    "@pixi/display": {
+      "optional": true
+    },
+    "@pixi/extensions": {
+      "optional": true
+    },
+    "@pixi/loaders": {
+      "optional": true
+    },
+    "@pixi/math": {
+      "optional": true
+    },
+    "@pixi/sprite": {
+      "optional": true
+    },
+    "@pixi/ticker": {
+      "optional": true
+    },
+    "@pixi/utils": {
+      "optional": true
+    },
+    "pixi-live2d-display": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@pixi/app": "catalog:",
+    "@pixi/constants": "catalog:",
+    "@pixi/core": "catalog:",
+    "@pixi/display": "catalog:",
+    "@pixi/extensions": "catalog:",
+    "@pixi/interaction": "catalog:",
+    "@pixi/loaders": "catalog:",
+    "@pixi/math": "catalog:",
+    "@pixi/runner": "catalog:",
+    "@pixi/settings": "catalog:",
+    "@pixi/sprite": "catalog:",
+    "@pixi/ticker": "catalog:",
+    "@pixi/utils": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "jsdom": "catalog:",
+    "pixi-live2d-display": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:vitest"
