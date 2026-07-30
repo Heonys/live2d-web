@@ -7,3 +7,4 @@ apps/playground/public/assets/
 playwright-report/
 test-results/
 *.tsbuildinfo
+/private/

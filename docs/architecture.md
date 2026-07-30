@@ -110,6 +110,9 @@ driver: 사용자 분석기 → mouth getter
 
 - React API와 conformance 요구사항은 그대로 유지한다.
 - Core 위에 렌더러를 새로 작성하지 않는다.
-- 공식 Framework를 포함한 범용 모델 로더의 배포 조건을 Live2D에 서면
-  확인하기 전에는 구현물을 npm에 공개하지 않는다.
-- v0.x 수요가 확인되기 전에는 착수하지 않는다.
+- pixi-v6는 안정적인 기본·비교군으로 유지한다.
+- AIZUCHI 도그푸딩 뒤 gitignored 비공개 실험은 허용하지만, 공식 Framework와
+  셰이더를 포함한 추적 구현·npm export는 Live2D의 서면 확인 뒤 검토한다.
+
+Stage, 로더, 프레임 순서, 성능과 공개 게이트의 전체 기준은
+[cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)을 따른다.

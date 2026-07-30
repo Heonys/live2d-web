@@ -14,8 +14,11 @@
 
 ## Live2D 자산과 SDK
 
-- Cubism Core, Cubism Framework, Hiyori를 비롯한 샘플 모델을 git이나 npm
-  패키지에 포함하지 않는다.
+- Cubism Core와 Hiyori를 비롯한 샘플 모델은 git이나 npm 패키지에 포함하지
+  않는다.
+- Cubism Framework와 WebGL 셰이더는 현재 포함하지 않는다. 향후
+  cubism-webgl adapter의 재배포를 Live2D가 서면으로 허용한 경우에만
+  해당 adapter 전용 dist에 포함한다.
 - 개발자는 공식 SDK와 각 샘플의 현재 약관에 동의한 뒤 로컬 ignored
   경로에 준비한다.
 - `pnpm fetch-assets`는 비공식 미러를 사용하지 않는다. 공식 Core 호스팅
@@ -37,9 +40,18 @@
 ## 장기 cubism-webgl 백엔드
 
 범용 라이브러리에 공식 Framework 코드를 포함하는 형태는 일반 콘텐츠
-출시와 다를 수 있다. Live2D의 서면 확인 전에는 해당 백엔드를 npm에
-배포하지 않는다. 확인 결과에 따라 별도 패키지·사용자 공급 Framework 또는
-비공개 실험으로 범위를 조정한다.
+출시와 다를 수 있다. Framework `5-r.5`는 WebGL 셰이더 파일도 런타임에
+요구하므로 Framework 코드와 셰이더를 npm에 함께 포함할 수 있는지도
+Live2D에 서면 확인한다.
+
+- 서면 확인 전에는 gitignored 로컬·비공개 기술 실험만 허용한다.
+- Framework·셰이더 재배포가 허용된 경우에만 adapter 전용 dist에 포함한다.
+- 허용되지 않으면 사용자에게 비공식 설치 절차를 요구하는 공개 어댑터를
+  만들지 않고 cubism-webgl을 비공개 실험으로 남긴다.
+- Cubism Core와 모델은 결과와 무관하게 계속 비동봉한다.
+
+구체적인 문의 항목과 공개 게이트는
+[cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)에 기록한다.
 
 ## 립싱크
 

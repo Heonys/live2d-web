@@ -31,6 +31,7 @@ Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소
 - `docs/api-design.md` — 컴포넌트·훅 시그니처 + per-frame 규약 + 에러 모델
 - `docs/extraction-map.md` — aizuchi `packages/stage` → live2d-jsx 이관 지도
 - `docs/licensing.md` — Cubism Core 비동봉 인과, 상표 고지, 선행 코드 크레딧
+- `docs/cubism-webgl-plan.md` — 공식 Framework 기반 직접 WebGL 백엔드의 구현·성능·공개 게이트
 - `docs/roadmap.md` — v0.1 공개 게이트 → v0.2 AIZUCHI → 후속 백엔드 계획
 - `packages/live2d-jsx/src/core/contract.ts` — 어댑터 계약 타입(architecture.md의 코드화)
 - `packages/live2d-jsx/src/react/` — Stage/Model 컴포넌트, Store, hooks
@@ -80,6 +81,7 @@ pnpm up             # taze 일괄 업데이트 + prune + dedupe
 16. **wLipSync도 browser-effect dynamic import만.** 메인 export는 AudioWorkletNode와 인라인 WASM을 평가한다. root 모듈에서 정적 runtime import하지 않는다. type-only import는 가능하다.
 17. **오디오 소유권을 넘지 않는다.** LipSync source 모드는 사용자의 AudioNode/AudioContext를 close·suspend·전체 disconnect하지 않는다. 만든 분석 edge와 node/port만 정리한다.
 18. **립싱크 실패는 비치명적.** `lipsync-error`는 현재 기능만 중단하고 Stage/Model ready 상태를 유지한다.
+19. **cubism-webgl은 아직 비공개 실험 단계다.** AIZUCHI 도그푸딩 뒤 `private/`에서 기술 검증할 수 있지만, Framework·셰이더 재배포와 범용 모델 로더 조건을 Live2D에 서면 확인하기 전에는 추적되는 어댑터 코드, package export와 npm 배포를 만들지 않는다.
 
 ## 규칙
 
