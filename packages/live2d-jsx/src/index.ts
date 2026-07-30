@@ -28,12 +28,18 @@ export type {
   QualityInput,
   ResolvedAutoQualityPolicy,
 } from './core/quality'
+export type { LipSyncProfile } from './features/lipsync/source'
 export {
   useLive2DModel,
   useLive2DParameter,
   useParameterDriver,
   useStage,
 } from './react/hooks'
+export { LipSync } from './react/LipSync'
+export type {
+  LipSyncDriver,
+  LipSyncProps,
+} from './react/LipSync'
 export { Live2DModel } from './react/Live2DModel'
 export type { Live2DModelProps } from './react/Live2DModel'
 export { Live2DStage } from './react/Live2DStage'

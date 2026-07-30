@@ -1,6 +1,7 @@
 # live2d-jsx 문서 지도
 
-상태 기준일: **2026-07-30**. v0.1 alpha 구현은 완료됐고 npm 공개 전이다.
+상태 기준일: **2026-07-30**. v0.1 alpha와 v0.2 립싱크 구현은 완료됐고
+npm 공개 및 AIZUCHI 도그푸딩 전이다.
 
 1. [생태계 조사](ecosystem-survey.md)
 2. [제품 비전](product-vision.md)
@@ -21,3 +22,5 @@
 - Core·Framework·샘플 모델은 동봉하지 않는다.
 - 장기 native 목표는 브라우저 직접 WebGL 백엔드다.
 - 첫 도그푸딩은 v0.2 AIZUCHI 전환이다.
+- 립싱크는 source/driver 두 입력을 같은 after-motion mouth controller로
+  처리하며 AudioContext는 사용자가 소유한다.

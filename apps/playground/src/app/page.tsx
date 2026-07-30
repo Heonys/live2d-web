@@ -1,19 +1,34 @@
 'use client'
 
 import type { ModelFit } from 'live2d-jsx'
-import { Live2DModel, Live2DStage, useParameterDriver, useStage } from 'live2d-jsx'
+import {
+  LipSync,
+  Live2DModel,
+  Live2DStage,
+  useStage,
+} from 'live2d-jsx'
 import { pixiV6 } from 'live2d-jsx/adapters/pixi-v6'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
 
 interface AssetManifest {
   model3: string
 }
 
-function MouthParameter({ value }: { value: number }) {
-  const valueRef = useRef(value)
-  valueRef.current = value
-  useParameterDriver('ParamMouthOpenY', () => valueRef.current)
-  return null
+function DriverLipSync({
+  active,
+  value,
+}: {
+  active: boolean
+  value: number
+}) {
+  const stateRef = useRef({ active, value })
+  stateRef.current = { active, value }
+  const driver = useMemo(() => ({
+    getMouthOpen: () => stateRef.current.value,
+    isSpeaking: () => stateRef.current.active,
+  }), [])
+  return <LipSync driver={driver} />
 }
 
 function Diagnostics() {
@@ -67,8 +82,66 @@ export default function Home() {
   const [assetError, setAssetError] = useState('')
   const [fit, setFit] = useState<ModelFit>('upper-body')
   const [mouthOpen, setMouthOpen] = useState(0)
+  const [driverSpeaking, setDriverSpeaking] = useState(true)
   const [mounted, setMounted] = useState(true)
   const [fixedQuality, setFixedQuality] = useState(false)
+  const [lipSyncError, setLipSyncError] = useState('')
+  const [lipSyncMode, setLipSyncMode] = useState<'driver' | 'source'>('driver')
+  const [sourceActive, setSourceActive] = useState(false)
+  const [sourceNode, setSourceNode] = useState<AudioNode | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const signalRef = useRef<{
+    gain: GainNode
+    oscillator: OscillatorNode
+  } | null>(null)
+
+  const stopSourceSignal = useCallback(() => {
+    const signal = signalRef.current
+    if (!signal)
+      return
+    signalRef.current = null
+    setSourceActive(false)
+    try {
+      signal.oscillator.stop()
+    }
+    catch {
+      // The oscillator may already have stopped during page teardown.
+    }
+    try {
+      signal.oscillator.disconnect(signal.gain)
+    }
+    catch {
+      // Best-effort playground cleanup.
+    }
+    const destination = audioContextRef.current?.destination
+    if (destination) {
+      try {
+        signal.gain.disconnect(destination)
+      }
+      catch {
+        // LipSync owns and removes its separate analysis edge.
+      }
+    }
+  }, [])
+
+  const startSourceSignal = useCallback(async () => {
+    stopSourceSignal()
+    const context = audioContextRef.current ?? new AudioContext()
+    audioContextRef.current = context
+    await context.resume()
+
+    const oscillator = context.createOscillator()
+    const gain = context.createGain()
+    oscillator.frequency.value = 220
+    gain.gain.value = 0.04
+    oscillator.connect(gain)
+    gain.connect(context.destination)
+    oscillator.start()
+    signalRef.current = { gain, oscillator }
+    setLipSyncError('')
+    setSourceNode(gain)
+    setSourceActive(true)
+  }, [stopSourceSignal])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -84,6 +157,25 @@ export default function Home() {
           setAssetError(error instanceof Error ? error.message : String(error))
       })
     return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      const signal = signalRef.current
+      signalRef.current = null
+      if (signal) {
+        try {
+          signal.oscillator.stop()
+          signal.oscillator.disconnect()
+          signal.gain.disconnect()
+        }
+        catch {
+          // The browser can tear WebAudio down before React cleanup.
+        }
+      }
+      void audioContextRef.current?.close()
+      audioContextRef.current = null
+    }
   }, [])
 
   const stage = manifest && mounted
@@ -105,7 +197,16 @@ export default function Home() {
           )}
         >
           <Live2DModel fit={fit} src={manifest.model3}>
-            <MouthParameter value={mouthOpen} />
+            {lipSyncMode === 'driver'
+              ? <DriverLipSync active={driverSpeaking} value={mouthOpen} />
+              : (
+                  <LipSync
+                    active={sourceActive}
+                    profile={SYNTHETIC_LIPSYNC_PROFILE}
+                    source={sourceNode}
+                    onError={error => setLipSyncError(error.message)}
+                  />
+                )}
           </Live2DModel>
           <Diagnostics />
         </Live2DStage>
@@ -120,7 +221,7 @@ export default function Home() {
     <main>
       <header>
         <div>
-          <p className="eyebrow">v0.1 alpha playground</p>
+          <p className="eyebrow">LipSync v0.2 playground</p>
           <h1>Declarative Live2D for React</h1>
           <p>
             PIXI stays behind the adapter. React owns loading, retries, fitting,
@@ -150,17 +251,64 @@ export default function Home() {
           </label>
 
           <label>
-            ParamMouthOpenY
-            <output>{mouthOpen.toFixed(2)}</output>
-            <input
-              max="1"
-              min="0"
-              step="0.01"
-              type="range"
-              value={mouthOpen}
-              onChange={event => setMouthOpen(Number(event.target.value))}
-            />
+            Lip-sync mode
+            <select
+              aria-label="Lip-sync mode"
+              value={lipSyncMode}
+              onChange={(event) => {
+                const mode = event.target.value as 'driver' | 'source'
+                if (mode === 'driver')
+                  stopSourceSignal()
+                setLipSyncMode(mode)
+                setLipSyncError('')
+              }}
+            >
+              <option value="driver">External driver</option>
+              <option value="source">Audio source</option>
+            </select>
           </label>
+
+          {lipSyncMode === 'driver'
+            ? (
+                <>
+                  <label>
+                    ParamMouthOpenY
+                    <output>{mouthOpen.toFixed(2)}</output>
+                    <input
+                      max="1"
+                      min="0"
+                      step="0.01"
+                      type="range"
+                      value={mouthOpen}
+                      onChange={event => setMouthOpen(Number(event.target.value))}
+                    />
+                  </label>
+
+                  <label className="toggle">
+                    <input
+                      checked={driverSpeaking}
+                      type="checkbox"
+                      onChange={event => setDriverSpeaking(event.target.checked)}
+                    />
+                    Driver speaking
+                  </label>
+                </>
+              )
+            : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => sourceActive
+                      ? stopSourceSignal()
+                      : void startSourceSignal()}
+                  >
+                    {sourceActive ? 'Stop test signal' : 'Start test signal'}
+                  </button>
+                  <output data-testid="lipsync-status">
+                    {lipSyncError || (sourceActive ? 'source active' : 'source idle')}
+                  </output>
+                </>
+              )}
 
           <label className="toggle">
             <input
@@ -176,7 +324,8 @@ export default function Home() {
           </button>
 
           <p className="note">
-            Repeated mount/unmount is the StrictMode and resource-cleanup smoke test.
+            Source mode owns its test AudioContext here. The library only adds
+            and removes the analysis connection.
           </p>
         </aside>
       </section>

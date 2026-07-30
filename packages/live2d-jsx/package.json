@@ -81,6 +81,9 @@
       "optional": true
     }
   },
+  "dependencies": {
+    "wlipsync": "catalog:"
+  },
   "devDependencies": {
     "@pixi/app": "catalog:",
     "@pixi/constants": "catalog:",

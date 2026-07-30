@@ -1,7 +1,7 @@
 # 아키텍처
 
-상태 기준일: **2026-07-30**. v0.1 코어와 pixi-v6 어댑터가 구현돼 있으며
-npm 공개 전 alpha 검증 단계다.
+상태 기준일: **2026-07-30**. v0.1 코어와 pixi-v6 어댑터에 이어 v0.2
+립싱크 API가 구현돼 있으며 npm 공개 전 alpha 검증 단계다.
 
 ## 계층과 경계
 
@@ -31,6 +31,7 @@ npm 공개 전 alpha 검증 단계다.
 PIXI app ticker
   HIGH    model.update()
           └─ internalModel.afterMotionUpdate
+               ├─ LipSync mouth controller
                └─ useParameterDriver callbacks
   NORMAL  Stage onFrame callbacks / 품질 측정
   LOW     guarded app.render()
@@ -59,6 +60,33 @@ AIZUCHI에서는 `motionManager.update` 패치를 사용했지만,
 
 React StrictMode의 effect 재실행, 로딩 중 unmount, 빠른 세대 교체는 jsdom
 테스트와 실제 브라우저 반복 마운트로 검증한다.
+
+## 립싱크 결정 (2026-07-30)
+
+`<LipSync>`는 source와 driver 두 입력 경계를 제공하지만 같은 순수 mouth
+controller를 사용한다.
+
+```text
+source: 사용자 AudioNode → 동적 로드한 wLipSync AudioWorklet → mouth getter
+driver: 사용자 분석기 → mouth getter
+                           ↓
+             afterMotionUpdate → ParamMouthOpenY
+```
+
+- 말하는 동안 0–1 입 값을 모션 이후에 덮어쓴다.
+- 종료 후 200ms 동안 마지막 값에서 해당 프레임 모션 값으로 smoothstep
+  crossfade하고, 500ms 동안 0을 유지한 뒤 쓰기를 멈춘다.
+- source 모드는 모음 가중치·볼륨으로 입 값을 계산하고 50ms 간격으로
+  갱신·스무딩한다.
+- `active`는 발화 경계일 뿐 분석 노드의 연결 여부가 아니다.
+- AudioNode와 AudioContext의 소유권은 사용자에게 있다. 기능 정리에서는
+  `source.disconnect(lipsyncNode)`, 분석 노드 disconnect와 port close만 한다.
+- source/profile 변경은 세대를 교체하며 늦게 끝난 분석 노드를 즉시
+  정리한다.
+- wLipSync는 브라우저 effect에서 메인 export를 동적 import한다. profile,
+  WASM과 AudioWorklet 파일을 프로젝트가 별도로 동봉하지 않는다.
+- 초기화 또는 getter 실패는 `lipsync-error`로 한 번 보고하고 립싱크만
+  중단한다. 모델과 Stage는 ready 상태를 유지한다.
 
 ## 렌더 품질 결정 (2026-07-30)
 

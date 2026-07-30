@@ -11,7 +11,8 @@ in the root entry point.
   MIT License. Its Live2D integration informed the AIZUCHI reference
   implementation and future lip-sync design.
 - [wLipSync](https://github.com/mrxz/wLipSync), copyright Noeri Huisman,
-  MIT License. Planned optional dependency for v0.2; not part of v0.1.
+  MIT License. Dynamically loaded by the source lip-sync mode. Its runtime is
+  installed as a dependency but no calibration profile is bundled.
 
 Live2D Cubism Core, Cubism Framework and Live2D sample models are owned and
 licensed by Live2D Inc. They are not included in this repository or npm

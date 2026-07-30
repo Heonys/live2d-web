@@ -3,6 +3,7 @@ export type Live2DErrorCode
     | 'core-missing'
     | 'invalid-props'
     | 'invalid-tree'
+    | 'lipsync-error'
     | 'model-load-failed'
     | 'render-error'
     | 'adapter-error'

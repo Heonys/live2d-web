@@ -5,4 +5,4 @@ Declarative Live2D for React. See the
 installation, development and licensing details.
 
 This package does not include Live2D Cubism Core, Cubism Framework, or sample
-models.
+models. It also does not include a wLipSync calibration profile.

@@ -1,6 +1,6 @@
 # live2d-jsx — Agent Guide
 
-Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소스 라이브러리**. 현재 **v0.1 alpha 구현 완료·npm 공개 전 단계**다. React Stage/Model, 자동 품질, pixi-v6 어댑터와 실제 Hiyori Playground가 있다. 계약은 `docs/`가 단일 기준이다. 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 포인터로, 지침은 이 파일에만 쓴다(두 벌 관리 금지).
+Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소스 라이브러리**. 현재 **v0.1 alpha + v0.2 립싱크 구현 완료·npm 공개 전 단계**다. React Stage/Model, 자동 품질, source/driver 립싱크, pixi-v6 어댑터와 실제 Hiyori Playground가 있다. package version은 도그푸딩 전까지 `0.1.0-alpha.0`을 유지한다. 계약은 `docs/`가 단일 기준이다. 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 포인터로, 지침은 이 파일에만 쓴다(두 벌 관리 금지).
 
 ## Tech Stack
 
@@ -13,13 +13,13 @@ Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소
 
 ## 구조와 책임
 
-| 경로                  | 패키지                   | 책임                                                                        |
-| --------------------- | ------------------------ | --------------------------------------------------------------------------- |
-| `packages/live2d-jsx` | `live2d-jsx`             | 유일한 퍼블리시 패키지. 계약(core/)·기능(features/, 예정)·어댑터(adapters/) |
-| `apps/playground`     | `@live2d-jsx/playground` | Next 개발장(비퍼블리시). SSR·StrictMode 약속을 상시 검증                    |
-| `scripts/`            | —                        | 공식 배포처 fetch-assets(Core + Hiyori, 약관 확인 후 ignored 경로에 준비)   |
-| `docs/`               | —                        | 설계 계약 SSOT — [문서 지도](docs/README.md)                                |
-| `README.md`           | —                        | 공개용(영어). 코드가 완성되기 전까지 배지·설치법 없음                       |
+| 경로                  | 패키지                   | 책임                                                                      |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------- |
+| `packages/live2d-jsx` | `live2d-jsx`             | 유일한 퍼블리시 패키지. 계약(core/)·립싱크(features/)·어댑터(adapters/)   |
+| `apps/playground`     | `@live2d-jsx/playground` | Next 개발장(비퍼블리시). SSR·StrictMode 약속을 상시 검증                  |
+| `scripts/`            | —                        | 공식 배포처 fetch-assets(Core + Hiyori, 약관 확인 후 ignored 경로에 준비) |
+| `docs/`               | —                        | 설계 계약 SSOT — [문서 지도](docs/README.md)                              |
+| `README.md`           | —                        | 공개용(영어). 코드가 완성되기 전까지 배지·설치법 없음                     |
 
 의존 방향은 `adapters → core` 단방향. `src/index.ts`에 pixi import가 생기면 계약 순수성 위반이다.
 
@@ -35,6 +35,8 @@ Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소
 - `packages/live2d-jsx/src/core/contract.ts` — 어댑터 계약 타입(architecture.md의 코드화)
 - `packages/live2d-jsx/src/react/` — Stage/Model 컴포넌트, Store, hooks
 - `packages/live2d-jsx/src/core/` — 계약·Core 로더·품질·프레이밍·생명주기
+- `packages/live2d-jsx/src/features/lipsync/` — 순수 mouth controller와 wLipSync source 연결
+- `packages/live2d-jsx/src/react/LipSync.tsx` — source/driver React 생명주기
 - `packages/live2d-jsx/src/adapters/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
 - `apps/playground/src/app/page.tsx` — 실제 Hiyori와 품질/프레이밍/파라미터 데모
 - `e2e/playground.spec.ts` — Chromium/WebKit 실제 WebGL 검증
@@ -75,6 +77,9 @@ pnpm up             # taze 일괄 업데이트 + prune + dedupe
 14. **dev 서버 포트** — 3000이 다른 프로젝트(optiq 등)에 점유되면 Next가 3001+로 자동 이동. 검증 시 실제 포트를 로그에서 확인할 것.
 
 15. **SSR-safe 어댑터 import.** `pixi-live2d-display`는 모듈 평가 때 `window`를 읽으므로 정적 import 금지. `loadModel()` 안에서 dynamic import한다.
+16. **wLipSync도 browser-effect dynamic import만.** 메인 export는 AudioWorkletNode와 인라인 WASM을 평가한다. root 모듈에서 정적 runtime import하지 않는다. type-only import는 가능하다.
+17. **오디오 소유권을 넘지 않는다.** LipSync source 모드는 사용자의 AudioNode/AudioContext를 close·suspend·전체 disconnect하지 않는다. 만든 분석 edge와 node/port만 정리한다.
+18. **립싱크 실패는 비치명적.** `lipsync-error`는 현재 기능만 중단하고 Stage/Model ready 상태를 유지한다.
 
 ## 규칙
 

@@ -55,6 +55,83 @@ test('obeys the mobile backing-buffer policy', async ({ page }) => {
   expect(bufferPixels).toBeLessThanOrEqual(1_500_000)
 })
 
+test('runs and cleans up the source AudioWorklet smoke test', async ({ page }) => {
+  const unexpectedErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      unexpectedErrors.push(message.text())
+  })
+  await page.addInitScript(() => {
+    const metrics = { connects: 0, disconnects: 0 }
+    const state = window as typeof window & {
+      __lipSyncWorkletMetrics: typeof metrics
+    }
+    state.__lipSyncWorkletMetrics = metrics
+    const originalConnect = AudioNode.prototype.connect
+    const originalDisconnect = AudioNode.prototype.disconnect
+    Object.defineProperty(AudioNode.prototype, 'connect', {
+      configurable: true,
+      value(this: AudioNode, ...args: unknown[]) {
+        if (
+          typeof AudioWorkletNode !== 'undefined'
+          && args[0] instanceof AudioWorkletNode
+        ) {
+          metrics.connects++
+        }
+        return Reflect.apply(originalConnect, this, args)
+      },
+      writable: true,
+    })
+    Object.defineProperty(AudioNode.prototype, 'disconnect', {
+      configurable: true,
+      value(this: AudioNode, ...args: unknown[]) {
+        if (
+          typeof AudioWorkletNode !== 'undefined'
+          && args[0] instanceof AudioWorkletNode
+        ) {
+          metrics.disconnects++
+        }
+        return Reflect.apply(originalDisconnect, this, args)
+      },
+      writable: true,
+    })
+  })
+
+  await page.goto('/')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  const supported = await page.evaluate(() =>
+    typeof AudioContext !== 'undefined'
+    && 'audioWorklet' in AudioContext.prototype,
+  )
+  test.skip(!supported, 'AudioWorklet is unavailable in this browser.')
+
+  await page.getByLabel('Lip-sync mode').selectOption('source')
+  await page.getByRole('button', { name: 'Start test signal' }).click()
+  await expect(page.getByTestId('lipsync-status')).toHaveText('source active')
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & {
+      __lipSyncWorkletMetrics: { connects: number }
+    }).__lipSyncWorkletMetrics.connects,
+  )).toBe(1)
+  await expect(page.getByTestId('lipsync-status')).toHaveText('source active')
+
+  await page.getByRole('button', { name: 'Stop test signal' }).click()
+  await expect(page.getByTestId('lipsync-status')).toHaveText('source idle')
+  expect(await page.evaluate(() =>
+    (window as typeof window & {
+      __lipSyncWorkletMetrics: { disconnects: number }
+    }).__lipSyncWorkletMetrics.disconnects,
+  )).toBe(0)
+  await page.getByRole('button', { name: 'Unmount stage' }).click()
+  await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() =>
+    (window as typeof window & {
+      __lipSyncWorkletMetrics: { disconnects: number }
+    }).__lipSyncWorkletMetrics.disconnects,
+  )).toBe(1)
+  expect(unexpectedErrors).toEqual([])
+})
+
 test('surfaces WebGL context loss and recreates the stage', async ({ page, browserName }) => {
   await page.goto('/')
   await expect(page.getByTestId('stage-status')).toContainText('ready')

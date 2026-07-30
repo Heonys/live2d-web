@@ -8,7 +8,8 @@
 - `live2d-jsx` 자체 코드는 MIT 라이선스다.
 - AIRI에서 유래한 통합 패턴과 MIT 하부 프로젝트는
   `THIRD_PARTY_NOTICES.md`에 고지한다.
-- v0.1 root 번들은 React와 자체 코어만 포함한다.
+- root 번들은 React와 자체 코어만 포함하며 wLipSync는 source 모드에서
+  동적으로 로드하는 외부 dependency다.
 - PIXI와 pixi-live2d-display는 adapter 전용 optional peer다.
 
 ## Live2D 자산과 SDK
@@ -42,9 +43,10 @@
 
 ## 립싱크
 
-wlipsync 패키지 코드는 MIT지만 MFCC profile은 별도 데이터다. v0.2는 출처를
-확인할 수 없는 AIZUCHI profile을 복사하지 않고 사용자가 profile을
-명시적으로 제공하게 한다.
+wlipsync 패키지 코드는 MIT지만 MFCC profile은 별도 데이터다. source
+모드는 출처를 확인할 수 없는 AIZUCHI profile을 복사하지 않고 사용자가
+profile을 명시적으로 제공하게 한다. Playground에는 저장소가 직접 생성한
+synthetic smoke-test fixture만 있으며 npm 패키지에는 포함하지 않는다.
 
 ## 상표
 
