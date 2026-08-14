@@ -32,10 +32,16 @@ export function acquireFramework(diagnostics?: CubismBenchmarkStageDiagnostics) 
       throw new Live2DError(
         'core-missing',
         'cubism-webgl requires Live2D Cubism Core 5.3.',
+        { details: { assetType: 'core', backend: 'cubism-webgl' } },
       )
     }
-    if (!CubismFramework.startUp())
-      throw new Error('CubismFramework.startUp() failed')
+    if (!CubismFramework.startUp()) {
+      throw new Live2DError(
+        'adapter-error',
+        'CubismFramework.startUp() failed.',
+        { details: { backend: 'cubism-webgl' } },
+      )
+    }
     CubismFramework.initialize()
   }
   referenceCount++

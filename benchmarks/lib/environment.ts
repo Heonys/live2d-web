@@ -4,7 +4,45 @@ import { execFileSync } from 'node:child_process'
 import os from 'node:os'
 
 export function gitCommit() {
-  return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  const dirty = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()
+  return dirty ? `${commit}-dirty` : commit
+}
+
+const SOFTWARE_RENDERER_MARKERS = [
+  'basic render driver',
+  'lavapipe',
+  'llvmpipe',
+  'softpipe',
+  'software',
+  'swiftshader',
+]
+
+const UNKNOWN_RENDERERS = new Set([
+  '',
+  'angle',
+  'default',
+  'opengl',
+  'unknown',
+  'unavailable',
+  'webgl',
+  'webgl 2.0',
+  'webgl2 unavailable',
+  'webkit webgl',
+])
+
+export function isHardwareRenderer(renderer: string) {
+  const normalized = renderer.trim().toLowerCase()
+  return !UNKNOWN_RENDERERS.has(normalized)
+    && !SOFTWARE_RENDERER_MARKERS.some(marker => normalized.includes(marker))
+}
+
+export function assertHardwareRenderer(renderer: string) {
+  if (!isHardwareRenderer(renderer)) {
+    throw new Error(
+      `Hardware GPU benchmark requires an identifiable non-software renderer; received: ${renderer}`,
+    )
+  }
 }
 
 export async function readBenchmarkEnvironment(page: Page): Promise<BenchmarkEnvironment> {

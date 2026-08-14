@@ -91,7 +91,9 @@ export async function captureMeasurement(
     active.readyMs,
     active.diagnostics,
   )
+  measurement.durationMs = durationMs
   measurement.lifecycle = released.diagnostics.resources
+  measurement.warmupMs = warmupMs
   return measurement
 }
 

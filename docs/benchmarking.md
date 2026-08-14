@@ -44,16 +44,31 @@ pnpm benchmark:matrix
 # Hiyori/Ren 순차 20회와 4 Stage 동시 5회 생성·정리
 pnpm benchmark:memory
 
+# Hiyori cubism-webgl/Pixi JS heap A/B, backend별 새 Chromium context
+pnpm benchmark:memory:backends
+
 # 5종 × resolution 1·2, Chromium·WebKit 호환성
 pnpm benchmark:models
 
 # Hiyori WebGL/Pixi 5분 비교
 LIVE2D_BENCHMARK_MS=300000 pnpm benchmark:backends
+
+# 실제 디스플레이와 시스템 Chrome이 필요한 release gate
+pnpm benchmark:hardware:smoke
+pnpm benchmark:hardware:matrix
+pnpm benchmark:backends:hardware
 ```
 
 개발 중 실행 시간을 줄일 때만 `LIVE2D_BENCHMARK_MS`,
 `LIVE2D_BENCHMARK_WARMUP_MS`, `LIVE2D_BENCHMARK_REPETITIONS`를 덮어쓴다.
 확정 보고서에는 기본 조건으로 실행한 결과만 사용한다.
+
+`hardware:smoke`는 Hiyori/Ren을 10초씩, `hardware:matrix`는 두 모델의
+Stage 1·4 × resolution 1·2를 5초 준비 + 60초 측정으로 3회 실행한다.
+`backends:hardware`는 Hiyori의 backend별 5분 비교다. renderer 문자열이
+SwiftShader, llvmpipe, software이거나 식별 불가능하면 이 명령과 hardware
+보고서 승격은 실패한다. 기존 headless 명령은 software renderer에서도
+개발·회귀 검사로 계속 사용할 수 있다.
 
 ## 측정값과 결과 승격
 
@@ -66,7 +81,14 @@ OS·CPU·메모리·브라우저·WebGL renderer, Core/Framework/sample 버전, 
   Core `model.update()`, draw CPU와 전체 frame delta
 - GPU draw: `EXT_disjoint_timer_query_webgl2` 지원 시에만 값, 아니면 `null`
 - lifecycle: Canvas, context, texture, pending asset과 Framework reference count
-- memory: GC 뒤 JS heap. GPU 메모리로 해석하지 않는다.
+- memory: baseline/active/released 시점의 GC 뒤 JS heap과 Canvas 수.
+  backend A/B에서는 추가 script encoded byte를 common/adapter/Core로 나눈다.
+  어느 값도 GPU 메모리로 해석하지 않는다.
+
+raw schema v2는 조건별 backend/Core와 세 시점 memory를 기록한다. report
+명령은 기존 schema v1 결과도 v2 형태로 정규화해 읽는다. backend A/B도 같은
+schema를 사용하며, 5분 기본 실행은 `backend-comparison.latest.json`, 짧게
+시간을 덮어쓴 개발 실행은 `backend-comparison.smoke.latest.json`에 분리한다.
 
 확정 결과만 명시적 출력 경로로 승격한다. 기존 보고서는 덮어쓰지 않는다.
 
@@ -78,6 +100,11 @@ pnpm benchmark:report \
 
 보고서 표는 같은 조건 반복값의 중앙값이다. GPU timer가 없거나 disjoint인
 샘플은 `n/a`로 남긴다.
+
+backend memory 결과는 Stage 1·4 모두에서 3회 중앙 active heap delta가
+Pixi보다 10% 이상 낮을 때만 “이 조건에서 더 낮은 JS heap”으로 판정한다.
+Core 버전이 cubism-webgl 5.3, Pixi pre-5.3으로 다르므로 Pixi 제거만을
+원인으로 단정하지 않는다.
 
 ## 최적화 판정
 

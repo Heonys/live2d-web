@@ -6,12 +6,13 @@ import type {
   StageHandle,
   StageOptions,
 } from '../core/contract'
+import type { Live2DModelController } from './controller'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Profiler, StrictMode } from 'react'
+import { Profiler, StrictMode, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useParameterDriver, useStage } from './hooks'
+import { useLive2DCanvas, useLive2DModel, useParameterDriver } from './hooks'
+import { Live2DCanvas } from './Live2DCanvas'
 import { Live2DModel } from './Live2DModel'
-import { Live2DStage } from './Live2DStage'
 
 interface FakeHarness {
   backend: Live2DBackend
@@ -111,11 +112,24 @@ function ParameterDriver() {
 }
 
 function Status() {
-  const state = useStage()
+  const state = useLive2DCanvas()
   return <output>{state.status}</output>
 }
 
-describe('live2DStage lifecycle', () => {
+function ControllerObserver({
+  onController,
+}: {
+  onController: (controller: Live2DModelController) => void
+}) {
+  const controller = useLive2DModel()
+  useEffect(() => {
+    if (controller)
+      onController(controller)
+  }, [controller, onController])
+  return null
+}
+
+describe('live2DCanvas lifecycle', () => {
   beforeEach(() => {
     window.Live2DCubismCore = {}
     Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 })
@@ -149,12 +163,12 @@ describe('live2DStage lifecycle', () => {
     for (let index = 0; index < 20; index++) {
       const view = render(
         <StrictMode>
-          <Live2DStage backend={harness.backend}>
+          <Live2DCanvas backend={harness.backend}>
             <Live2DModel src="/hiyori.model3.json">
               <ParameterDriver />
             </Live2DModel>
             <Status />
-          </Live2DStage>
+          </Live2DCanvas>
         </StrictMode>,
       )
 
@@ -170,6 +184,44 @@ describe('live2DStage lifecycle', () => {
     expect(finalModel).toBeLessThan(finalStage)
   })
 
+  it('shares a lifecycle-safe model controller between the hook and onLoad', async () => {
+    const harness = createFakeHarness()
+    let loaded: Live2DModelController | undefined
+    let observed: Live2DModelController | undefined
+    const view = render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel
+          src="/hiyori.model3.json"
+          onLoad={(controller) => { loaded = controller }}
+        >
+          <ControllerObserver onController={(controller) => { observed = controller }} />
+        </Live2DModel>
+      </Live2DCanvas>,
+    )
+
+    await waitFor(() => expect(observed).toBeDefined())
+    expect(observed).toBe(loaded)
+    expect(Object.keys(observed!)).toEqual([
+      'expression',
+      'focus',
+      'getParameter',
+      'motion',
+      'setParameter',
+    ])
+    expect('dispose' in observed!).toBe(false)
+    expect('setTransform' in observed!).toBe(false)
+    expect('onAfterMotionUpdate' in observed!).toBe(false)
+    expect(document.querySelector('[data-live2d-canvas]')).not.toBeNull()
+
+    view.unmount()
+    expect(() => observed!.setParameter('ParamAngleX', 1)).toThrow(
+      expect.objectContaining({ code: 'invalid-props' }),
+    )
+    await expect(observed!.motion('Idle')).rejects.toMatchObject({
+      code: 'invalid-props',
+    })
+  })
+
   it('disposes a model that resolves after unmount', async () => {
     let resolveModel!: (model: ModelHandle) => void
     const pending = new Promise<ModelHandle>((resolve) => {
@@ -178,9 +230,9 @@ describe('live2DStage lifecycle', () => {
     const lateHarness = createFakeHarness(() => pending)
     const modelHarness = createFakeHarness()
     const view = render(
-      <Live2DStage backend={lateHarness.backend}>
+      <Live2DCanvas backend={lateHarness.backend}>
         <Live2DModel src="/slow.model3.json" />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
 
     await waitFor(() => expect(lateHarness.events).toContain('model:load'))
@@ -197,13 +249,13 @@ describe('live2DStage lifecycle', () => {
   it('rejects a second model with invalid-tree', async () => {
     const harness = createFakeHarness()
     render(
-      <Live2DStage
+      <Live2DCanvas
         backend={harness.backend}
         errorFallback={error => <div>{error.code}</div>}
       >
         <Live2DModel src="/first.model3.json" />
         <Live2DModel src="/second.model3.json" />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
 
     await waitFor(() => expect(screen.getByText('invalid-tree')).toBeTruthy())
@@ -212,14 +264,14 @@ describe('live2DStage lifecycle', () => {
   it('recreates the whole stage when retry is requested', async () => {
     const harness = createFakeHarness()
     render(
-      <Live2DStage
+      <Live2DCanvas
         backend={harness.backend}
         errorFallback={(error, retry) => (
           <button type="button" onClick={retry}>{error.code}</button>
         )}
       >
         <Live2DModel src="/hiyori.model3.json" />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(harness.stages).toHaveLength(1))
 
@@ -235,6 +287,28 @@ describe('live2DStage lifecycle', () => {
       'stage:create',
       'stage:dispose',
       'stage:create',
+    ])
+  })
+
+  it('releases the partial stage when initial model loading fails', async () => {
+    const { Live2DError } = await import('../core/errors')
+    const harness = createFakeHarness(async () => {
+      throw new Live2DError('model-load-failed', 'missing model')
+    })
+    render(
+      <Live2DCanvas
+        backend={harness.backend}
+        errorFallback={error => <div>{error.code}</div>}
+      >
+        <Live2DModel retries={0} src="/missing.model3.json" />
+      </Live2DCanvas>,
+    )
+
+    await waitFor(() => expect(screen.getByText('model-load-failed')).toBeTruthy())
+    expect(harness.events).toEqual([
+      'stage:create',
+      'model:load',
+      'stage:dispose',
     ])
   })
 
@@ -269,9 +343,9 @@ describe('live2DStage lifecycle', () => {
     })
 
     render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/hiyori.model3.json" />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(harness.stages).toHaveLength(1))
 
@@ -303,7 +377,7 @@ describe('live2DStage lifecycle', () => {
     let commits = 0
     render(
       <Profiler id="stage" onRender={() => commits++}>
-        <Live2DStage
+        <Live2DCanvas
           backend={harness.backend}
           quality={{
             mobileMaxResolution: 2,
@@ -312,7 +386,7 @@ describe('live2DStage lifecycle', () => {
           }}
         >
           <Live2DModel src="/hiyori.model3.json" />
-        </Live2DStage>
+        </Live2DCanvas>
       </Profiler>,
     )
     await waitFor(() => expect(harness.frameCallbacks.size).toBe(1))
@@ -344,16 +418,16 @@ describe('live2DStage lifecycle', () => {
     const invalidQuality = {
       quality: 'auto',
       resolution: 1,
-    } as unknown as import('./Live2DStage').StageQualityProps
+    } as unknown as import('./Live2DCanvas').Live2DCanvasQualityProps
 
     render(
-      <Live2DStage
+      <Live2DCanvas
         backend={harness.backend}
         {...invalidQuality}
         errorFallback={error => <div>{error.code}</div>}
       >
         <Live2DModel src="/hiyori.model3.json" />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
 
     await waitFor(() => expect(screen.getByText('invalid-props')).toBeTruthy())

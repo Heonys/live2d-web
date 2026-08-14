@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { renderBenchmarkReport } from '../../../../benchmarks/lib/report'
 import {
   assertBenchmarkResult,
+  BENCHMARK_SCHEMA_VERSION,
   createMeasurement,
+  normalizeBenchmarkResult,
   summarizeRepetitions,
 } from '../../../../benchmarks/lib/schema'
 import { parseBenchmarkManifest } from './manifest'
@@ -82,8 +84,8 @@ describe('benchmark artifacts', () => {
     expect(measurement.gpuDraw).toBeNull()
   })
 
-  it('validates JSON and renders a Markdown report', () => {
-    const result = {
+  it('normalizes v1 JSON and renders a Markdown report', () => {
+    const legacy = {
       capturedAt: '2026-08-14T00:00:00.000Z',
       environment: {
         browser: 'Chromium',
@@ -98,9 +100,47 @@ describe('benchmark artifacts', () => {
       schemaVersion: 1 as const,
       suite: 'smoke' as const,
     }
-    expect(() => assertBenchmarkResult(result)).not.toThrow()
-    expect(renderBenchmarkReport(result)).toContain('# Live2D smoke benchmark')
-    expect(() => assertBenchmarkResult({ schemaVersion: 2 })).toThrow()
+    expect(() => assertBenchmarkResult(legacy)).not.toThrow()
+    expect(normalizeBenchmarkResult(legacy).schemaVersion).toBe(BENCHMARK_SCHEMA_VERSION)
+    expect(renderBenchmarkReport(legacy)).toContain('# Live2D smoke benchmark')
+    expect(() => assertBenchmarkResult({ schemaVersion: 3 })).toThrow()
+  })
+
+  it('converts legacy released heap samples to v2 memory points', () => {
+    const run = createMeasurement(
+      { model: 'hiyori', resolution: 1, stageCount: 1 },
+      1,
+      100,
+      { resources: {
+        canvas: 0,
+        context: 0,
+        frameworkReference: 0,
+        pendingExpression: 0,
+        pendingMotion: 0,
+        texture: 0,
+      }, stages: [] },
+    )
+    const normalized = normalizeBenchmarkResult({
+      capturedAt: '2026-08-14T00:00:00.000Z',
+      environment: {
+        browser: 'Chromium',
+        cpu: 'Test CPU',
+        memoryBytes: 8 * 1024 ** 3,
+        os: 'Test OS',
+        webglRenderer: 'Test GPU',
+      },
+      gitCommit: 'abc123',
+      metadata: { core: '5.3', framework: '5-r.5', sampleRef: '5-r.5' },
+      runs: [{ ...run, memory: { heapUsedBytes: 1_024 } }],
+      schemaVersion: 1,
+      suite: 'memory',
+    })
+    expect(normalized.runs[0].memory).toMatchObject({
+      active: null,
+      baseline: null,
+      cycles: 1,
+      released: { canvasCount: 0, heapUsedBytes: 1_024 },
+    })
   })
 
   it('uses the median repetition for promoted results', () => {

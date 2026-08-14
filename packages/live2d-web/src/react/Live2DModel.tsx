@@ -5,11 +5,13 @@ import type { ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { ModelFit } from '../core/fit'
 import type { CreateLive2DOptions } from '../core/runtime'
+import type { Live2DModelController } from './controller'
 import { useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
 import { LifecycleScope } from '../core/lifecycle'
 import { Live2DRuntime } from '../core/runtime'
 import { ModelContext, RuntimeHostContext, StageContext } from './context'
+import { createLive2DModelController } from './controller'
 import { ModelStore } from './store'
 
 export interface Live2DModelProps {
@@ -17,7 +19,7 @@ export interface Live2DModelProps {
   fit?: ModelFit
   /** Retries after the initial attempt. */
   retries?: number
-  onLoad?: (model: ModelHandle) => void
+  onLoad?: (model: Live2DModelController) => void
   onError?: (error: Live2DError) => void
   children?: ReactNode
 }
@@ -55,7 +57,7 @@ export function Live2DModel({
   if (!stageStore || !runtimeHost) {
     throw new Live2DErrorClass(
       'invalid-tree',
-      '<Live2DModel> must be rendered inside <Live2DStage>.',
+      '<Live2DModel> must be rendered inside <Live2DCanvas>.',
     )
   }
   const currentStageStore = stageStore
@@ -79,7 +81,7 @@ export function Live2DModel({
 
     const error = new Live2DErrorClass(
       'invalid-tree',
-      'live2d-web v0.1 supports exactly one <Live2DModel> per <Live2DStage>.',
+      'live2d-web v0.1 supports exactly one <Live2DModel> per <Live2DCanvas>.',
     )
     currentStageStore.fail(error)
     onErrorRef.current?.(error)
@@ -92,6 +94,7 @@ export function Live2DModel({
 
     let active = true
     let resource: { dispose: () => void, handle: ModelHandle } | undefined
+    let invalidateController: (() => void) | undefined
     const runtime = new Live2DRuntime({
       backend: currentRuntimeHost.backend,
       container,
@@ -113,8 +116,10 @@ export function Live2DModel({
     const dispose = once(() => {
       active = false
       unsubscribe()
+      invalidateController?.()
+      invalidateController = undefined
       lifecycle.disposeAll()
-      modelStore.setHandle(null)
+      modelStore.setController(null)
       modelStore.setRuntime(null)
       runtime.dispose()
       if (resource)
@@ -139,9 +144,12 @@ export function Live2DModel({
         resource = { dispose, handle: model }
         if (!currentStageStore.setModelResource(owner, resource))
           return
-        modelStore.setHandle(model)
+        const controllerBinding = createLive2DModelController(model)
+        invalidateController = controllerBinding.invalidate
+        const controller = controllerBinding.controller
+        modelStore.setController(controller)
         currentStageStore.setModelReady(owner)
-        onLoadRef.current?.(model)
+        onLoadRef.current?.(controller)
       })
       .catch((error) => {
         if (!active)

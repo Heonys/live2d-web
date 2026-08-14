@@ -34,8 +34,8 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
 
   await page.goto('/')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
-  await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(1)
-  const desktopBufferPixels = await page.locator('[data-live2d-stage] canvas').evaluate(
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
+  const desktopBufferPixels = await page.locator('[data-live2d-canvas] canvas').evaluate(
     element => (element as HTMLCanvasElement).width * (element as HTMLCanvasElement).height,
   )
   expect(desktopBufferPixels).toBeLessThanOrEqual(4_000_000)
@@ -46,11 +46,11 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   await expect(mouthSlider).toHaveValue('0.8')
 
   for (let index = 0; index < 20; index++) {
-    await page.getByRole('button', { name: 'Unmount stage' }).click()
-    await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(0)
-    await page.getByRole('button', { name: 'Mount stage' }).click()
+    await page.getByRole('button', { name: 'Unmount canvas' }).click()
+    await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Mount canvas' }).click()
     await expect(page.getByTestId('stage-status')).toContainText('ready')
-    await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(1)
+    await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
   }
 
   expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
@@ -105,12 +105,43 @@ test('obeys the mobile backing-buffer policy', async ({ page }) => {
   const diagnostics = await page.getByTestId('stage-status').textContent()
   expect(diagnostics).toContain('DPR')
   expect(diagnostics).toContain('MP')
-  const canvas = page.locator('[data-live2d-stage] canvas')
+  const canvas = page.locator('[data-live2d-canvas] canvas')
   await expect(canvas).toHaveCount(1)
   const bufferPixels = await canvas.evaluate(
     element => (element as HTMLCanvasElement).width * (element as HTMLCanvasElement).height,
   )
   expect(bufferPixels).toBeLessThanOrEqual(1_500_000)
+})
+
+test('inspects a model URL and cleans the previous canvas on replacement', async ({ page }) => {
+  await page.goto('/inspect')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
+  const canvas = page.locator('[data-live2d-canvas] canvas')
+  await expect(canvas).toHaveCount(1)
+
+  await page.getByLabel('Framing').selectOption('full')
+  await page.getByLabel('Resolution').selectOption('2')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
+  await expect.poll(async () => canvas.evaluate((element) => {
+    const htmlCanvas = element as HTMLCanvasElement
+    const rect = htmlCanvas.getBoundingClientRect()
+    return htmlCanvas.width / rect.width
+  })).toBeCloseTo(2, 1)
+
+  await page.getByRole('button', { name: 'Play motion' }).click()
+  await page.getByLabel('Parameter value').fill('0.65')
+  await page.getByRole('button', { name: 'Set parameter' }).click()
+  await expect(page.getByTestId('parameter-readback')).toContainText('0.650')
+  await page.getByTestId('inspector-stage').hover({ position: { x: 450, y: 200 } })
+
+  await page.getByLabel('model3.json URL').fill('/assets/live2d/missing.model3.json')
+  await page.getByRole('button', { name: 'Load model' }).click()
+  await expect(page.locator('.error-details').first()).toContainText('model3')
+  await expect(page.locator('.error-details').first()).toContainText('404')
+  await expect(page.locator('.error-details').first()).toContainText(
+    '/assets/live2d/missing.model3.json',
+  )
+  await expect(canvas).toHaveCount(0)
 })
 
 test('runs and cleans up the source AudioWorklet smoke test', async ({ page }) => {
@@ -180,8 +211,8 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ page }) =
       __lipSyncWorkletMetrics: { disconnects: number }
     }).__lipSyncWorkletMetrics.disconnects,
   )).toBe(0)
-  await page.getByRole('button', { name: 'Unmount stage' }).click()
-  await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Unmount canvas' }).click()
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() =>
     (window as typeof window & {
       __lipSyncWorkletMetrics: { disconnects: number }
@@ -193,7 +224,7 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ page }) =
 test('surfaces WebGL context loss and recreates the stage', async ({ page, browserName }) => {
   await page.goto('/')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
-  const supported = await page.locator('[data-live2d-stage] canvas').evaluate((canvas, useExtension) => {
+  const supported = await page.locator('[data-live2d-canvas] canvas').evaluate((canvas, useExtension) => {
     if (!useExtension) {
       canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }))
       return true
@@ -207,9 +238,9 @@ test('surfaces WebGL context loss and recreates the stage', async ({ page, brows
   test.skip(!supported, 'WEBGL_lose_context is unavailable in this runtime.')
 
   await expect(page.locator('.error-panel')).toContainText('render-error')
-  await page.getByRole('button', { name: 'Retry stage' }).click()
+  await page.getByRole('button', { name: 'Retry canvas' }).click()
   await expect(page.getByTestId('stage-status')).toContainText('ready')
-  await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(1)
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
 })
 
 test('covers the integrated Framework adapter lifecycle and lazy assets', async ({ browserName, page }) => {
@@ -238,9 +269,16 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
     body: 'temporary failure',
     status: 500,
   }), { times: 1 })
-  await expect(page.evaluate(() => (window as any).__live2dWebE2E.motion()))
-    .rejects
-    .toThrow('HTTP 500')
+  const motionFailure = await page.evaluate(() => (window as any).__live2dWebE2E.motion())
+  expect(motionFailure).toMatchObject({
+    code: 'model-load-failed',
+    details: {
+      assetType: 'motion',
+      backend: 'cubism-webgl',
+      httpStatus: 500,
+    },
+  })
+  expect(motionFailure.details.url).toContain('/motion/hiyori_m07.motion3.json')
   await page.evaluate(() => (window as any).__live2dWebE2E.motion())
 
   const cycles = await page.evaluate(() => (window as any).__live2dWebE2E.cycle(20))
@@ -266,6 +304,9 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
   await expect.poll(async () => page.evaluate(
     () => (window as any).__live2dWebE2E.state()?.status,
   )).toBe('error')
+  expect(await page.evaluate(
+    () => (window as any).__live2dWebE2E.state()?.error?.details,
+  )).toEqual({ backend: 'cubism-webgl' })
   await page.evaluate(() => (window as any).__live2dWebE2E.retry())
   await expect.poll(async () => page.evaluate(
     () => (window as any).__live2dWebE2E.state()?.status,
@@ -276,6 +317,12 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
   )
   expect(shaderFailure.code).toBe('render-error')
   expect(shaderFailure.message).toContain('HTTP 404')
+  expect(shaderFailure.details).toMatchObject({
+    assetType: 'shader',
+    backend: 'cubism-webgl',
+    httpStatus: 404,
+  })
+  expect(shaderFailure.details.url).toContain('/missing-live2d-shaders/')
   await expect(page.locator('#e2e-character canvas')).toHaveCount(0)
   await page.evaluate(() => (window as any).__live2dWebE2E.start())
   await expect(page.locator('#e2e-status')).toHaveText('ready')

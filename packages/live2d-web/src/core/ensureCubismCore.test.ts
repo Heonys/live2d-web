@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ensureCubismCore } from './ensureCubismCore'
 
 describe('ensureCubismCore', () => {
   afterEach(() => {
     delete window.Live2DCubismCore
     document.querySelectorAll('script[data-live2d-web-core]').forEach(script => script.remove())
+    vi.unstubAllGlobals()
   })
 
   it('passes when the global is already available', async () => {
@@ -17,6 +18,7 @@ describe('ensureCubismCore', () => {
   it('surfaces a helpful core-missing error without a URL', async () => {
     await expect(ensureCubismCore()).rejects.toMatchObject({
       code: 'core-missing',
+      details: { assetType: 'core' },
     })
     await expect(ensureCubismCore()).rejects.toThrow('live2d.com')
   })
@@ -42,6 +44,10 @@ describe('ensureCubismCore', () => {
 
     await expect(promise).rejects.toMatchObject({
       code: 'core-missing',
+      details: {
+        assetType: 'core',
+        url: 'http://localhost:3000/assets/core-b.js',
+      },
     })
     expect(failedScript.isConnected).toBe(false)
 
@@ -53,5 +59,24 @@ describe('ensureCubismCore', () => {
     window.Live2DCubismCore = {}
     retryScript.dispatchEvent(new Event('load'))
     await expect(retry).resolves.toBeUndefined()
+  })
+
+  it('uses resource timing status when the browser exposes a failed script response', async () => {
+    vi.stubGlobal('performance', {
+      ...performance,
+      getEntriesByName: () => [{ responseStatus: 404 }],
+    })
+    const promise = ensureCubismCore('/assets/missing-core.js')
+    document.querySelector<HTMLScriptElement>(
+      'script[data-live2d-web-core]',
+    )!.dispatchEvent(new Event('error'))
+
+    await expect(promise).rejects.toMatchObject({
+      details: {
+        assetType: 'core',
+        httpStatus: 404,
+        url: 'http://localhost:3000/assets/missing-core.js',
+      },
+    })
   })
 })

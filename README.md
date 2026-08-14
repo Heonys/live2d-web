@@ -41,11 +41,11 @@ also exposes `expression`, `focus`, `getParameter`, `setFit`, `retry`,
 ```tsx
 'use client'
 
-import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
+import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
 export function Character({ voice }: { voice: AudioNode | null }) {
   return (
-    <Live2DStage
+    <Live2DCanvas
       coreUrl="/assets/live2dcubismcore.min.js"
       quality="auto"
     >
@@ -56,13 +56,15 @@ export function Character({ voice }: { voice: AudioNode | null }) {
           profile="/lipsync/profile.bin"
         />
       </Live2DModel>
-    </Live2DStage>
+    </Live2DCanvas>
   )
 }
 ```
 
 The React components create and subscribe to the same headless controller used
-by the vanilla API. Per-frame values never pass through React state.
+by the vanilla API. `Live2DModel.onLoad` and `useLive2DModel()` return the same
+safe React controller with only motion, expression, focus and parameter
+methods. Per-frame values never pass through React state.
 
 ## Backend selection
 
@@ -133,8 +135,14 @@ pnpm benchmark:smoke
 pnpm benchmark:startup
 pnpm benchmark:matrix
 pnpm benchmark:memory
+pnpm benchmark:memory:backends
 pnpm benchmark:models
 LIVE2D_BENCHMARK_MS=300000 pnpm benchmark:backends
+
+# Headed system Chrome; refuses software or unidentified renderers.
+pnpm benchmark:hardware:smoke
+pnpm benchmark:hardware:matrix
+pnpm benchmark:backends:hardware
 ```
 
 After reviewing the official terms linked by the command,
@@ -146,7 +154,9 @@ development paths. None of these assets is included in the package. See the
 raw result boundary and explicit Markdown promotion command.
 
 The Playground provides React at `/`, the vanilla controller at `/vanilla`,
-and a WebGL/Pixi A-B view at `/compare`, all using the same Hiyori manifest.
+a URL-based model Inspector at `/inspect`, and a WebGL/Pixi A-B view at
+`/compare`. The Inspector accepts relative or CORS-enabled HTTP(S)
+`model3.json` URLs and displays asset diagnostics without bundling models.
 `apps/vanilla-consumer` is a separate Vite fixture whose manifest and production
 bundle contain no React dependency.
 
@@ -157,6 +167,8 @@ bundle contain no React dependency.
 - [Cubism WebGL implementation plan and gate](docs/cubism-webgl-plan.md)
 - [Cubism WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
 - [Post-diagnostics WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+- [WebGL vs Pixi JS heap benchmark](docs/benchmarks/2026-08-15-backend-memory.md)
+- [Apple M2 Pro hardware smoke](docs/benchmarks/2026-08-15-hardware-smoke.md)
 - [Multi-model benchmark guide](docs/benchmarking.md)
 - [Multi-model matrix result](docs/benchmarks/2026-08-14-multi-model-matrix.md)
 - [Licensing](docs/licensing.md)

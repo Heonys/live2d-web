@@ -5,7 +5,10 @@ import type {
 import type { SampleStatistics } from './metrics'
 import { median, summarize } from './metrics'
 
-export const BENCHMARK_SCHEMA_VERSION = 1 as const
+export const BENCHMARK_SCHEMA_VERSION = 2 as const
+const LEGACY_BENCHMARK_SCHEMA_VERSION = 1 as const
+
+export type BenchmarkBackend = 'cubism-webgl' | 'pixi-v6'
 
 export interface BenchmarkEnvironment {
   browser: string
@@ -16,14 +19,39 @@ export interface BenchmarkEnvironment {
 }
 
 export interface BenchmarkCondition {
+  backend?: BenchmarkBackend
   cache?: 'cold' | 'warm'
+  core?: string
   model: string
   resolution: number
   stageCount: number
 }
 
+export interface BenchmarkMemoryPoint {
+  canvasCount: number
+  heapUsedBytes: number
+}
+
+export interface BenchmarkScriptBytes {
+  adapter: number
+  common: number
+  core: number
+  total: number
+}
+
+export interface BenchmarkMemoryMetrics {
+  active: BenchmarkMemoryPoint | null
+  activeHeapDeltaBytes: number | null
+  baseline: BenchmarkMemoryPoint | null
+  cycles: number
+  released: BenchmarkMemoryPoint
+  retainedHeapDeltaBytes: number | null
+  scripts?: BenchmarkScriptBytes
+}
+
 export interface BenchmarkMeasurement {
   condition: BenchmarkCondition
+  durationMs?: number
   firstDrawMs: number | null
   frame: Record<string, SampleStatistics>
   gpuDraw: SampleStatistics | null
@@ -31,11 +59,10 @@ export interface BenchmarkMeasurement {
   lifecycle: BenchmarkDiagnosticsSnapshot['resources']
   load: Record<string, SampleStatistics>
   longFrameRatio: number | null
-  memory?: {
-    heapUsedBytes: number
-  }
+  memory?: BenchmarkMemoryMetrics
   readyMs: number | null
   repetition: number
+  warmupMs?: number
 }
 
 export interface BenchmarkResult {
@@ -49,7 +76,16 @@ export interface BenchmarkResult {
   }
   runs: BenchmarkMeasurement[]
   schemaVersion: typeof BENCHMARK_SCHEMA_VERSION
-  suite: 'matrix' | 'memory' | 'smoke' | 'startup'
+  suite:
+    | 'backends'
+    | 'backend-memory'
+    | 'hardware-backends'
+    | 'hardware-matrix'
+    | 'hardware-smoke'
+    | 'matrix'
+    | 'memory'
+    | 'smoke'
+    | 'startup'
 }
 
 function mergePhaseSamples(
@@ -113,6 +149,29 @@ function medianStatistics(values: SampleStatistics[]): SampleStatistics {
   }
 }
 
+function medianMemoryPoint(
+  values: Array<BenchmarkMemoryPoint | null>,
+): BenchmarkMemoryPoint | null {
+  const points = values.filter((value): value is BenchmarkMemoryPoint => value !== null)
+  if (!points.length)
+    return null
+  return {
+    canvasCount: Math.round(median(points.map(value => value.canvasCount)) ?? 0),
+    heapUsedBytes: median(points.map(value => value.heapUsedBytes)) ?? 0,
+  }
+}
+
+function medianScriptBytes(values: BenchmarkScriptBytes[]): BenchmarkScriptBytes | undefined {
+  if (!values.length)
+    return undefined
+  return {
+    adapter: median(values.map(value => value.adapter)) ?? 0,
+    common: median(values.map(value => value.common)) ?? 0,
+    core: median(values.map(value => value.core)) ?? 0,
+    total: median(values.map(value => value.total)) ?? 0,
+  }
+}
+
 function medianPhases(values: Array<Record<string, SampleStatistics>>) {
   const phases = new Set(values.flatMap(value => Object.keys(value)))
   return Object.fromEntries([...phases].map(phase => [
@@ -148,9 +207,23 @@ export function summarizeRepetitions(runs: BenchmarkMeasurement[]) {
       longFrameRatio: medianNullable(group.map(value => value.longFrameRatio)),
       memory: group.some(value => value.memory)
         ? {
-            heapUsedBytes: median(
-              group.flatMap(value => value.memory ? [value.memory.heapUsedBytes] : []),
-            ) ?? 0,
+            active: medianMemoryPoint(group.map(value => value.memory?.active ?? null)),
+            activeHeapDeltaBytes: medianNullable(
+              group.map(value => value.memory?.activeHeapDeltaBytes ?? null),
+            ),
+            baseline: medianMemoryPoint(group.map(value => value.memory?.baseline ?? null)),
+            cycles: Math.round(median(group.flatMap(value => (
+              value.memory ? [value.memory.cycles] : []
+            ))) ?? 0),
+            released: medianMemoryPoint(group.flatMap(value => (
+              value.memory ? [value.memory.released] : []
+            ))) ?? { canvasCount: 0, heapUsedBytes: 0 },
+            retainedHeapDeltaBytes: medianNullable(
+              group.map(value => value.memory?.retainedHeapDeltaBytes ?? null),
+            ),
+            scripts: medianScriptBytes(group.flatMap(value => (
+              value.memory?.scripts ? [value.memory.scripts] : []
+            ))),
           }
         : undefined,
       readyMs: medianNullable(group.map(value => value.readyMs)),
@@ -159,16 +232,65 @@ export function summarizeRepetitions(runs: BenchmarkMeasurement[]) {
   })
 }
 
-export function assertBenchmarkResult(value: unknown): asserts value is BenchmarkResult {
+function assertCommonBenchmarkResult(value: unknown) {
   const result = value as Partial<BenchmarkResult> | null
   if (
     !result
-    || result.schemaVersion !== BENCHMARK_SCHEMA_VERSION
     || typeof result.capturedAt !== 'string'
     || typeof result.gitCommit !== 'string'
     || !Array.isArray(result.runs)
-    || !['matrix', 'memory', 'smoke', 'startup'].includes(result.suite ?? '')
+    || ![
+      'backends',
+      'backend-memory',
+      'hardware-backends',
+      'hardware-matrix',
+      'hardware-smoke',
+      'matrix',
+      'memory',
+      'smoke',
+      'startup',
+    ].includes(result.suite ?? '')
   ) {
     throw new Error('Invalid benchmark result schema.')
   }
+  return result
+}
+
+export function normalizeBenchmarkResult(value: unknown): BenchmarkResult {
+  const result = assertCommonBenchmarkResult(value)
+  const runs = result.runs as BenchmarkMeasurement[]
+  if (result.schemaVersion === BENCHMARK_SCHEMA_VERSION)
+    return result as BenchmarkResult
+  if (result.schemaVersion !== LEGACY_BENCHMARK_SCHEMA_VERSION)
+    throw new Error('Invalid benchmark result schema.')
+
+  return {
+    ...(result as Omit<BenchmarkResult, 'runs' | 'schemaVersion'>),
+    runs: runs.map((run) => {
+      const legacy = run as BenchmarkMeasurement & {
+        memory?: { heapUsedBytes: number }
+      }
+      if (!legacy.memory || !('heapUsedBytes' in legacy.memory))
+        return legacy
+      return {
+        ...legacy,
+        memory: {
+          active: null,
+          activeHeapDeltaBytes: null,
+          baseline: null,
+          cycles: 1,
+          released: {
+            canvasCount: legacy.lifecycle.canvas,
+            heapUsedBytes: legacy.memory.heapUsedBytes,
+          },
+          retainedHeapDeltaBytes: null,
+        },
+      }
+    }),
+    schemaVersion: BENCHMARK_SCHEMA_VERSION,
+  }
+}
+
+export function assertBenchmarkResult(value: unknown): void {
+  normalizeBenchmarkResult(value)
 }

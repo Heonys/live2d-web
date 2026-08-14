@@ -91,4 +91,28 @@ describe('cubism-webgl Stage', () => {
     expect(updates[2]).toBeCloseTo(16.666, 2)
     stage.dispose()
   })
+
+  it('does not burst above maxFps after a long main-thread stall', () => {
+    const gl = createGl()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl)
+    const stage = createWebGLStage(document.body, {
+      height: 100,
+      maxFps: 60,
+      width: 200,
+    })
+    const updates: number[] = []
+    getStageInternals(stage).attachDriver({
+      draw: () => {},
+      resize: () => {},
+      update: deltaMs => updates.push(deltaMs),
+    })
+
+    for (const timestamp of [0, 5_000, 5_008.333, 5_016.666, 5_024.999])
+      frames.shift()?.(timestamp)
+
+    expect(updates).toHaveLength(3)
+    expect(updates[1]).toBe(100)
+    expect(updates[2]).toBeCloseTo(16.666, 2)
+    stage.dispose()
+  })
 })

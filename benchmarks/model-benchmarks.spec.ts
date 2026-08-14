@@ -6,7 +6,11 @@ import type {
 } from './lib/schema'
 import process from 'node:process'
 import { expect, test } from '@playwright/test'
-import { gitCommit, readBenchmarkEnvironment } from './lib/environment'
+import {
+  assertHardwareRenderer,
+  gitCommit,
+  readBenchmarkEnvironment,
+} from './lib/environment'
 import { writeBenchmarkResult } from './lib/io'
 import {
   assertReleased,
@@ -15,7 +19,7 @@ import {
   mount,
   openBenchmark,
 } from './lib/page'
-import { createMeasurement } from './lib/schema'
+import { BENCHMARK_SCHEMA_VERSION, createMeasurement } from './lib/schema'
 
 const suite = process.env.LIVE2D_BENCHMARK_SUITE ?? 'smoke'
 const models = ['mark', 'hiyori', 'mao', 'rice', 'ren']
@@ -36,7 +40,7 @@ function result(
       sampleRef: 'CubismWebSamples@5-r.5',
     },
     runs,
-    schemaVersion: 1,
+    schemaVersion: BENCHMARK_SCHEMA_VERSION,
     suite: selectedSuite,
   }
 }
@@ -45,7 +49,23 @@ test.describe.configure({ mode: 'serial' })
 
 test('model benchmark suite', async ({ browser, page }) => {
   test.setTimeout(2 * 60 * 60_000)
-  test.skip(!['smoke', 'startup', 'matrix', 'memory'].includes(suite))
+  test.skip(![
+    'hardware-matrix',
+    'hardware-smoke',
+    'matrix',
+    'memory',
+    'smoke',
+    'startup',
+  ].includes(suite))
+
+  if (suite === 'hardware-smoke') {
+    await runHardwareSuite(page, 'hardware-smoke')
+    return
+  }
+  if (suite === 'hardware-matrix') {
+    await runHardwareSuite(page, 'hardware-matrix')
+    return
+  }
 
   if (suite === 'startup') {
     await runStartup(browser, page)
@@ -124,6 +144,59 @@ async function runMatrix(page: Page) {
       // Preserve completed repetitions even when a later heavy condition
       // fails, while keeping the latest file ignored from Git and npm.
       writeBenchmarkResult('model-matrix.latest.json', matrixResult)
+    }
+  }
+}
+
+async function runHardwareSuite(
+  page: Page,
+  selectedSuite: 'hardware-matrix' | 'hardware-smoke',
+) {
+  const environment = await readBenchmarkEnvironment(page)
+  assertHardwareRenderer(environment.webglRenderer)
+  const smoke = selectedSuite === 'hardware-smoke'
+  const durationMs = Number(process.env.LIVE2D_BENCHMARK_MS ?? (smoke ? 10_000 : 60_000))
+  const warmupMs = Number(process.env.LIVE2D_BENCHMARK_WARMUP_MS ?? (smoke ? 0 : 5_000))
+  const repetitions = Number(process.env.LIVE2D_BENCHMARK_REPETITIONS ?? (smoke ? 1 : 3))
+  const conditions: BenchmarkCondition[] = smoke
+    ? ['hiyori', 'ren'].map(model => ({
+        backend: 'cubism-webgl' as const,
+        core: '5.3 (core/06)',
+        model,
+        resolution: 1,
+        stageCount: 1,
+      }))
+    : ['hiyori', 'ren'].flatMap(model => [1, 4].flatMap(stageCount => (
+        [1, 2].map(resolution => ({
+          backend: 'cubism-webgl' as const,
+          core: '5.3 (core/06)',
+          model,
+          resolution,
+          stageCount,
+        }))
+      )))
+  const runs: BenchmarkMeasurement[] = []
+  const hardwareResult = result(selectedSuite, environment, runs)
+  const output = `${selectedSuite}.latest.json`
+
+  for (const condition of conditions) {
+    for (let repetition = 1; repetition <= repetitions; repetition++) {
+      process.stdout.write(
+        `[${selectedSuite}] ${condition.model} stage=${condition.stageCount} `
+        + `resolution=${condition.resolution} repetition=${repetition}/${repetitions}\n`,
+      )
+      const run = await captureMeasurement(
+        page,
+        condition,
+        repetition,
+        durationMs,
+        warmupMs,
+      )
+      expect(run.frame.frameDelta.count).toBeGreaterThan(0)
+      expect(Number.isFinite(run.frame.frameDelta.p50)).toBe(true)
+      expect(Number.isFinite(run.frame.frameDelta.p95)).toBe(true)
+      runs.push(run)
+      writeBenchmarkResult(output, hardwareResult)
     }
   }
 }
@@ -221,7 +294,17 @@ async function runMemory(page: Page) {
           active.diagnostics,
         )
         measurement.lifecycle = released.diagnostics.resources
-        measurement.memory = { heapUsedBytes: await collectHeap(context, page) }
+        measurement.memory = {
+          active: null,
+          activeHeapDeltaBytes: null,
+          baseline: null,
+          cycles: 1,
+          released: {
+            canvasCount: released.diagnostics.resources.canvas,
+            heapUsedBytes: await collectHeap(context, page),
+          },
+          retainedHeapDeltaBytes: null,
+        }
         runs.push(measurement)
       }
     }

@@ -6,6 +6,7 @@ import type {
   ModelTransform,
   StageHandle,
 } from '../../core/contract'
+import type { Live2DAssetType, Live2DErrorDetails } from '../../core/errors'
 import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import type { LayoutBounds } from './types'
 import { CubismDefaultParameterId } from '#cubism-framework/cubismdefaultparameterid'
@@ -36,6 +37,7 @@ import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismsha
 import { Live2DError } from '../../core/errors'
 import { createTexture, fetchArrayBuffer, resolveAssetUrl } from './assets'
 import { measureAsync, measureSync } from './diagnostics'
+import { parseShaderErrorDetails } from './error-details'
 import { acquireFramework } from './framework-manager'
 import { buildMvpMatrix, measureLayout } from './matrix'
 import { getStageInternals } from './stage'
@@ -61,6 +63,13 @@ function asModelError(error: unknown, message: string) {
         error instanceof Error ? `${message}: ${error.message}` : message,
         { cause: error },
       )
+}
+
+function modelAssetDetails(
+  assetType: Live2DAssetType,
+  url?: string,
+): Live2DErrorDetails {
+  return { assetType, backend: 'cubism-webgl', url }
 }
 
 class FrameworkModel extends CubismUserModel {
@@ -117,19 +126,36 @@ class FrameworkModel extends CubismUserModel {
         throw new Live2DError(
           'model-load-failed',
           'model3.json does not declare FileReferences.Moc.',
+          { details: modelAssetDetails('model3', this.modelUrl) },
         )
       }
+      const mocUrl = resolveAssetUrl(mocName, this.modelUrl)
       const moc = await measureAsync(
         this.diagnostics,
         'mocFetch',
         () => fetchArrayBuffer(
-          resolveAssetUrl(mocName, this.modelUrl),
+          mocUrl,
+          'moc3',
           this.assetController.signal,
         ),
       )
-      measureSync(this.diagnostics, 'load', 'mocParse', () => this.loadModel(moc, true))
-      if (!this.getModel())
-        throw new Live2DError('model-load-failed', 'Cubism Core rejected the moc3 model.')
+      try {
+        measureSync(this.diagnostics, 'load', 'mocParse', () => this.loadModel(moc, true))
+      }
+      catch (error) {
+        throw new Live2DError(
+          'model-load-failed',
+          `Failed to parse moc3 asset ${mocUrl}.`,
+          { cause: error, details: modelAssetDetails('moc3', mocUrl) },
+        )
+      }
+      if (!this.getModel()) {
+        throw new Live2DError(
+          'model-load-failed',
+          'Cubism Core rejected the moc3 model.',
+          { details: modelAssetDetails('moc3', mocUrl) },
+        )
+      }
 
       this.layoutMatrix = new CubismModelMatrix(
         this.getModel().getCanvasWidth(),
@@ -169,23 +195,59 @@ class FrameworkModel extends CubismUserModel {
     const physicsName = this.setting.getPhysicsFileName()
     const poseName = this.setting.getPoseFileName()
     const userDataName = this.setting.getUserDataFile()
+    const physicsUrl = physicsName
+      ? resolveAssetUrl(physicsName, this.modelUrl)
+      : undefined
+    const poseUrl = poseName
+      ? resolveAssetUrl(poseName, this.modelUrl)
+      : undefined
+    const userDataUrl = userDataName
+      ? resolveAssetUrl(userDataName, this.modelUrl)
+      : undefined
     const [physics, pose, userData] = await Promise.all([
-      physicsName
-        ? fetchArrayBuffer(resolveAssetUrl(physicsName, this.modelUrl), signal)
+      physicsUrl
+        ? fetchArrayBuffer(physicsUrl, 'physics', signal)
         : undefined,
-      poseName
-        ? fetchArrayBuffer(resolveAssetUrl(poseName, this.modelUrl), signal)
+      poseUrl
+        ? fetchArrayBuffer(poseUrl, 'pose', signal)
         : undefined,
-      userDataName
-        ? fetchArrayBuffer(resolveAssetUrl(userDataName, this.modelUrl), signal)
+      userDataUrl
+        ? fetchArrayBuffer(userDataUrl, 'user-data', signal)
         : undefined,
     ])
-    if (physics)
-      this.loadPhysics(physics, physics.byteLength)
-    if (pose)
-      this.loadPose(pose, pose.byteLength)
-    if (userData)
-      this.loadUserData(userData, userData.byteLength)
+    try {
+      if (physics)
+        this.loadPhysics(physics, physics.byteLength)
+    }
+    catch (error) {
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to parse physics asset ${physicsUrl}.`,
+        { cause: error, details: modelAssetDetails('physics', physicsUrl) },
+      )
+    }
+    try {
+      if (pose)
+        this.loadPose(pose, pose.byteLength)
+    }
+    catch (error) {
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to parse pose asset ${poseUrl}.`,
+        { cause: error, details: modelAssetDetails('pose', poseUrl) },
+      )
+    }
+    try {
+      if (userData)
+        this.loadUserData(userData, userData.byteLength)
+    }
+    catch (error) {
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to parse user data asset ${userDataUrl}.`,
+        { cause: error, details: modelAssetDetails('user-data', userDataUrl) },
+      )
+    }
   }
 
   private setupEffects() {
@@ -255,10 +317,12 @@ class FrameworkModel extends CubismUserModel {
       )
     }
     catch (error) {
+      if (error instanceof Live2DError)
+        throw error
       throw new Live2DError(
         'render-error',
         error instanceof Error ? error.message : 'Cubism shader loading failed.',
-        { cause: error },
+        { cause: error, details: parseShaderErrorDetails(error) },
       )
     }
 
@@ -268,6 +332,7 @@ class FrameworkModel extends CubismUserModel {
         throw new Live2DError(
           'model-load-failed',
           `model3.json declares an empty texture at index ${index}.`,
+          { details: modelAssetDetails('texture', this.modelUrl) },
         )
       }
       const texture = await createTexture(
@@ -360,8 +425,10 @@ class FrameworkModel extends CubismUserModel {
       this.diagnostics?.changeResource('pendingMotion', 1)
       try {
         const fileName = this.setting.getMotionFileName(group, index)
+        const motionUrl = resolveAssetUrl(fileName, this.modelUrl)
         const buffer = await fetchArrayBuffer(
-          resolveAssetUrl(fileName, this.modelUrl),
+          motionUrl,
+          'motion',
           this.assetController.signal,
         )
         const motion = this.loadMotion(
@@ -375,8 +442,13 @@ class FrameworkModel extends CubismUserModel {
           index,
           true,
         )
-        if (!motion)
-          throw new Live2DError('model-load-failed', `Failed to parse motion ${key}.`)
+        if (!motion) {
+          throw new Live2DError(
+            'model-load-failed',
+            `Failed to parse motion ${key}.`,
+            { details: modelAssetDetails('motion', motionUrl) },
+          )
+        }
         motion.setEffectIds(this.eyeBlinkIds, [])
         this.loadedMotions.add(motion)
         return motion
@@ -438,8 +510,13 @@ class FrameworkModel extends CubismUserModel {
     const promise = (async () => {
       this.diagnostics?.changeResource('pendingExpression', 1)
       try {
+        const expressionUrl = resolveAssetUrl(
+          this.setting.getExpressionFileName(index),
+          this.modelUrl,
+        )
         const buffer = await fetchArrayBuffer(
-          resolveAssetUrl(this.setting.getExpressionFileName(index), this.modelUrl),
+          expressionUrl,
+          'expression',
           this.assetController.signal,
         )
         const expression = this.loadExpression(buffer, buffer.byteLength, id)
@@ -447,6 +524,7 @@ class FrameworkModel extends CubismUserModel {
           throw new Live2DError(
             'model-load-failed',
             `Failed to parse expression ${id}.`,
+            { details: modelAssetDetails('expression', expressionUrl) },
           )
         }
         this.loadedMotions.add(expression)
@@ -600,14 +678,24 @@ export async function loadFrameworkModel(
     const modelJson = await measureAsync(
       diagnostics,
       'modelJsonFetch',
-      () => fetchArrayBuffer(modelUrl, options.signal),
+      () => fetchArrayBuffer(modelUrl, 'model3', options.signal),
     )
-    const setting = measureSync(
-      diagnostics,
-      'load',
-      'modelJsonParse',
-      () => new CubismModelSettingJson(modelJson, modelJson.byteLength),
-    )
+    let setting: CubismModelSettingJson
+    try {
+      setting = measureSync(
+        diagnostics,
+        'load',
+        'modelJsonParse',
+        () => new CubismModelSettingJson(modelJson, modelJson.byteLength),
+      )
+    }
+    catch (error) {
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to parse model3.json ${modelUrl}.`,
+        { cause: error, details: modelAssetDetails('model3', modelUrl) },
+      )
+    }
     model = new FrameworkModel(
       stage,
       modelUrl,

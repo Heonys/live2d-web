@@ -99,6 +99,7 @@ export default function VanillaPlayground() {
         </div>
         <nav>
           <a href="/">React playground</a>
+          <a href="/inspect">Model inspector</a>
           <a href="/compare">Backend comparison</a>
         </nav>
       </header>

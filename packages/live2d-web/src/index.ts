@@ -12,7 +12,12 @@ export type {
 } from './core/contract'
 export { ensureCubismCore } from './core/ensureCubismCore'
 export { Live2DError } from './core/errors'
-export type { Live2DErrorCode } from './core/errors'
+export type {
+  Live2DAssetType,
+  Live2DErrorCode,
+  Live2DErrorDetails,
+  Live2DErrorOptions,
+} from './core/errors'
 export { fitModel } from './core/fit'
 export type { ModelFit } from './core/fit'
 export {

@@ -1,10 +1,11 @@
 import type { ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { Live2DInstance, Live2DRuntimeState } from '../core/runtime'
+import type { Live2DModelController } from './controller'
 
 export type LoadingStage = 'core' | 'stage' | 'model'
 
-export interface StageState {
+export interface Live2DCanvasState {
   status: 'loading' | 'ready' | 'error'
   loadingStage?: LoadingStage
   error?: Live2DError
@@ -29,7 +30,7 @@ export class StageStore {
   private modelOwner: symbol | null = null
   private modelResource: { owner: symbol, resource: ModelResource } | null = null
   private structuralError: Live2DError | undefined
-  private snapshot: StageState
+  private snapshot: Live2DCanvasState
 
   constructor(retry: () => void) {
     this.snapshot = {
@@ -46,7 +47,7 @@ export class StageStore {
 
   readonly getSnapshot = () => this.snapshot
 
-  private update(patch: Partial<StageState>) {
+  private update(patch: Partial<Live2DCanvasState>) {
     this.snapshot = { ...this.snapshot, ...patch }
     for (const listener of this.listeners)
       listener()
@@ -139,13 +140,13 @@ export class StageStore {
 }
 
 interface ModelSnapshot {
-  handle: ModelHandle | null
+  controller: Live2DModelController | null
   runtime: Live2DInstance | null
 }
 
 export class ModelStore {
   private listeners = new Set<Listener>()
-  private snapshot: ModelSnapshot = { handle: null, runtime: null }
+  private snapshot: ModelSnapshot = { controller: null, runtime: null }
 
   readonly subscribe = (listener: Listener) => {
     this.listeners.add(listener)
@@ -154,10 +155,10 @@ export class ModelStore {
 
   readonly getSnapshot = () => this.snapshot
 
-  setHandle(handle: ModelHandle | null) {
-    if (this.snapshot.handle === handle)
+  setController(controller: Live2DModelController | null) {
+    if (this.snapshot.controller === controller)
       return
-    this.snapshot = { ...this.snapshot, handle }
+    this.snapshot = { ...this.snapshot, controller }
     for (const listener of this.listeners)
       listener()
   }

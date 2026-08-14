@@ -47,3 +47,13 @@ for (const model of models) {
     })
   }
 }
+
+test('the inspector exposes and applies Mao expressions', async ({ page }) => {
+  await page.goto('/inspect?src=/assets/live2d/mao/Mao.model3.json')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
+  await expect(page.getByLabel('Expression')).toBeEnabled()
+  await page.getByLabel('Expression').selectOption('exp_01')
+  await page.getByRole('button', { name: 'Apply expression' }).click()
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
+  await expect(page.locator('.inline-error')).toHaveCount(0)
+})

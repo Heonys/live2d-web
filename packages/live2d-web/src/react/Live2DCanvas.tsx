@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { RuntimeHostContext, StageContext } from './context'
 import { StageStore } from './store'
 
-interface BaseLive2DStageProps {
+interface BaseLive2DCanvasProps {
   /** Omit to use the official Framework-based cubism-webgl adapter. */
   backend?: Live2DBackend
   coreUrl?: string
@@ -22,11 +22,11 @@ interface BaseLive2DStageProps {
   children?: ReactNode
 }
 
-export type StageQualityProps
+export type Live2DCanvasQualityProps
   = | { quality?: 'auto' | AutoQualityPolicy, resolution?: never }
     | { quality?: never, resolution: number }
 
-export type Live2DStageProps = BaseLive2DStageProps & StageQualityProps
+export type Live2DCanvasProps = BaseLive2DCanvasProps & Live2DCanvasQualityProps
 
 function useStableQuality(quality: 'auto' | AutoQualityPolicy | undefined) {
   const policy = typeof quality === 'object' ? quality : undefined
@@ -51,7 +51,7 @@ function useStableQuality(quality: 'auto' | AutoQualityPolicy | undefined) {
   ])
 }
 
-export function Live2DStage(props: Live2DStageProps) {
+export function Live2DCanvas(props: Live2DCanvasProps) {
   const {
     backend,
     children,
@@ -118,7 +118,7 @@ export function Live2DStage(props: Live2DStageProps) {
         >
           <div
             ref={setContainer}
-            data-live2d-stage=""
+            data-live2d-canvas=""
             style={{ height: '100%', touchAction: 'none', width: '100%' }}
           />
           {children}

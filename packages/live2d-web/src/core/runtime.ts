@@ -487,6 +487,10 @@ export class Live2DRuntime implements Live2DInstance {
         throw error
       }
       const normalized = asLive2DError(error, 'adapter-error')
+      // A failed initial generation must not retain its Canvas or GPU state.
+      // Keep the runtime object and error state alive so React/vanilla retry
+      // can create a completely new Stage generation.
+      this.teardown()
       this.report(normalized)
       throw normalized
     }

@@ -29,8 +29,24 @@ select {
   padding: 0.65rem 0.8rem;
 }
 
+input[type='text'],
+input[type='number'] {
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #58536d;
+  border-radius: 10px;
+  color: inherit;
+  background: #191720;
+}
+
 button {
   cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 main {
@@ -83,6 +99,18 @@ header nav {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 270px;
   gap: 18px;
+}
+
+.source-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #393548;
+  border-radius: 18px;
+  background: rgb(25 23 32 / 88%);
 }
 
 .stage-shell {
@@ -177,6 +205,42 @@ label output {
   white-space: pre-wrap;
 }
 
+.error-details {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  max-width: 100%;
+  margin: 0;
+  color: #c8c4d4;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.error-details dt {
+  color: #858092;
+}
+
+.error-details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.inline-error {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgb(255 140 140 / 30%);
+  border-radius: 10px;
+  color: #ffc8c8;
+  background: rgb(82 27 38 / 32%);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.inline-error p {
+  margin: 6px 0;
+}
+
 .note {
   margin: 0;
   color: #858092;
@@ -221,6 +285,10 @@ label output {
   }
 
   .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .source-form {
     grid-template-columns: 1fr;
   }
 

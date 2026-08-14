@@ -1,6 +1,6 @@
 # API Reference
 
-Status: implemented locally on 2026-08-14. The package is ESM-only and remains
+Status: implemented locally on 2026-08-15. The package is ESM-only and remains
 `0.1.0-alpha.0` until publication. The root entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
@@ -79,21 +79,39 @@ Registered features survive `retry()` and attach to the new model generation.
 ## React components
 
 ```tsx
-import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
+import { LipSync, Live2DModel, Live2DCanvas } from 'live2d-web/react'
 
-<Live2DStage coreUrl="/live2dcubismcore.min.js">
+<Live2DCanvas coreUrl="/live2dcubismcore.min.js">
   <Live2DModel src="/models/hiyori.model3.json">
     <LipSync driver={driver} />
   </Live2DModel>
-</Live2DStage>
+</Live2DCanvas>
 ```
 
-`Live2DStageProps` contains the same backend/Core/quality controls plus
+`Live2DCanvasProps` contains the same backend/Core/quality controls plus
 `className`, `style`, loading/error fallbacks and `onError`.
 
 `Live2DModelProps` provides `src`, `fit`, `retries`, `onLoad`, `onError` and
-children. Only one model is allowed per Stage. `src` changes and StrictMode
+children. Only one model is allowed per Canvas. `src` changes and StrictMode
 effect replays dispose the old headless runtime generation.
+
+`onLoad` receives the same React-only controller returned by
+`useLive2DModel()`. It deliberately excludes renderer and lifecycle methods:
+
+```ts
+interface Live2DModelController {
+  motion(group: string, index?: number): Promise<void>
+  expression(id?: string): Promise<void>
+  focus(x: number, y: number): void
+  getParameter(id: string): number
+  setParameter(id: string, value: number): void
+}
+```
+
+There is no React ref API. Use `onLoad` when the controller must be handed to a
+parent and `useLive2DModel()` from descendants. A controller is invalidated
+when its model generation is disposed; later calls fail with `invalid-props`
+instead of touching a released renderer handle.
 
 `backend` is optional and follows the same default as `createLive2D()`.
 
@@ -125,7 +143,7 @@ and a 500 ms closed-mouth hold are fixed for this alpha.
 ## React hooks
 
 ```ts
-useStage(): {
+useLive2DCanvas(): {
   status: 'loading' | 'ready' | 'error'
   loadingStage?: 'core' | 'stage' | 'model'
   error?: Live2DError
@@ -138,7 +156,7 @@ useStage(): {
   retry(): void
 }
 
-useLive2DModel(): ModelHandle | null
+useLive2DModel(): Live2DModelController | null
 useLive2DParameter(id: string, value: number): void
 useParameterDriver(id: string, getter: () => number): void
 ```
@@ -162,6 +180,26 @@ latest getter after SDK motion update without causing React renders.
 
 The cubism-webgl backend uses `webgl-unsupported` when WebGL2 is unavailable.
 It does not fall back to WebGL1 or Pixi.
+
+`Live2DError.details` is a frozen, read-only diagnostic object. Depending on
+the failure it contains `assetType`, `backend`, the final absolute `url` and
+`httpStatus`. `cause` is preserved separately.
+
+```ts
+type Live2DAssetType =
+  | 'core' | 'model3' | 'moc3' | 'texture' | 'physics' | 'pose'
+  | 'user-data' | 'motion' | 'expression' | 'shader'
+
+interface Live2DErrorDetails {
+  readonly assetType?: Live2DAssetType
+  readonly backend?: string
+  readonly url?: string
+  readonly httpStatus?: number
+}
+```
+
+Browsers do not always expose an HTTP status for a failed cross-origin script
+load. In that case Core errors still include the final URL and asset type.
 
 ## Next.js and SSR
 

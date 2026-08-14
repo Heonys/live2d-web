@@ -20,11 +20,29 @@ declare global {
       fit: (fit: 'full' | 'upper-body') => void
       focus: (x: number, y: number) => void
       loseContext: () => void
-      motion: () => Promise<void>
+      motion: () => Promise<{
+        code: string
+        details?: {
+          assetType?: string
+          backend?: string
+          httpStatus?: number
+          url?: string
+        }
+        message: string
+      } | undefined>
       multiple: (count: number) => Promise<{ after: number, during: number }>
       parameter: (id: string) => number
       retry: () => Promise<void>
-      shaderFailure: () => Promise<{ code: string, message: string }>
+      shaderFailure: () => Promise<{
+        code: string
+        details?: {
+          assetType?: string
+          backend?: string
+          httpStatus?: number
+          url?: string
+        }
+        message: string
+      }>
       start: () => Promise<void>
       state: () => ReturnType<Live2DInstance['getState']> | undefined
       stop: () => void
@@ -142,7 +160,29 @@ export default function E2EHarness() {
           ?.getExtension('WEBGL_lose_context')
           ?.loseContext()
       },
-      motion: () => character?.motion('Tap@Body', 0) ?? Promise.resolve(),
+      async motion() {
+        try {
+          await character?.motion('Tap@Body', 0)
+          return undefined
+        }
+        catch (error) {
+          const failure = error as {
+            code?: string
+            details?: {
+              assetType?: string
+              backend?: string
+              httpStatus?: number
+              url?: string
+            }
+            message?: string
+          }
+          return {
+            code: failure.code ?? 'unknown',
+            details: failure.details,
+            message: failure.message ?? String(error),
+          }
+        }
+      },
       async multiple(count) {
         const hosts: HTMLElement[] = []
         const instances: Live2DInstance[] = []
@@ -195,9 +235,19 @@ export default function E2EHarness() {
           throw new Error('Expected shader loading to fail.')
         }
         catch (error) {
-          const failure = error as { code?: string, message?: string }
+          const failure = error as {
+            code?: string
+            details?: {
+              assetType?: string
+              backend?: string
+              httpStatus?: number
+              url?: string
+            }
+            message?: string
+          }
           return {
             code: failure.code ?? 'unknown',
+            details: failure.details,
             message: failure.message ?? String(error),
           }
         }

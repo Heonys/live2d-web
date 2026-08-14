@@ -1,6 +1,6 @@
 # 아키텍처
 
-상태 기준일: **2026-08-14**. headless runtime과 React binding이 같은
+상태 기준일: **2026-08-15**. headless runtime과 React binding이 같은
 controller를 사용하며, 공식 Framework 기반 cubism-webgl이 기본 backend다.
 pixi-v6는 명시적 비교·호환 backend로 남아 있다.
 
@@ -44,10 +44,11 @@ runtime이 소유하는 것:
 - 기능 → model → Stage의 idempotent dispose
 - 저빈도 상태 구독과 전체 Stage retry
 
-React `Live2DStage`는 컨테이너와 설정을 제공하고,
-`Live2DModel`은 headless controller를 생성·구독·정리한다. 기존 hooks를 위해
-준비된 `ModelHandle`만 내부 context에 연결한다. per-frame 데이터는 React
-state로 올리지 않는다.
+React `Live2DCanvas`는 컨테이너와 설정을 제공하고,
+`Live2DModel`은 headless runtime을 생성·구독·정리한다. 내부 `ModelHandle`은
+renderer 생명주기에만 사용하며 React의 `onLoad`와 hook에는 motion,
+expression, focus, parameter만 제공하는 frozen controller를 연결한다.
+per-frame 데이터는 React state로 올리지 않는다.
 
 ## Backend 계약
 
@@ -78,6 +79,10 @@ cubism-webgl은 Stage당 단일 rAF로 이 순서를 실행한다. 수동
 `setParameter()` override는 SDK update 뒤 다시 적용되고, 외부 driver와
 립싱크가 같은 프레임의 최종값을 덮어쓸 수 있다. pixi-v6에서는 단일
 `Application` ticker의 우선순위로 같은 계약을 만든다.
+
+WebGL frame cap은 refresh 간격의 작은 나머지만 보존한다. 초기 shader 준비
+같은 긴 main-thread 정지 시간은 다음 프레임 예산으로 이월하지 않아,
+복귀 뒤 `maxFps`를 넘는 catch-up burst를 만들지 않는다.
 
 ## 렌더 품질
 
@@ -110,6 +115,8 @@ cubism-webgl은 Stage당 단일 rAF로 이 순서를 실행한다. 수동
 
 - 초기 바닐라 생성 실패는 `Live2DError` reject다.
 - 준비 후 backend 오류는 상태 구독과 `onError`에 전달된다.
+- `Live2DError.details`는 자산 종류, backend, 최종 URL과 가능한 HTTP 상태를
+  보존한다. 원래 예외는 `cause`에 유지한다.
 - context loss는 기존 GPU 상태를 재사용하지 않고 `retry()`로 Stage 전체를
   다시 만든다.
 - 모든 비동기 generation은 abort/stale 여부를 확인하고 늦게 도착한

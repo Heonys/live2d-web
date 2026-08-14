@@ -8,8 +8,26 @@ declare global {
 
 const pendingLoads = new Map<string, Promise<void>>()
 
+function resourceHttpStatus(url: string) {
+  if (typeof performance === 'undefined' || !performance.getEntriesByName)
+    return undefined
+  const entry = performance.getEntriesByName(url, 'resource').at(-1) as
+    | (PerformanceResourceTiming & { responseStatus?: number })
+    | undefined
+  const status = entry?.responseStatus
+  return typeof status === 'number' && status > 0 ? status : undefined
+}
+
+function coreDetails(url?: string) {
+  return {
+    assetType: 'core' as const,
+    httpStatus: url ? resourceHttpStatus(url) : undefined,
+    url,
+  }
+}
+
 function coreMissingMessage() {
-  return 'Live2D Cubism Core is not loaded. Download it from the official Cubism SDK and either pass coreUrl to <Live2DStage> or load it before the model:\n'
+  return 'Live2D Cubism Core is not loaded. Download it from the official Cubism SDK and either pass coreUrl to <Live2DCanvas> or load it before the model:\n'
     + '  <script src="/path/to/live2dcubismcore.min.js"></script>\n'
     + 'Official SDK: https://www.live2d.com/sdk/download/web/'
 }
@@ -33,8 +51,13 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
   if (window.Live2DCubismCore)
     return
 
-  if (!coreUrl)
-    throw new Live2DError('core-missing', coreMissingMessage())
+  if (!coreUrl) {
+    throw new Live2DError(
+      'core-missing',
+      coreMissingMessage(),
+      { details: coreDetails() },
+    )
+  }
 
   const absoluteUrl = new URL(coreUrl, document.baseURI).href
   let load = pendingLoads.get(absoluteUrl)
@@ -56,11 +79,18 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
           if (ownedByLoader)
             script.remove()
           reject(event.type === 'load'
-            ? new Live2DError('core-missing', coreMissingMessage())
+            ? new Live2DError(
+                'core-missing',
+                coreMissingMessage(),
+                { details: coreDetails(absoluteUrl) },
+              )
             : new Live2DError(
                 'core-missing',
                 `Failed to load Live2D Cubism Core from ${absoluteUrl}.`,
-                { cause: event },
+                {
+                  cause: event,
+                  details: coreDetails(absoluteUrl),
+                },
               ))
         },
       }
@@ -83,6 +113,11 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
   }
 
   await load
-  if (!window.Live2DCubismCore)
-    throw new Live2DError('core-missing', coreMissingMessage())
+  if (!window.Live2DCubismCore) {
+    throw new Live2DError(
+      'core-missing',
+      coreMissingMessage(),
+      { details: coreDetails(absoluteUrl) },
+    )
+  }
 }

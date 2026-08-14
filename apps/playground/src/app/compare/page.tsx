@@ -4,10 +4,10 @@ import type { Live2DBackend } from 'live2d-web'
 import { cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
 import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import {
+  Live2DCanvas,
   Live2DModel,
-  Live2DStage,
+  useLive2DCanvas,
   useLive2DModel,
-  useStage,
 } from 'live2d-web/react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
@@ -42,7 +42,7 @@ function withBenchmarkMetrics(backend: Live2DBackend): Live2DBackend {
 }
 
 function Diagnostics({ backendName }: { backendName: string }) {
-  const stage = useStage()
+  const stage = useLive2DCanvas()
   return (
     <output className="diagnostics" data-testid="comparison-status">
       <strong>{stage.status}</strong>
@@ -111,13 +111,14 @@ function BackendComparisonContent() {
           <p className="eyebrow">Renderer comparison</p>
           <h1>Cubism WebGL vs Pixi v6</h1>
           <p>
-            Both backends use the same Core, Hiyori model, CSS size and fixed
-            1× backing-buffer resolution.
+            Both backends use the same Hiyori model, CSS size and fixed 1×
+            backing-buffer resolution. Their required Core versions differ.
           </p>
         </div>
         <nav>
           <a href="/">React playground</a>
           <a href="/vanilla">Vanilla playground</a>
+          <a href="/inspect">Model inspector</a>
         </nav>
       </header>
 
@@ -125,7 +126,7 @@ function BackendComparisonContent() {
         <div className="stage-shell" data-testid="comparison-stage">
           {manifest
             ? (
-                <Live2DStage
+                <Live2DCanvas
                   key={backendName}
                   backend={backend}
                   coreUrl={backendName === 'cubism-webgl'
@@ -145,7 +146,7 @@ function BackendComparisonContent() {
                     <ModelControls />
                   </Live2DModel>
                   <Diagnostics backendName={backendName} />
-                </Live2DStage>
+                </Live2DCanvas>
               )
             : <div className="empty-stage">{error || 'Loading local assets…'}</div>}
         </div>

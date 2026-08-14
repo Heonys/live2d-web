@@ -3,9 +3,9 @@
 import type { ModelFit } from 'live2d-web'
 import {
   LipSync,
+  Live2DCanvas,
   Live2DModel,
-  Live2DStage,
-  useStage,
+  useLive2DCanvas,
 } from 'live2d-web/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
@@ -31,7 +31,7 @@ function DriverLipSync({
 }
 
 function Diagnostics() {
-  const stage = useStage()
+  const stage = useLive2DCanvas()
   return (
     <output className="diagnostics" data-testid="stage-status">
       <strong>{stage.status}</strong>
@@ -71,7 +71,7 @@ function StageError({
     <div className="stage-overlay error-panel" role="alert">
       <strong>{code}</strong>
       <p>{message}</p>
-      <button type="button" onClick={retry}>Retry stage</button>
+      <button type="button" onClick={retry}>Retry canvas</button>
     </div>
   )
 }
@@ -179,7 +179,7 @@ export default function Home() {
 
   const stage = manifest && mounted
     ? (
-        <Live2DStage
+        <Live2DCanvas
           coreUrl="/assets/js/cubism/5.3/live2dcubismcore.min.js"
           {...(fixedQuality ? { resolution: 1 } : { quality: 'auto' as const })}
           fallback={loadingStage => (
@@ -207,11 +207,11 @@ export default function Home() {
                 )}
           </Live2DModel>
           <Diagnostics />
-        </Live2DStage>
+        </Live2DCanvas>
       )
     : (
         <div className="empty-stage">
-          {assetError || (mounted ? 'Loading local assets…' : 'Stage unmounted')}
+          {assetError || (mounted ? 'Loading local assets…' : 'Canvas unmounted')}
         </div>
       )
 
@@ -228,6 +228,7 @@ export default function Home() {
         </div>
         <nav>
           <a href="/vanilla">Vanilla playground</a>
+          <a href="/inspect">Model inspector</a>
           <a href="/compare">Backend comparison</a>
         </nav>
       </header>
@@ -319,7 +320,7 @@ export default function Home() {
           </label>
 
           <button type="button" onClick={() => setMounted(value => !value)}>
-            {mounted ? 'Unmount stage' : 'Mount stage'}
+            {mounted ? 'Unmount canvas' : 'Mount canvas'}
           </button>
 
           <p className="note">

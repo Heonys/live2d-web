@@ -1,19 +1,23 @@
 'use client'
 
-import type { ModelHandle } from '../core/contract'
-import type { StageState } from './store'
+import type { Live2DModelController } from './controller'
+import type { Live2DCanvasState } from './store'
 import { useContext, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Live2DError } from '../core/errors'
 import { ModelContext, StageContext } from './context'
 
-export function useStage(): StageState {
+export function useLive2DCanvas(): Live2DCanvasState {
   const store = useContext(StageContext)
-  if (!store)
-    throw new Live2DError('invalid-tree', 'useStage() must be used inside <Live2DStage>.')
+  if (!store) {
+    throw new Live2DError(
+      'invalid-tree',
+      'useLive2DCanvas() must be used inside <Live2DCanvas>.',
+    )
+  }
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
 }
 
-export function useLive2DModel(): ModelHandle | null {
+export function useLive2DModel(): Live2DModelController | null {
   const context = useContext(ModelContext)
   if (!context) {
     throw new Live2DError(
@@ -25,7 +29,7 @@ export function useLive2DModel(): ModelHandle | null {
     context.store.subscribe,
     context.store.getSnapshot,
     context.store.getSnapshot,
-  ).handle
+  ).controller
 }
 
 export function useLive2DParameter(id: string, value: number): void {

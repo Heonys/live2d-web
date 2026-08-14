@@ -34,7 +34,7 @@ function normalizeError(error: unknown) {
     : new Live2DError(
         'render-error',
         error instanceof Error ? error.message : String(error),
-        { cause: error },
+        { cause: error, details: { backend: 'cubism-webgl' } },
       )
 }
 
@@ -44,6 +44,7 @@ export function getStageInternals(stage: StageHandle) {
     throw new Live2DError(
       'adapter-error',
       'The StageHandle was not created by the active cubism-webgl adapter.',
+      { details: { backend: 'cubism-webgl' } },
     )
   }
   return internals
@@ -66,8 +67,13 @@ export function createWebGLStage(
     preserveDrawingBuffer: false,
     stencil: false,
   })
-  if (!gl)
-    throw new Live2DError('webgl-unsupported', 'WebGL2 is required by cubism-webgl.')
+  if (!gl) {
+    throw new Live2DError(
+      'webgl-unsupported',
+      'WebGL2 is required by cubism-webgl.',
+      { details: { backend: 'cubism-webgl' } },
+    )
+  }
   diagnostics?.changeResource('canvas', 1)
   diagnostics?.changeResource('context', 1)
   const gpuTimer = createGpuTimer(gl, diagnostics)
@@ -129,8 +135,13 @@ export function createWebGLStage(
       return
     const deltaMs = lastRenderTime === undefined ? 0 : timestamp - lastRenderTime
     lastRenderTime = timestamp
+    // Keep only the fractional cadence remainder. Retaining an entire long
+    // main-thread stall would make the loop render every refresh while it
+    // tries to "catch up", temporarily violating maxFps.
     accumulatedFrameMs = minFrameMs
-      ? Math.max(0, accumulatedFrameMs - minFrameMs)
+      ? accumulatedFrameMs >= minFrameMs * 2
+        ? 0
+        : Math.max(0, accumulatedFrameMs - minFrameMs)
       : 0
     try {
       if (!diagnostics) {
@@ -176,7 +187,8 @@ export function createWebGLStage(
     event.preventDefault()
     reportError(new Live2DError(
       'render-error',
-      'The WebGL context was lost. Call retry() to recreate the Stage.',
+      'The WebGL context was lost. Call retry() to recreate the Live2D canvas.',
+      { details: { backend: 'cubism-webgl' } },
     ))
   }
 
@@ -193,7 +205,8 @@ export function createWebGLStage(
       if (driver) {
         throw new Live2DError(
           'invalid-props',
-          'cubism-webgl v0.1 supports one model per Stage.',
+          'cubism-webgl v0.1 supports one model per Live2D canvas.',
+          { details: { backend: 'cubism-webgl' } },
         )
       }
       driver = nextDriver

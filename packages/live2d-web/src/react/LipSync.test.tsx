@@ -10,10 +10,10 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { Profiler, StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearLipSyncCachesForTests } from '../features/lipsync/source'
-import { useStage } from './hooks'
+import { useLive2DCanvas } from './hooks'
 import { LipSync } from './LipSync'
+import { Live2DCanvas } from './Live2DCanvas'
 import { Live2DModel } from './Live2DModel'
-import { Live2DStage } from './Live2DStage'
 
 const wlipsync = vi.hoisted(() => ({
   createNode: vi.fn(),
@@ -92,7 +92,7 @@ function createHarness(): Harness {
 }
 
 function Status() {
-  const stage = useStage()
+  const stage = useLive2DCanvas()
   return <output>{stage.status}</output>
 }
 
@@ -154,11 +154,11 @@ describe('<LipSync>', () => {
 
     const harness = createHarness()
     expect(() => render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync {...mixed} />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )).toThrowError(/exactly one mode/)
     expect(() => render(<LipSync driver={driver} />)).toThrowError(/Live2DModel/)
   })
@@ -173,12 +173,12 @@ describe('<LipSync>', () => {
     }
     render(
       <Profiler id="lipsync" onRender={() => commits++}>
-        <Live2DStage backend={harness.backend}>
+        <Live2DCanvas backend={harness.backend}>
           <Live2DModel src="/model.model3.json">
             <LipSync driver={driver} />
           </Live2DModel>
           <Status />
-        </Live2DStage>
+        </Live2DCanvas>
       </Profiler>,
     )
     await waitFor(() => expect(screen.getByText('ready')).toBeTruthy())
@@ -203,19 +203,19 @@ describe('<LipSync>', () => {
     const first = { getMouthOpen: () => 0.2, isSpeaking: () => true }
     const second = { getMouthOpen: () => 0.9, isSpeaking: () => true }
     const view = render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync driver={first} />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(harness.afterMotion.size).toBe(1))
     view.rerender(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync driver={second} />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
 
     act(() => {
@@ -235,12 +235,12 @@ describe('<LipSync>', () => {
       isSpeaking: () => true,
     }
     render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync driver={driver} onError={onError} />
         </Live2DModel>
         <Status />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(harness.afterMotion.size).toBe(1))
 
@@ -260,11 +260,11 @@ describe('<LipSync>', () => {
     wlipsync.createNode.mockResolvedValue(node)
     const profile = { profile: 'object' }
     const view = render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync active profile={profile as never} source={source} />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(source.connect).toHaveBeenCalledOnce())
     await waitFor(() => expect(harness.afterMotion.size).toBe(1))
@@ -273,11 +273,11 @@ describe('<LipSync>', () => {
     expect(harness.mouth()).toBeCloseTo(0.7)
 
     view.rerender(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync active={false} profile={profile as never} source={source} />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     act(() => harness.tick(100))
 
@@ -306,7 +306,7 @@ describe('<LipSync>', () => {
     const secondProfile = { generation: 2 }
 
     const view = render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync
             active
@@ -314,12 +314,12 @@ describe('<LipSync>', () => {
             source={firstSource}
           />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(wlipsync.createNode).toHaveBeenCalledOnce())
 
     view.rerender(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync
             active
@@ -327,7 +327,7 @@ describe('<LipSync>', () => {
             source={secondSource}
           />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(wlipsync.createNode).toHaveBeenCalledTimes(2))
 
@@ -351,7 +351,7 @@ describe('<LipSync>', () => {
 
     render(
       <StrictMode>
-        <Live2DStage backend={harness.backend}>
+        <Live2DCanvas backend={harness.backend}>
           <Live2DModel src="/model.model3.json">
             <LipSync
               active
@@ -361,7 +361,7 @@ describe('<LipSync>', () => {
             />
           </Live2DModel>
           <Status />
-        </Live2DStage>
+        </Live2DCanvas>
       </StrictMode>,
     )
 
@@ -373,7 +373,7 @@ describe('<LipSync>', () => {
   it('does not initialize wlipsync in driver mode', async () => {
     const harness = createHarness()
     render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync driver={{
             getMouthOpen: () => 0,
@@ -381,7 +381,7 @@ describe('<LipSync>', () => {
           }}
           />
         </Live2DModel>
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(harness.afterMotion.size).toBe(1))
     expect(wlipsync.createNode).not.toHaveBeenCalled()
@@ -391,7 +391,7 @@ describe('<LipSync>', () => {
     const harness = createHarness()
     const onError = vi.fn()
     render(
-      <Live2DStage backend={harness.backend}>
+      <Live2DCanvas backend={harness.backend}>
         <Live2DModel src="/model.model3.json">
           <LipSync
             active={false}
@@ -401,7 +401,7 @@ describe('<LipSync>', () => {
           />
         </Live2DModel>
         <Status />
-      </Live2DStage>,
+      </Live2DCanvas>,
     )
     await waitFor(() => expect(screen.getByText('ready')).toBeTruthy())
     expect(wlipsync.createNode).not.toHaveBeenCalled()
@@ -415,11 +415,11 @@ describe('<LipSync>', () => {
     for (let index = 0; index < 20; index++) {
       const view = render(
         <StrictMode>
-          <Live2DStage backend={harness.backend}>
+          <Live2DCanvas backend={harness.backend}>
             <Live2DModel src="/model.model3.json">
               <LipSync driver={driver} />
             </Live2DModel>
-          </Live2DStage>
+          </Live2DCanvas>
         </StrictMode>,
       )
       await waitFor(() => expect(harness.afterMotion.size).toBe(1))

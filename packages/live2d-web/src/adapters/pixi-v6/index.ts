@@ -35,13 +35,17 @@ function ensurePixiConfigured() {
   pixiConfigured = true
 }
 
-function asAdapterError(error: unknown, code: 'adapter-error' | 'model-load-failed' | 'render-error') {
+function asAdapterError(
+  error: unknown,
+  code: 'adapter-error' | 'model-load-failed' | 'render-error',
+  details: import('../../core/errors').Live2DErrorDetails = { backend: 'pixi-v6' },
+) {
   if (error instanceof Live2DError)
     return error
   return new Live2DError(
     code,
     error instanceof Error ? error.message : String(error),
-    { cause: error },
+    { cause: error, details },
   )
 }
 
@@ -60,6 +64,7 @@ function assertResolution(resolution: number) {
     throw new Live2DError(
       'invalid-props',
       'PIXI stage resolution must be a finite number greater than or equal to 1.',
+      { details: { backend: 'pixi-v6' } },
     )
   }
 }
@@ -126,7 +131,8 @@ function createStage(element: HTMLElement, options: StageOptions): StageHandle {
     event.preventDefault()
     reportError(new Live2DError(
       'render-error',
-      'The WebGL context was lost. Retry to recreate the Live2D stage.',
+      'The WebGL context was lost. Retry to recreate the Live2D canvas.',
+      { details: { backend: 'pixi-v6' } },
     ))
   }
 
@@ -237,6 +243,7 @@ async function loadModel(
     throw new Live2DError(
       'adapter-error',
       'The StageHandle was not created by the active pixi-v6 adapter.',
+      { details: { backend: 'pixi-v6' } },
     )
   }
   if (typeof url !== 'string' || url.trim() === '') {
@@ -251,6 +258,7 @@ async function loadModel(
     throw new Live2DError(
       'core-missing',
       'Live2D Cubism Core must be loaded before the pixi-v6 adapter loads a model.',
+      { details: { assetType: 'core', backend: 'pixi-v6' } },
     )
   }
 
@@ -261,8 +269,9 @@ async function loadModel(
   // disabled, so the model still uses only the Application ticker below.
   Live2DModel.registerTicker(Ticker)
   const model = new Live2DModel()
+  const modelUrl = new URL(url, window.location.href).href
   try {
-    await Live2DFactory.setupLive2DModel(model, url, {
+    await Live2DFactory.setupLive2DModel(model, modelUrl, {
       autoInteract: false,
       autoUpdate: false,
     })
@@ -274,7 +283,11 @@ async function loadModel(
     catch {
       // setup may fail before the internal model exists
     }
-    throw asAdapterError(error, 'model-load-failed')
+    throw asAdapterError(error, 'model-load-failed', {
+      assetType: 'model3',
+      backend: 'pixi-v6',
+      url: modelUrl,
+    })
   }
 
   if (options.signal?.aborted || internals.disposed) {
@@ -282,6 +295,7 @@ async function loadModel(
     throw options.signal?.reason ?? new Live2DError(
       'adapter-error',
       'The PIXI stage was disposed while the model was loading.',
+      { details: { backend: 'pixi-v6' } },
     )
   }
 

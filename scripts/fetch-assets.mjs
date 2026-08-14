@@ -131,7 +131,7 @@ function prepareCubismSamples() {
   return { checkoutDir, commit: checkedOutCommit }
 }
 
-// 1. Cubism Core — <Live2DStage coreUrl> 경로와 일치해야 한다
+// 1. Cubism Core — <Live2DCanvas coreUrl> 경로와 일치해야 한다
 const coreDest = path.join(assetsDir, 'js/cubism/5.3/live2dcubismcore.min.js')
 const currentCoreSource = existsSync(coreDest) ? readFileSync(coreDest, 'utf8') : ''
 const hasCubism53Core = currentCoreSource.includes('MocVersion_53')

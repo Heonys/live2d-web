@@ -1,3 +1,4 @@
+import type { Live2DAssetType } from '../../core/errors'
 import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import { Live2DError } from '../../core/errors'
 import { measureAsync, measureSync } from './diagnostics'
@@ -18,31 +19,81 @@ export function normalizeBaseUrl(value: string | URL) {
   return url.href
 }
 
-async function checkedResponse(url: string, signal: AbortSignal | undefined) {
-  const response = await fetch(url, { signal })
+function assetDetails(assetType: Live2DAssetType, url: string, httpStatus?: number) {
+  return {
+    assetType,
+    backend: 'cubism-webgl',
+    httpStatus,
+    url,
+  } as const
+}
+
+async function checkedResponse(
+  url: string,
+  assetType: Live2DAssetType,
+  signal: AbortSignal | undefined,
+) {
+  let response: Response
+  try {
+    response = await fetch(url, { signal })
+  }
+  catch (error) {
+    if (signal?.aborted)
+      throw signal.reason
+    throw new Live2DError(
+      'model-load-failed',
+      `Failed to load ${url}.`,
+      { cause: error, details: assetDetails(assetType, url) },
+    )
+  }
   if (!response.ok) {
     throw new Live2DError(
       'model-load-failed',
       `Failed to load ${url}: HTTP ${response.status}`,
+      { details: assetDetails(assetType, url, response.status) },
     )
   }
   return response
 }
 
-export async function fetchArrayBuffer(url: string, signal?: AbortSignal) {
-  const response = await checkedResponse(url, signal)
+export async function fetchArrayBuffer(
+  url: string,
+  assetType: Live2DAssetType,
+  signal?: AbortSignal,
+) {
+  const response = await checkedResponse(url, assetType, signal)
   const buffer = await response.arrayBuffer()
   if (buffer.byteLength === 0) {
-    throw new Live2DError('model-load-failed', `Loaded an empty asset from ${url}.`)
+    throw new Live2DError(
+      'model-load-failed',
+      `Loaded an empty asset from ${url}.`,
+      { details: assetDetails(assetType, url) },
+    )
   }
   return buffer
 }
 
-async function decodeImage(blob: Blob, signal?: AbortSignal): Promise<TexImageSource> {
+export async function decodeImage(
+  blob: Blob,
+  url: string,
+  signal?: AbortSignal,
+): Promise<TexImageSource> {
   if (signal?.aborted)
     throw signal.reason
-  if (typeof createImageBitmap === 'function')
-    return createImageBitmap(blob, { premultiplyAlpha: 'premultiply' })
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(blob, { premultiplyAlpha: 'premultiply' })
+    }
+    catch (error) {
+      if (signal?.aborted)
+        throw signal.reason
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to decode model texture ${url}.`,
+        { cause: error, details: assetDetails('texture', url) },
+      )
+    }
+  }
 
   const objectUrl = URL.createObjectURL(blob)
   try {
@@ -56,7 +107,11 @@ async function decodeImage(blob: Blob, signal?: AbortSignal): Promise<TexImageSo
       }
       image.onerror = () => {
         signal?.removeEventListener('abort', onAbort)
-        reject(new Live2DError('model-load-failed', 'Failed to decode a model texture.'))
+        reject(new Live2DError(
+          'model-load-failed',
+          `Failed to decode model texture ${url}.`,
+          { details: assetDetails('texture', url) },
+        ))
       }
       image.src = objectUrl
     })
@@ -73,13 +128,13 @@ export async function createTexture(
   diagnostics?: CubismBenchmarkStageDiagnostics,
 ) {
   const blob = await measureAsync(diagnostics, 'textureFetch', async () => {
-    const response = await checkedResponse(url, signal)
+    const response = await checkedResponse(url, 'texture', signal)
     return response.blob()
   })
   const source = await measureAsync(
     diagnostics,
     'textureDecode',
-    () => decodeImage(blob, signal),
+    () => decodeImage(blob, url, signal),
   )
   if (signal?.aborted) {
     if ('close' in source && typeof source.close === 'function')
@@ -91,7 +146,11 @@ export async function createTexture(
   if (!texture) {
     if ('close' in source && typeof source.close === 'function')
       source.close()
-    throw new Live2DError('render-error', `WebGL failed to create a texture for ${url}.`)
+    throw new Live2DError(
+      'render-error',
+      `WebGL failed to create a texture for ${url}.`,
+      { details: assetDetails('texture', url) },
+    )
   }
   const previousPremultiply = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL)
   try {
@@ -117,7 +176,13 @@ export async function createTexture(
   }
   catch (error) {
     gl.deleteTexture(texture)
-    throw error
+    if (error instanceof Live2DError)
+      throw error
+    throw new Live2DError(
+      'render-error',
+      `Failed to upload model texture ${url} to WebGL.`,
+      { cause: error, details: assetDetails('texture', url) },
+    )
   }
   finally {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, previousPremultiply)
