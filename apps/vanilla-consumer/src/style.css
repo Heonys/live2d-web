@@ -1,0 +1,37 @@
+:root {
+  color: #ecebf4;
+  background: #111019;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+#character {
+  position: relative;
+  height: calc(100vh - 40px);
+  min-height: 480px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #201d2b;
+}
+
+#character canvas {
+  position: absolute;
+  inset: 0;
+}
+
+button,
+output {
+  padding: 10px 12px;
+}

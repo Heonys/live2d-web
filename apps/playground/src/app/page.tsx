@@ -1,13 +1,13 @@
 'use client'
 
-import type { ModelFit } from 'live2d-jsx'
+import type { ModelFit } from 'live2d-web'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import {
   LipSync,
   Live2DModel,
   Live2DStage,
   useStage,
-} from 'live2d-jsx'
-import { pixiV6 } from 'live2d-jsx/adapters/pixi-v6'
+} from 'live2d-web/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
 
@@ -182,7 +182,7 @@ export default function Home() {
     ? (
         <Live2DStage
           backend={pixiV6}
-          coreUrl="/assets/js/cubism/live2dcubismcore.min.js"
+          coreUrl="/assets/js/cubism/5.3/live2dcubismcore.min.js"
           {...(fixedQuality ? { resolution: 1 } : { quality: 'auto' as const })}
           fallback={loadingStage => (
             <div className="stage-overlay">
@@ -224,13 +224,11 @@ export default function Home() {
           <p className="eyebrow">LipSync v0.2 playground</p>
           <h1>Declarative Live2D for React</h1>
           <p>
-            PIXI stays behind the adapter. React owns loading, retries, fitting,
-            quality and cleanup.
+            PIXI stays behind the adapter. The headless runtime owns loading,
+            retries, fitting, quality and cleanup while React declares the tree.
           </p>
         </div>
-        <a href="https://github.com/guansss/pixi-live2d-display">
-          pixi-v6 backend
-        </a>
+        <a href="/vanilla">Vanilla playground</a>
       </header>
 
       <section className="workspace">

@@ -1,6 +1,6 @@
 # Third-party notices
 
-`live2d-jsx` interoperates with the following projects. They are not bundled
+`live2d-web` interoperates with the following projects. They are not bundled
 in the root entry point.
 
 - [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display),

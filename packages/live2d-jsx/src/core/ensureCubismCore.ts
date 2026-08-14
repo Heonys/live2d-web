@@ -18,7 +18,7 @@ function assertBrowser(): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Live2DError(
       'browser-only',
-      'live2d-jsx can only create a stage in a browser. Render it from a React client component.',
+      'live2d-web can only create a stage in a browser.',
     )
   }
 }
@@ -43,7 +43,7 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
     const createdLoad = new Promise<void>((resolve, reject) => {
       const existing = Array.from(document.scripts).find(script => script.src === absoluteUrl)
       const script = existing ?? document.createElement('script')
-      const ownedByLoader = !existing || script.dataset.live2dJsxCore === 'true'
+      const ownedByLoader = !existing || script.dataset.live2dWebCore === 'true'
 
       const listener: EventListenerObject = {
         handleEvent(event) {
@@ -71,7 +71,7 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
       if (!existing) {
         script.src = absoluteUrl
         script.async = true
-        script.dataset.live2dJsxCore = 'true'
+        script.dataset.live2dWebCore = 'true'
         document.head.appendChild(script)
       }
     })

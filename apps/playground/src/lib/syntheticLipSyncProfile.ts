@@ -1,4 +1,4 @@
-import type { LipSyncProfile } from 'live2d-jsx'
+import type { LipSyncProfile } from 'live2d-web'
 
 const PHONEMES = ['A', 'I', 'U', 'E', 'O', 'S'] as const
 const MFCC_COUNT = 12

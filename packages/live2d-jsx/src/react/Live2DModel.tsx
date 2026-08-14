@@ -1,13 +1,15 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { ModelFit } from '../core/fit'
-import { useContext, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import type { CreateLive2DOptions } from '../core/runtime'
+import { useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
-import { fitModel } from '../core/fit'
 import { LifecycleScope } from '../core/lifecycle'
-import { ModelContext, StageContext } from './context'
+import { Live2DRuntime } from '../core/runtime'
+import { ModelContext, RuntimeHostContext, StageContext } from './context'
 import { ModelStore } from './store'
 
 export interface Live2DModelProps {
@@ -15,7 +17,7 @@ export interface Live2DModelProps {
   fit?: ModelFit
   /** Retries after the initial attempt. */
   retries?: number
-  onLoad?: (model: import('../core/contract').ModelHandle) => void
+  onLoad?: (model: ModelHandle) => void
   onError?: (error: Live2DError) => void
   children?: ReactNode
 }
@@ -40,25 +42,6 @@ function modelError(error: unknown) {
   )
 }
 
-function wait(ms: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal.aborted) {
-      reject(signal.reason)
-      return
-    }
-    let timeout: ReturnType<typeof setTimeout>
-    const onAbort = () => {
-      clearTimeout(timeout)
-      reject(signal.reason)
-    }
-    timeout = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
-      resolve()
-    }, ms)
-    signal.addEventListener('abort', onAbort, { once: true })
-  })
-}
-
 export function Live2DModel({
   children,
   fit = 'upper-body',
@@ -68,31 +51,24 @@ export function Live2DModel({
   src,
 }: Live2DModelProps) {
   const stageStore = useContext(StageContext)
-  if (!stageStore) {
+  const runtimeHost = useContext(RuntimeHostContext)
+  if (!stageStore || !runtimeHost) {
     throw new Live2DErrorClass(
       'invalid-tree',
       '<Live2DModel> must be rendered inside <Live2DStage>.',
     )
   }
   const currentStageStore = stageStore
+  const currentRuntimeHost = runtimeHost
 
   const owner = useMemo(() => Symbol('Live2DModel'), [])
   const modelStore = useMemo(() => new ModelStore(), [])
   const lifecycle = useMemo(() => new LifecycleScope(), [])
   const contextValue = useMemo(() => ({ lifecycle, store: modelStore }), [lifecycle, modelStore])
-  const stageSnapshot = useSyncExternalStore(
-    stageStore.subscribe,
-    stageStore.getSnapshot,
-    stageStore.getSnapshot,
-  )
-  const modelSnapshot = useSyncExternalStore(
-    modelStore.subscribe,
-    modelStore.getSnapshot,
-    modelStore.getSnapshot,
-  )
   const onLoadRef = useRef(onLoad)
   const onErrorRef = useRef(onError)
   const fitRef = useRef(fit)
+  const runtimeRef = useRef<Live2DRuntime | null>(null)
   onLoadRef.current = onLoad
   onErrorRef.current = onError
   fitRef.current = fit
@@ -103,131 +79,94 @@ export function Live2DModel({
 
     const error = new Live2DErrorClass(
       'invalid-tree',
-      'live2d-jsx v0.1 supports exactly one <Live2DModel> per <Live2DStage>.',
+      'live2d-web v0.1 supports exactly one <Live2DModel> per <Live2DStage>.',
     )
     currentStageStore.fail(error)
     onErrorRef.current?.(error)
   }, [currentStageStore, owner])
 
   useEffect(() => {
-    const stage = stageSnapshot.stage
-    const backend = stageSnapshot.backend
-    if (!stage || !backend || !currentStageStore.isModelOwner(owner))
+    const container = currentRuntimeHost.container
+    if (!container || !currentStageStore.isModelOwner(owner))
       return
-    const currentStage = stage
-    const currentBackend = backend
 
-    if (typeof src !== 'string' || src.trim() === '') {
-      const error = new Live2DErrorClass(
-        'invalid-props',
-        '<Live2DModel src> must be a non-empty model3.json URL string.',
-      )
-      currentStageStore.fail(error)
-      onErrorRef.current?.(error)
-      return
-    }
-    if (!Number.isInteger(retries) || retries < 0) {
-      const error = new Live2DErrorClass(
-        'invalid-props',
-        'retries must be a non-negative integer.',
-      )
-      currentStageStore.fail(error)
-      onErrorRef.current?.(error)
-      return
-    }
+    let active = true
+    let resource: { dispose: () => void, handle: ModelHandle } | undefined
+    const runtime = new Live2DRuntime({
+      backend: currentRuntimeHost.backend,
+      container,
+      coreUrl: currentRuntimeHost.coreUrl,
+      fit: fitRef.current,
+      maxFps: currentRuntimeHost.maxFps,
+      quality: currentRuntimeHost.quality,
+      resolution: currentRuntimeHost.resolution,
+      retries,
+      src,
+    } as CreateLive2DOptions)
+    runtimeRef.current = runtime
+    modelStore.setRuntime(runtime)
+    const unsubscribe = runtime.subscribe(() => {
+      currentStageStore.syncRuntime(runtime.getState())
+    })
+    currentStageStore.syncRuntime(runtime.getState())
 
-    const controller = new AbortController()
-    let disposeResource: (() => void) | undefined
-    currentStageStore.begin('model')
+    const dispose = once(() => {
+      active = false
+      unsubscribe()
+      lifecycle.disposeAll()
+      modelStore.setHandle(null)
+      modelStore.setRuntime(null)
+      runtime.dispose()
+      if (resource)
+        currentStageStore.clearModelResource(owner, resource)
+      if (runtimeRef.current === runtime)
+        runtimeRef.current = null
+    })
 
-    async function load() {
-      let lastError: Live2DError | undefined
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          const model = await currentBackend.loadModel(currentStage, src, { signal: controller.signal })
-
-          if (
-            controller.signal.aborted
-            || currentStageStore.getSnapshot().stage !== currentStage
-            || !currentStageStore.isModelOwner(owner)
-          ) {
-            model.dispose()
-            return
-          }
-
-          const resource = {
-            handle: model,
-            dispose: () => {},
-          }
-          resource.dispose = once(() => {
-            lifecycle.disposeAll()
-            modelStore.setHandle(null)
-            model.dispose()
-            currentStageStore.clearModelResource(owner, resource)
-          })
-          disposeResource = resource.dispose
-
-          if (!currentStageStore.setModelResource(owner, resource))
-            return
-          modelStore.setHandle(model)
-          model.setTransform(fitModel(
-            currentStage.getSize(),
-            model.getIntrinsicSize(),
-            fitRef.current,
-          ))
-          currentStageStore.setModelReady(owner)
-          onLoadRef.current?.(model)
+    void runtime.start()
+      .then(() => {
+        if (!active) {
+          runtime.dispose()
           return
         }
-        catch (error) {
-          if (controller.signal.aborted)
-            return
-          disposeResource?.()
-          disposeResource = undefined
-          lastError = modelError(error)
-          if (lastError.code === 'invalid-props' || attempt === retries)
-            break
-          try {
-            await wait(attempt === 0 ? 250 : 500, controller.signal)
-          }
-          catch {
-            if (controller.signal.aborted)
-              return
-            throw lastError
-          }
+        const model = runtime.getModelHandle()
+        if (!model) {
+          throw new Live2DErrorClass(
+            'model-load-failed',
+            'The runtime became ready without a model handle.',
+          )
         }
-      }
-
-      if (lastError) {
-        currentStageStore.fail(lastError)
-        onErrorRef.current?.(lastError)
-      }
-    }
-
-    void load()
+        resource = { dispose, handle: model }
+        if (!currentStageStore.setModelResource(owner, resource))
+          return
+        modelStore.setHandle(model)
+        currentStageStore.setModelReady(owner)
+        onLoadRef.current?.(model)
+      })
+      .catch((error) => {
+        if (!active)
+          return
+        const normalized = modelError(error)
+        currentStageStore.fail(normalized)
+        onErrorRef.current?.(normalized)
+      })
 
     return () => {
-      controller.abort()
-      disposeResource?.()
+      dispose()
     }
   }, [
+    currentRuntimeHost,
+    currentStageStore,
     lifecycle,
     modelStore,
     owner,
     retries,
     src,
-    stageSnapshot.backend,
-    stageSnapshot.stage,
-    currentStageStore,
   ])
 
   useEffect(() => {
-    const model = modelSnapshot.handle
-    const stage = stageSnapshot.stage
-    if (!model || !stage)
-      return
-    model.setTransform(fitModel(stage.getSize(), model.getIntrinsicSize(), fit))
-  }, [fit, modelSnapshot.handle, stageSnapshot.layoutVersion, stageSnapshot.stage])
+    runtimeRef.current?.setFit(fit)
+  }, [fit])
 
   return (
     <ModelContext.Provider value={contextValue}>

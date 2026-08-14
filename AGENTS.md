@@ -1,45 +1,58 @@
-# live2d-jsx — Agent Guide
+# live2d-web — Agent Guide
 
-Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소스 라이브러리**. 현재 **v0.1 alpha + v0.2 립싱크 구현 완료·npm 공개 전 단계**다. React Stage/Model, 자동 품질, source/driver 립싱크, pixi-v6 어댑터와 실제 Hiyori Playground가 있다. package version은 도그푸딩 전까지 `0.1.0-alpha.0`을 유지한다. 계약은 `docs/`가 단일 기준이다. 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 포인터로, 지침은 이 파일에만 쓴다(두 벌 관리 금지).
+Live2D Cubism 모델을 바닐라 JavaScript와 React에서 다루는 **오픈소스
+브라우저 runtime**. 현재 headless controller, React binding, 자동 품질,
+source/driver 립싱크, pixi-v6 비교 어댑터와 Hiyori Playground가 구현됐고
+npm 공개 전이다. 공식 Framework 5-r.5 WebGL2 경로는 ignored private spike만
+통과했다. package version은 공개 전까지 `0.1.0-alpha.0`을 유지한다. 계약은
+`docs/`가 단일 기준이다. 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 포인터다.
 
 ## Tech Stack
 
-- pnpm workspace(catalog 버전 관리) — 단, **npm 퍼블리시는 `live2d-jsx` 패키지 하나** + 서브패스 export(`live2d-jsx/adapters/pixi-v6`)
+- pnpm workspace(catalog 버전 관리) — **npm 퍼블리시는 `live2d-web` 하나** +
+  `.`, `/react`, `/adapters/pixi-v6` 서브패스
 - 퍼블리시 라이브러리 — tsdown 빌드(ESM + d.ts). 개발 중엔 소스-export + Next `transpilePackages`, 퍼블리시 시 `publishConfig.exports`가 dist로 전환
-- v0.1 어댑터: `pixi-live2d-display@0.4` + PIXI v6 모듈러(`@pixi/*`)
+- 바닐라 root: React 없는 `createLive2D()`와 backend-neutral 계약
+- React binding: `/react`, React optional peer
+- 비교 어댑터: `pixi-live2d-display@0.4` + PIXI v6 모듈러(`@pixi/*`)
 - 립싱크(v0.2): wlipsync (모음 분류, RMS 아님)
 - ESLint(@antfu/eslint-config)가 린트+포맷 담당. Prettier 없음. 테스트는 vitest(node/jsdom) + Playwright(Chromium/WebKit)
 - 문서: `docs/` 한국어 · `README.md`와 API 레퍼런스 영어 · 일본어 콘텐츠는 Zenn
 
 ## 구조와 책임
 
-| 경로                  | 패키지                   | 책임                                                                      |
-| --------------------- | ------------------------ | ------------------------------------------------------------------------- |
-| `packages/live2d-jsx` | `live2d-jsx`             | 유일한 퍼블리시 패키지. 계약(core/)·립싱크(features/)·어댑터(adapters/)   |
-| `apps/playground`     | `@live2d-jsx/playground` | Next 개발장(비퍼블리시). SSR·StrictMode 약속을 상시 검증                  |
-| `scripts/`            | —                        | 공식 배포처 fetch-assets(Core + Hiyori, 약관 확인 후 ignored 경로에 준비) |
-| `docs/`               | —                        | 설계 계약 SSOT — [문서 지도](docs/README.md)                              |
-| `README.md`           | —                        | 공개용(영어). 코드가 완성되기 전까지 배지·설치법 없음                     |
+| 경로                    | 패키지                         | 책임                                                                      |
+| ----------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| `packages/live2d-jsx`   | `live2d-web`                   | 유일한 퍼블리시 패키지. runtime/core·React·립싱크·어댑터                  |
+| `apps/playground`       | `@live2d-web/playground`       | Next 개발장. `/` React, `/vanilla` controller API                         |
+| `apps/vanilla-consumer` | `@live2d-web/vanilla-consumer` | React dependency 없는 Vite 소비자 fixture                                 |
+| `scripts/`              | —                              | 공식 배포처 fetch-assets(Core + Hiyori, 약관 확인 후 ignored 경로에 준비) |
+| `docs/`                 | —                              | 설계 계약 SSOT — [문서 지도](docs/README.md)                              |
+| `README.md`             | —                              | 공개용(영어). 코드가 완성되기 전까지 배지·설치법 없음                     |
 
-의존 방향은 `adapters → core` 단방향. `src/index.ts`에 pixi import가 생기면 계약 순수성 위반이다.
+의존 방향은 `React/adapters → core` 단방향이다. `src/index.ts`에 React, PIXI,
+Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 
 ## Key Path Index
 
 - `docs/README.md` — 문서 지도 + 확정된 결정 목록
-- `docs/ecosystem-survey.md` — npm 실측(2026-07-29) + 이름 결정 기록. 첫 Zenn 글의 원본
+- `docs/ecosystem-survey.md` — npm 실측 + `live2d-web` 이름 변경 결정 기록
 - `docs/architecture.md` — 구현된 어댑터·프레임·생명주기·품질 계약
 - `docs/api-design.md` — 컴포넌트·훅 시그니처 + per-frame 규약 + 에러 모델
-- `docs/extraction-map.md` — aizuchi `packages/stage` → live2d-jsx 이관 지도
+- `docs/extraction-map.md` — 과거 AIZUCHI 참조 구현 이관 기록
 - `docs/licensing.md` — Cubism Core 비동봉 인과, 상표 고지, 선행 코드 크레딧
 - `docs/cubism-webgl-plan.md` — 공식 Framework 기반 직접 WebGL 백엔드의 구현·성능·공개 게이트
-- `docs/roadmap.md` — v0.1 공개 게이트 → v0.2 AIZUCHI → 후속 백엔드 계획
+- `docs/roadmap.md` — headless runtime 완료 상태 → 라이선스 게이트 → WebGL 계획
 - `packages/live2d-jsx/src/core/contract.ts` — 어댑터 계약 타입(architecture.md의 코드화)
-- `packages/live2d-jsx/src/react/` — Stage/Model 컴포넌트, Store, hooks
-- `packages/live2d-jsx/src/core/` — 계약·Core 로더·품질·프레이밍·생명주기
+- `packages/live2d-jsx/src/react/` — headless runtime binding, Store, hooks
+- `packages/live2d-jsx/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller
+- `packages/live2d-jsx/src/core/` — 계약·Core 로더·품질·프레이밍
 - `packages/live2d-jsx/src/features/lipsync/` — 순수 mouth controller와 wLipSync source 연결
 - `packages/live2d-jsx/src/react/LipSync.tsx` — source/driver React 생명주기
 - `packages/live2d-jsx/src/adapters/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
-- `apps/playground/src/app/page.tsx` — 실제 Hiyori와 품질/프레이밍/파라미터 데모
+- `apps/playground/src/app/page.tsx` — React Hiyori 데모
+- `apps/playground/src/app/vanilla/page.tsx` — `createLive2D()` Hiyori 데모
+- `apps/vanilla-consumer/` — React 없는 import/build/browser 실행 검증
 - `e2e/playground.spec.ts` — Chromium/WebKit 실제 WebGL 검증
 - `scripts/fetch-assets.mjs` — Core + Hiyori 다운로드(멱등, sharp 없음)
 - `../aizuchi/packages/stage/` — 추출 원본(약 450줄, React import 금지 층)
@@ -49,7 +62,7 @@ Live2D Cubism 모델을 React에서 JSX로 선언적으로 다루는 **오픈소
 
 ```bash
 pnpm dev            # apps/playground dev 서버
-pnpm build          # live2d-jsx 패키지 tsdown 빌드 (dist/)
+pnpm build          # live2d-web 패키지 tsdown 빌드 (dist/)
 LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets # 공식 Core + Hiyori(최초 1회, ignored)
 pnpm lint / lint:fix
 pnpm typecheck
@@ -81,7 +94,12 @@ pnpm up             # taze 일괄 업데이트 + prune + dedupe
 16. **wLipSync도 browser-effect dynamic import만.** 메인 export는 AudioWorkletNode와 인라인 WASM을 평가한다. root 모듈에서 정적 runtime import하지 않는다. type-only import는 가능하다.
 17. **오디오 소유권을 넘지 않는다.** LipSync source 모드는 사용자의 AudioNode/AudioContext를 close·suspend·전체 disconnect하지 않는다. 만든 분석 edge와 node/port만 정리한다.
 18. **립싱크 실패는 비치명적.** `lipsync-error`는 현재 기능만 중단하고 Stage/Model ready 상태를 유지한다.
-19. **cubism-webgl은 아직 비공개 실험 단계다.** AIZUCHI 도그푸딩 뒤 `private/`에서 기술 검증할 수 있지만, Framework·셰이더 재배포와 범용 모델 로더 조건을 Live2D에 서면 확인하기 전에는 추적되는 어댑터 코드, package export와 npm 배포를 만들지 않는다.
+19. **cubism-webgl은 아직 비공개 실험 단계다.** Framework 5-r.5 + Core
+    `core/06` + Hiyori WebGL2와 20회 lifecycle은 ignored `tmp/`에서 통과했다.
+    Framework·셰이더 재배포와 범용 모델 로더 조건을 Live2D에 서면 확인하기
+    전에는 추적되는 어댑터 코드, package export와 npm 배포를 만들지 않는다.
+20. **Core 버전을 섞지 않는다.** Framework 5-r.5에는 Cubism 5.3
+    `core/06`을 사용한다. `core/05`는 실제 Hiyori moc 로드에서 실패했다.
 
 ## 규칙
 

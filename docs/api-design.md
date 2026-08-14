@@ -1,63 +1,95 @@
 # API Reference
 
-Status: the v0.2 lip-sync API is implemented on 2026-07-30 while the package
-version remains `0.1.0-alpha.0` until dogfooding. The package is ESM-only and
-supports React 18.2 and React 19.
+Status: implemented locally on 2026-08-14. The package is ESM-only and remains
+`0.1.0-alpha.0` until publication. The root entry has no React dependency;
+React 18.2 and React 19 are supported through `live2d-web/react`.
 
-## Components
-
-### `Live2DStage`
+## Vanilla API
 
 ```ts
-type StageQualityProps =
+import { createLive2D } from 'live2d-web'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+
+const character = await createLive2D({
+  backend: pixiV6,
+  container,
+  coreUrl: '/live2dcubismcore.min.js',
+  fit: 'upper-body',
+  quality: 'auto',
+  src: '/models/hiyori.model3.json',
+})
+```
+
+```ts
+type CreateLive2DOptions = {
+  container: HTMLElement
+  src: string
+  backend?: Live2DBackend
+  coreUrl?: string
+  fit?: ModelFit
+  maxFps?: number
+  retries?: number
+  signal?: AbortSignal
+  onError?: (error: Live2DError) => void
+} & (
   | { quality?: 'auto' | AutoQualityPolicy; resolution?: never }
   | { quality?: never; resolution: number }
+)
 
-type Live2DStageProps = StageQualityProps & {
-  backend: Live2DBackend
-  coreUrl?: string
-  maxFps?: number
-  className?: string
-  style?: CSSProperties
-  fallback?: (stage: 'core' | 'stage' | 'model') => ReactNode
-  errorFallback?: (error: Live2DError, retry: () => void) => ReactNode
-  onError?: (error: Live2DError) => void
-  children?: ReactNode
+interface Live2DInstance {
+  getState(): Live2DRuntimeState
+  subscribe(listener: () => void): () => void
+  motion(group: string, index?: number): Promise<void>
+  expression(id?: string): Promise<void>
+  focus(x: number, y: number): void
+  getParameter(id: string): number
+  setParameter(id: string, value: number): void
+  setFit(fit: ModelFit): void
+  addParameterDriver(id: string, driver: ParameterDriver): () => void
+  addLipSync(options: RuntimeLipSyncOptions): () => void
+  pause(): void
+  resume(): void
+  retry(): Promise<void>
+  dispose(): void
 }
 ```
 
-`coreUrl` points to a user-hosted `live2dcubismcore.min.js`. Concurrent Core
-loads for the same absolute URL are deduplicated. If the global already exists,
-no script is added.
+The promise resolves after Core, Stage and model setup. An initial failure
+rejects and disposes partial resources. Runtime errors after readiness update
+the subscribed state and call `onError`. `retry()` recreates the whole Stage.
 
-Automatic quality is the default. It selects an initial resolution from device
-DPR, a device cap and a backing-buffer pixel budget. Every three seconds it
-lowers resolution by 0.25 when more than 5% of frames exceed 33 ms. Resolution
-never rises during the same stage lifetime.
+`backend` is typed as optional for the future default cubism-webgl adapter.
+While that adapter is blocked by the redistribution gate, omitting `backend`
+throws `adapter-error`; pass `pixiV6` for local and compatibility use.
 
-### `Live2DModel`
+`addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
+Registered features survive `retry()` and attach to the new model generation.
 
-```ts
-interface Live2DModelProps {
-  src: string
-  fit?: 'upper-body' | 'full' | {
-    scale: number
-    offsetX?: number
-    offsetY?: number
-  }
-  retries?: number
-  onLoad?: (model: ModelHandle) => void
-  onError?: (error: Live2DError) => void
-  children?: ReactNode
-}
+## React components
+
+```tsx
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
+
+<Live2DStage backend={pixiV6} coreUrl="/live2dcubismcore.min.js">
+  <Live2DModel src="/models/hiyori.model3.json">
+    <LipSync driver={driver} />
+  </Live2DModel>
+</Live2DStage>
 ```
 
-Only one model is allowed per stage in v0.1. Model loads use the initial
-attempt plus two retries at 250 ms and 500 ms by default. Unmount, retry and
-`src` changes abort the active generation; a backend result that resolves late
-is disposed immediately.
+`Live2DStageProps` contains the same backend/Core/quality controls plus
+`className`, `style`, loading/error fallbacks and `onError`.
 
-### `LipSync`
+`Live2DModelProps` provides `src`, `fit`, `retries`, `onLoad`, `onError` and
+children. Only one model is allowed per Stage. `src` changes and StrictMode
+effect replays dispose the old headless runtime generation.
+
+The React binding currently keeps `backend` required so a configuration cannot
+silently select a backend that is not legally publishable yet. It becomes
+optional when cubism-webgl passes the public gate.
+
+## Lip sync
 
 ```ts
 interface LipSyncDriver {
@@ -65,37 +97,24 @@ interface LipSyncDriver {
   isSpeaking(): boolean
 }
 
-type LipSyncProfile = import('wlipsync').Profile
-
-type LipSyncProps =
+type RuntimeLipSyncOptions =
+  | { driver: LipSyncDriver }
   | {
-      driver: LipSyncDriver
-      onError?: (error: Live2DError) => void
-    }
-  | {
-      source: AudioNode | null
-      active: boolean
+      source: AudioNode
       profile: string | URL | ArrayBuffer | LipSyncProfile
-      onError?: (error: Live2DError) => void
+      isSpeaking: () => boolean
     }
 ```
 
-`LipSync` must be a child of `Live2DModel`. Source mode dynamically imports
-wLipSync in a browser effect. JSON URLs, `.bin` URLs, binary buffers and parsed
-profile objects are accepted. Concurrent requests for the same URL are
-deduplicated; failed requests are removed from the cache.
+React `<LipSync>` accepts the same driver mode, or
+`source + active + profile`. Source mode dynamically imports wLipSync. The
+caller owns the `AudioNode` and `AudioContext`; cleanup removes only the
+analysis edge and node owned by this feature.
 
-The caller owns the `AudioNode` and `AudioContext`. The component connects only
-its analysis node and removes only that edge during cleanup. It never closes,
-suspends or globally disconnects caller audio. `source={null}` waits without
-error, while `active` only marks speech start and end.
+Mouth values are clamped to 0–1. `ParamMouthOpenY`, a 200 ms smoothstep release
+and a 500 ms closed-mouth hold are fixed for this alpha.
 
-Driver mode is for apps that already own an analyzer. Both getters are read
-after SDK motion update and never placed in React state. Mouth values are
-clamped to 0–1. `ParamMouthOpenY`, 200 ms smoothstep release and 500 ms
-closed-mouth hold are fixed for this alpha.
-
-## Hooks
+## React hooks
 
 ```ts
 useStage(): {
@@ -116,31 +135,28 @@ useLive2DParameter(id: string, value: number): void
 useParameterDriver(id: string, getter: () => number): void
 ```
 
-`useLive2DParameter` is for discrete changes. `useParameterDriver` keeps the
-latest getter in a ref and reads it after every SDK motion update without
-causing React renders.
+`useLive2DParameter` is for discrete changes. `useParameterDriver` reads the
+latest getter after SDK motion update without causing React renders.
 
 ## Errors
 
-`Live2DError.code` is one of `browser-only`, `core-missing`, `invalid-props`,
-`invalid-tree`, `lipsync-error`, `model-load-failed`, `render-error`, or
-`adapter-error`.
+`Live2DError.code` is one of:
 
-A render or WebGL context-loss error stops the ticker. `retry()` recreates the
-whole stage rather than attempting to reuse uncertain GPU state.
+- `browser-only`
+- `core-missing`
+- `webgl-unsupported`
+- `invalid-props`
+- `invalid-tree`
+- `lipsync-error`
+- `model-load-failed`
+- `render-error`
+- `adapter-error`
 
-Lip-sync initialization and driver errors are non-fatal. They disable only the
-current lip-sync generation and call `onError` once. Without a callback they
-are logged once to `console.error`.
+The reserved cubism-webgl backend will use `webgl-unsupported` when WebGL2 is
+unavailable; it will not fall back to WebGL1.
 
-## Next.js
+## Next.js and SSR
 
-The root and adapter imports are SSR-evaluation safe. Stage creation and the
-dynamic `pixi-live2d-display` and `wlipsync` imports happen in browser effects.
-
-```tsx
-'use client'
-
-import { Live2DModel, Live2DStage } from 'live2d-jsx'
-import { pixiV6 } from 'live2d-jsx/adapters/pixi-v6'
-```
+The root and pixi adapter entries are SSR-evaluation safe. The React entry is a
+client entry, and renderer/wLipSync runtime modules load only in browser
+lifecycle code.

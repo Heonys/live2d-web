@@ -1,5 +1,5 @@
 {
-  "name": "@live2d-jsx/root",
+  "name": "@live2d-web/root",
   "type": "module",
   "private": true,
   "packageManager": "pnpm@10.28.1",
@@ -8,15 +8,15 @@
   },
   "scripts": {
     "postinstall": "simple-git-hooks || exit 0",
-    "dev": "pnpm -F @live2d-jsx/playground dev",
-    "build": "pnpm -F live2d-jsx build",
+    "dev": "pnpm -F @live2d-web/playground dev",
+    "build": "pnpm -F live2d-web build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "verify:package": "pnpm build && node scripts/verify-package.mjs && pnpm -F live2d-jsx exec npm pack --dry-run",
+    "verify:package": "pnpm build && node scripts/verify-package.mjs && pnpm -F live2d-web exec npm pack --dry-run && pnpm -F @live2d-web/vanilla-consumer build && node scripts/verify-vanilla-consumer.mjs",
     "fetch-assets": "node scripts/fetch-assets.mjs",
     "up": "taze -w -r -I && pnpm prune && pnpm dedupe"
   },

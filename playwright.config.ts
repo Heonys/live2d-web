@@ -24,10 +24,18 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  webServer: {
-    command: 'pnpm -F @live2d-jsx/playground dev --hostname 127.0.0.1 --port 3100',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    url: 'http://127.0.0.1:3100',
-  },
+  webServer: [
+    {
+      command: 'pnpm -F @live2d-web/playground dev --hostname 127.0.0.1 --port 3100',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      url: 'http://127.0.0.1:3100',
+    },
+    {
+      command: 'pnpm -F @live2d-web/vanilla-consumer dev --host 127.0.0.1 --port 3101',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      url: 'http://127.0.0.1:3101',
+    },
+  ],
 })

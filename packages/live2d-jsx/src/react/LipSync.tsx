@@ -4,15 +4,9 @@ import type { Live2DError } from '../core/errors'
 import type {
   LipSyncProfile,
   LipSyncProfileInput,
-  SourceLipSyncConnection,
 } from '../features/lipsync/source'
 import { useContext, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
-import {
-  MOUTH_PARAMETER_ID,
-  MouthController,
-} from '../features/lipsync/mouthController'
-import { createSourceLipSync } from '../features/lipsync/source'
 import { ModelContext } from './context'
 
 export interface LipSyncDriver {
@@ -37,16 +31,6 @@ export type LipSyncProps
     profile: string | URL | ArrayBuffer | LipSyncProfile
     driver?: never
   }
-
-function lipSyncError(error: unknown) {
-  if (error instanceof Live2DErrorClass && error.code === 'lipsync-error')
-    return error
-  return new Live2DErrorClass(
-    'lipsync-error',
-    error instanceof Error ? error.message : String(error),
-    { cause: error },
-  )
-}
 
 function isAudioNodeLike(value: unknown): value is AudioNode {
   if (!value || typeof value !== 'object')
@@ -109,23 +93,6 @@ function resolveMode(props: LipSyncProps) {
   return 'source' as const
 }
 
-function applyDriverFrame(
-  model: import('../core/contract').ModelHandle,
-  controller: MouthController,
-  driver: LipSyncDriver,
-  deltaMs: number,
-) {
-  const speaking = driver.isSpeaking()
-  const value = controller.update({
-    deltaMs,
-    motionValue: model.getParameter(MOUTH_PARAMETER_ID),
-    mouthOpen: speaking ? driver.getMouthOpen() : 0,
-    speaking,
-  })
-  if (value !== null)
-    model.setParameter(MOUTH_PARAMETER_ID, value)
-}
-
 export function LipSync(props: LipSyncProps) {
   const context = useContext(ModelContext)
   if (!context) {
@@ -136,11 +103,11 @@ export function LipSync(props: LipSyncProps) {
   }
 
   const mode = resolveMode(props)
-  const model = useSyncExternalStore(
+  const runtime = useSyncExternalStore(
     context.store.subscribe,
     context.store.getSnapshot,
     context.store.getSnapshot,
-  ).handle
+  ).runtime
   const activeRef = useRef(false)
   const driverRef = useRef<LipSyncDriver | null>(null)
   const onErrorRef = useRef(props.onError)
@@ -152,72 +119,34 @@ export function LipSync(props: LipSyncProps) {
   const profile = mode === 'source' ? props.profile : null
 
   useEffect(() => {
-    if (!model)
+    if (!runtime)
       return
-
-    const controller = new MouthController()
-    let connection: SourceLipSyncConnection | undefined
-    let disabled = false
-    let disposed = false
-    let reported = false
-    let unsubscribeFrame: (() => void) | undefined
-
-    const report = (error: unknown) => {
-      if (reported || disposed)
-        return
-      reported = true
-      const normalized = lipSyncError(error)
+    const report = (error: Live2DError) => {
       if (onErrorRef.current)
-        onErrorRef.current(normalized)
+        onErrorRef.current(error)
       else
-        console.error('[live2d-jsx] lip sync disabled:', normalized)
+        console.error('[live2d-web] lip sync disabled:', error)
     }
-
-    const attachDriver = (getDriver: () => LipSyncDriver | null) => {
-      unsubscribeFrame = model.onAfterMotionUpdate((deltaMs) => {
-        if (disabled)
-          return
-        const driver = getDriver()
-        if (!driver)
-          return
-        try {
-          applyDriverFrame(model, controller, driver, deltaMs)
-        }
-        catch (error) {
-          disabled = true
-          report(error)
-        }
-      })
-    }
-
-    const cleanup = context.lifecycle.add(() => {
-      disposed = true
-      unsubscribeFrame?.()
-      connection?.dispose()
-    })
 
     if (mode === 'driver') {
-      attachDriver(() => driverRef.current)
-    }
-    else if (source && profile) {
-      void createSourceLipSync(source, profile)
-        .then((nextConnection) => {
-          if (disposed) {
-            nextConnection.dispose()
-            return
-          }
-          connection = nextConnection
-          const sourceDriver: LipSyncDriver = {
-            getMouthOpen: nextConnection.getMouthOpen,
-            isSpeaking: () => activeRef.current,
-          }
-          attachDriver(() => sourceDriver)
-        })
-        .catch(report)
+      return context.lifecycle.add(runtime.addLipSync({
+        driver: {
+          getMouthOpen: () => driverRef.current?.getMouthOpen() ?? 0,
+          isSpeaking: () => driverRef.current?.isSpeaking() ?? false,
+        },
+        onError: report,
+      }))
     }
 
-    return cleanup
-  }, [context.lifecycle, mode, model, profile, source])
+    if (!source || !profile)
+      return
+    return context.lifecycle.add(runtime.addLipSync({
+      isSpeaking: () => activeRef.current,
+      onError: report,
+      profile,
+      source,
+    }))
+  }, [context.lifecycle, mode, profile, runtime, source])
 
   return null
 }

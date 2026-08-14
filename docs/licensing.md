@@ -5,10 +5,10 @@
 
 ## 프로젝트 코드
 
-- `live2d-jsx` 자체 코드는 MIT 라이선스다.
+- `live2d-web` 자체 코드는 MIT 라이선스다.
 - AIRI에서 유래한 통합 패턴과 MIT 하부 프로젝트는
   `THIRD_PARTY_NOTICES.md`에 고지한다.
-- root 번들은 React와 자체 코어만 포함하며 wLipSync는 source 모드에서
+- root 번들은 React 없이 자체 runtime만 포함하며 wLipSync는 source 모드에서
   동적으로 로드하는 외부 dependency다.
 - PIXI와 pixi-live2d-display는 adapter 전용 optional peer다.
 

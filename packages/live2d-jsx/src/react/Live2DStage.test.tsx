@@ -217,7 +217,9 @@ describe('live2DStage lifecycle', () => {
         errorFallback={(error, retry) => (
           <button type="button" onClick={retry}>{error.code}</button>
         )}
-      />,
+      >
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DStage>,
     )
     await waitFor(() => expect(harness.stages).toHaveLength(1))
 
@@ -229,7 +231,7 @@ describe('live2DStage lifecycle', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'render-error' }))
 
     await waitFor(() => expect(harness.stages).toHaveLength(2))
-    expect(harness.events.slice(0, 3)).toEqual([
+    expect(harness.events.filter(event => event.startsWith('stage:'))).toEqual([
       'stage:create',
       'stage:dispose',
       'stage:create',
@@ -266,7 +268,11 @@ describe('live2DStage lifecycle', () => {
       unobserve() {}
     })
 
-    render(<Live2DStage backend={harness.backend} />)
+    render(
+      <Live2DStage backend={harness.backend}>
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DStage>,
+    )
     await waitFor(() => expect(harness.stages).toHaveLength(1))
 
     width = 900
@@ -304,7 +310,9 @@ describe('live2DStage lifecycle', () => {
             mobilePixelBudget: 10_000_000,
             sampleWindowMs: 100,
           }}
-        />
+        >
+          <Live2DModel src="/hiyori.model3.json" />
+        </Live2DStage>
       </Profiler>,
     )
     await waitFor(() => expect(harness.frameCallbacks.size).toBe(1))
@@ -343,7 +351,9 @@ describe('live2DStage lifecycle', () => {
         backend={harness.backend}
         {...invalidQuality}
         errorFallback={error => <div>{error.code}</div>}
-      />,
+      >
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DStage>,
     )
 
     await waitFor(() => expect(screen.getByText('invalid-props')).toBeTruthy())

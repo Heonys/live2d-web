@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { Buffer } from 'node:buffer'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -8,22 +9,31 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'packages/live2d-jsx/dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
+const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
 const adapter = readFileSync(path.join(dist, 'adapters/pixi-v6.mjs'), 'utf8')
+const rootBundle = readdirSync(dist)
+  .filter(file => file.endsWith('.mjs') && file !== 'react.mjs')
+  .map(file => readFileSync(path.join(dist, file), 'utf8'))
+  .join('\n')
 
 const failures = []
-if (!entry.startsWith('"use client"') && !entry.startsWith('\'use client\''))
-  failures.push('dist/index.mjs does not preserve the "use client" directive')
-if (entry.includes('@pixi/') || entry.includes('pixi-live2d-display'))
+if (entry.includes('"use client"') || entry.includes('\'use client\''))
+  failures.push('dist/index.mjs must stay React-free and cannot contain "use client"')
+if (rootBundle.includes('from "react"') || rootBundle.includes('from \'react\''))
+  failures.push('root bundle contains a React dependency')
+if (!react.startsWith('"use client"') && !react.startsWith('\'use client\''))
+  failures.push('dist/react.mjs does not preserve the "use client" directive')
+if (rootBundle.includes('@pixi/') || rootBundle.includes('pixi-live2d-display'))
   failures.push('root bundle contains a PIXI dependency')
-if (entry.includes('CubismFramework') || entry.includes('csmGetVersion'))
+if (rootBundle.includes('CubismFramework') || rootBundle.includes('csmGetVersion'))
   failures.push('root bundle appears to contain Cubism runtime code')
-if (statSync(path.join(dist, 'index.mjs')).size > 100_000)
+if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 if (!adapter.includes('import("pixi-live2d-display/cubism4")'))
   failures.push('pixi-live2d-display must remain a browser-time dynamic import')
-if (!entry.includes('import("wlipsync")'))
+if (!rootBundle.includes('import("wlipsync")'))
   failures.push('wlipsync must remain a browser-time dynamic import')
-if (entry.includes('wlipsync-single') || entry.includes('audio-processor.js'))
+if (rootBundle.includes('wlipsync-single') || rootBundle.includes('audio-processor.js'))
   failures.push('root bundle appears to inline the wlipsync runtime')
 
 const bundledAssets = readdirSync(dist, { recursive: true })
@@ -45,5 +55,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log('[package] root/adapter boundaries verified')
+  console.log('[package] vanilla/react/adapter boundaries verified')
 }

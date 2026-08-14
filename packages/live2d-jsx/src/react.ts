@@ -1,5 +1,5 @@
-// Root entry: browser runtime + renderer-neutral contracts only.
-// React and renderer adapters stay in explicit subpaths.
+'use client'
+
 export type {
   Live2DBackend,
   LoadModelOptions,
@@ -27,16 +27,17 @@ export type {
   QualityInput,
   ResolvedAutoQualityPolicy,
 } from './core/quality'
-export { createLive2D } from './core/runtime'
-export type {
-  CreateLive2DOptions,
-  LipSyncDriver,
-  Live2DInstance,
-  Live2DRuntimeState,
-  ParameterDriver,
-  RuntimeLipSyncOptions,
-  RuntimeLoadingStage,
-  RuntimeQualityOptions,
-  RuntimeRenderState,
-} from './core/runtime'
 export type { LipSyncProfile } from './features/lipsync/source'
+export {
+  useLive2DModel,
+  useLive2DParameter,
+  useParameterDriver,
+  useStage,
+} from './react/hooks'
+export { LipSync } from './react/LipSync'
+export type { LipSyncDriver, LipSyncProps } from './react/LipSync'
+export { Live2DModel } from './react/Live2DModel'
+export type { Live2DModelProps } from './react/Live2DModel'
+export { Live2DStage } from './react/Live2DStage'
+export type { Live2DStageProps, StageQualityProps } from './react/Live2DStage'
+export type { LoadingStage, StageState } from './react/store'

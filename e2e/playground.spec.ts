@@ -8,6 +8,13 @@ const WEBKIT_CONTEXT_CHURN_MESSAGES = [
   'INVALID_OPERATION: loseContext: context already lost',
 ]
 
+function actionableWebGLErrors(browserName: string, errors: string[]) {
+  return errors.filter(message =>
+    browserName !== 'webkit'
+    || !WEBKIT_CONTEXT_CHURN_MESSAGES.some(fragment => message.includes(fragment)),
+  )
+}
+
 test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, page }) => {
   const unexpectedErrors: string[] = []
   page.on('console', (message) => {
@@ -32,11 +39,44 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
     await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(1)
   }
 
-  const actionableErrors = unexpectedErrors.filter(message =>
-    browserName !== 'webkit'
-    || !WEBKIT_CONTEXT_CHURN_MESSAGES.some(fragment => message.includes(fragment)),
-  )
-  expect(actionableErrors).toEqual([])
+  expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
+})
+
+test('runs the vanilla API and disposes every canvas', async ({ browserName, page }) => {
+  const unexpectedErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      unexpectedErrors.push(message.text())
+  })
+
+  await page.goto('/vanilla')
+  await expect(page.getByTestId('vanilla-status')).toContainText('ready')
+  await expect(page.locator('.runtime-host canvas')).toHaveCount(1)
+
+  await page.getByLabel('Framing').selectOption('full')
+  await page.locator('input[type="range"]').fill('0.7')
+  await page.getByRole('button', { name: 'Play Tap@Body' }).click()
+
+  for (let index = 0; index < 20; index++) {
+    await page.getByRole('button', { name: 'Dispose runtime' }).click()
+    await expect(page.locator('.runtime-host canvas')).toHaveCount(0)
+    await expect(page.getByTestId('vanilla-status')).toContainText('disposed')
+    await page.getByRole('button', { name: 'Create runtime' }).click()
+    await expect(page.getByTestId('vanilla-status')).toContainText('ready')
+    await expect(page.locator('.runtime-host canvas')).toHaveCount(1)
+  }
+
+  expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
+})
+
+test('runs from a consumer app with no React dependency', async ({ page }) => {
+  await page.goto('http://127.0.0.1:3101')
+  await expect(page.locator('#status')).toHaveText('ready')
+  await expect(page.locator('#character canvas')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Play Tap@Body' }).click()
+  await page.getByRole('button', { name: 'Dispose' }).click()
+  await expect(page.locator('#status')).toHaveText('disposed')
+  await expect(page.locator('#character canvas')).toHaveCount(0)
 })
 
 test('obeys the mobile backing-buffer policy', async ({ page }) => {

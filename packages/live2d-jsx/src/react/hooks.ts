@@ -43,19 +43,19 @@ export function useParameterDriver(id: string, getter: () => number): void {
       'useParameterDriver() must be used inside <Live2DModel>.',
     )
   }
-  const model = useSyncExternalStore(
+  const runtime = useSyncExternalStore(
     context.store.subscribe,
     context.store.getSnapshot,
     context.store.getSnapshot,
-  ).handle
+  ).runtime
   const getterRef = useRef(getter)
   getterRef.current = getter
 
   useEffect(() => {
-    if (!model)
+    if (!runtime)
       return
-    return context.lifecycle.add(model.onAfterMotionUpdate(() => {
-      model.setParameter(id, getterRef.current())
+    return context.lifecycle.add(runtime.addParameterDriver(id, {
+      getValue: () => getterRef.current(),
     }))
-  }, [context.lifecycle, id, model])
+  }, [context.lifecycle, id, runtime])
 }

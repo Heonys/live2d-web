@@ -1,5 +1,6 @@
-import type { Live2DBackend, ModelHandle, StageHandle } from '../core/contract'
+import type { ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
+import type { Live2DInstance, Live2DRuntimeState } from '../core/runtime'
 
 export type LoadingStage = 'core' | 'stage' | 'model'
 
@@ -16,12 +17,6 @@ export interface StageState {
   retry: () => void
 }
 
-interface InternalStageState extends StageState {
-  backend: Live2DBackend | null
-  stage: StageHandle | null
-  layoutVersion: number
-}
-
 interface ModelResource {
   dispose: () => void
   handle: ModelHandle
@@ -34,15 +29,12 @@ export class StageStore {
   private modelOwner: symbol | null = null
   private modelResource: { owner: symbol, resource: ModelResource } | null = null
   private structuralError: Live2DError | undefined
-  private snapshot: InternalStageState
+  private snapshot: StageState
 
   constructor(retry: () => void) {
     this.snapshot = {
-      backend: null,
-      layoutVersion: 0,
       loadingStage: 'core',
       retry,
-      stage: null,
       status: 'loading',
     }
   }
@@ -54,53 +46,10 @@ export class StageStore {
 
   readonly getSnapshot = () => this.snapshot
 
-  private update(patch: Partial<InternalStageState>) {
+  private update(patch: Partial<StageState>) {
     this.snapshot = { ...this.snapshot, ...patch }
     for (const listener of this.listeners)
       listener()
-  }
-
-  begin(loadingStage: LoadingStage) {
-    if (this.structuralError)
-      return
-    this.update({
-      error: undefined,
-      loadingStage,
-      status: 'loading',
-    })
-  }
-
-  setStage(stage: StageHandle, backend: Live2DBackend) {
-    const render = this.readRenderState(stage)
-    if (this.structuralError) {
-      this.update({ backend, render, stage })
-      return
-    }
-    this.update({
-      backend,
-      error: undefined,
-      loadingStage: this.modelOwner ? 'model' : undefined,
-      render,
-      stage,
-      status: this.modelOwner ? 'loading' : 'ready',
-    })
-  }
-
-  clearStage(stage: StageHandle) {
-    if (this.snapshot.stage !== stage)
-      return
-    this.update({ backend: null, render: undefined, stage: null })
-  }
-
-  notifyLayout(stage: StageHandle) {
-    this.update({
-      layoutVersion: this.snapshot.layoutVersion + 1,
-      render: this.readRenderState(stage),
-    })
-  }
-
-  notifyResolution(stage: StageHandle) {
-    this.update({ render: this.readRenderState(stage) })
   }
 
   fail(error: Live2DError) {
@@ -113,12 +62,23 @@ export class StageStore {
     })
   }
 
+  syncRuntime(state: Live2DRuntimeState) {
+    if (this.structuralError)
+      return
+    if (state.status === 'disposed')
+      return
+    this.update({
+      error: state.error,
+      loadingStage: state.loadingStage,
+      render: state.render,
+      status: state.status,
+    })
+  }
+
   claimModel(owner: symbol): boolean {
     if (this.modelOwner && this.modelOwner !== owner)
       return false
     this.modelOwner = owner
-    if (this.snapshot.stage && this.snapshot.status !== 'error')
-      this.begin('model')
     return true
   }
 
@@ -131,7 +91,7 @@ export class StageStore {
       return
     this.disposeModelResource(owner)
     this.modelOwner = null
-    if (this.snapshot.stage && this.snapshot.status !== 'error') {
+    if (this.snapshot.status !== 'error') {
       this.update({
         loadingStage: undefined,
         status: 'ready',
@@ -176,26 +136,16 @@ export class StageStore {
     this.modelResource = null
     current.resource.dispose()
   }
-
-  private readRenderState(stage: StageHandle) {
-    const size = stage.getSize()
-    const resolution = stage.getResolution()
-    return {
-      bufferPixels: Math.round(size.width * size.height * resolution ** 2),
-      height: size.height,
-      resolution,
-      width: size.width,
-    }
-  }
 }
 
 interface ModelSnapshot {
   handle: ModelHandle | null
+  runtime: Live2DInstance | null
 }
 
 export class ModelStore {
   private listeners = new Set<Listener>()
-  private snapshot: ModelSnapshot = { handle: null }
+  private snapshot: ModelSnapshot = { handle: null, runtime: null }
 
   readonly subscribe = (listener: Listener) => {
     this.listeners.add(listener)
@@ -207,7 +157,15 @@ export class ModelStore {
   setHandle(handle: ModelHandle | null) {
     if (this.snapshot.handle === handle)
       return
-    this.snapshot = { handle }
+    this.snapshot = { ...this.snapshot, handle }
+    for (const listener of this.listeners)
+      listener()
+  }
+
+  setRuntime(runtime: Live2DInstance | null) {
+    if (this.snapshot.runtime === runtime)
+      return
+    this.snapshot = { ...this.snapshot, runtime }
     for (const listener of this.listeners)
       listener()
   }

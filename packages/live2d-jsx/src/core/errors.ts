@@ -1,6 +1,7 @@
 export type Live2DErrorCode
   = | 'browser-only'
     | 'core-missing'
+    | 'webgl-unsupported'
     | 'invalid-props'
     | 'invalid-tree'
     | 'lipsync-error'

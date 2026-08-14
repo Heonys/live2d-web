@@ -1,118 +1,134 @@
 # 아키텍처
 
-상태 기준일: **2026-07-30**. v0.1 코어와 pixi-v6 어댑터에 이어 v0.2
-립싱크 API가 구현돼 있으며 npm 공개 전 alpha 검증 단계다.
+상태 기준일: **2026-08-14**. headless runtime과 React binding이 같은
+controller를 사용한다. 공개 가능한 renderer는 현재 pixi-v6 비교 어댑터뿐이고,
+공식 cubism-webgl은 ignored 기술 검증 단계다.
 
-## 계층과 경계
-
-```text
-사용자 JSX
-  └─ React 코어
-       ├─ Stage/Model Context와 생명주기
-       ├─ 품질·프레이밍·에러 계약
-       └─ Live2DBackend
-            └─ adapters/pixi-v6
-                 ├─ PIXI v6
-                 └─ pixi-live2d-display 0.4
-```
-
-- 루트 진입점에는 PIXI import가 없다.
-- PIXI 의존성은 adapter subpath의 optional peer dependency다.
-- 계약은 좌표·크기·파라미터·모션 같은 백엔드 중립 용어만 사용한다.
-- v0.x는 일반 React 컴포넌트와 Context를 사용하며 custom reconciler를
-  만들지 않는다.
-- v0.1은 Stage당 모델 하나만 지원한다.
-
-## 프레임 계약 결정 (2026-07-30)
-
-프레임 순서는 다음으로 고정한다.
+## 계층과 패키지 경계
 
 ```text
-PIXI app ticker
-  HIGH    model.update()
-          └─ internalModel.afterMotionUpdate
-               ├─ LipSync mouth controller
-               └─ useParameterDriver callbacks
-  NORMAL  Stage onFrame callbacks / 품질 측정
-  LOW     guarded app.render()
+바닐라 사용자 ───────────────┐
+                             ▼
+React /react binding ──→ headless Live2DRuntime
+                             ├─ Core 로더
+                             ├─ resize / visibility / 품질 / retry
+                             ├─ model / feature lifecycle
+                             └─ Live2DBackend
+                                  ├─ adapters/pixi-v6 (공개 비교용)
+                                  └─ cubism-webgl (비공개 spike)
 ```
 
-AIZUCHI에서는 `motionManager.update` 패치를 사용했지만,
-`pixi-live2d-display@0.4`가 공개한 `afterMotionUpdate` 이벤트가 같은 위치를
-제공한다는 것을 실제 Hiyori로 확인했다. 따라서 v0.1 어댑터는 몽키패치를
-사용하지 않는다. 이 이벤트가 사라지는 하부 버전은 같은 어댑터 범위로
-업그레이드하지 않고 별도 어댑터로 다룬다.
+- `live2d-web` 루트에는 React, `"use client"`, PIXI, Framework가 없다.
+- `live2d-web/react`만 React client component를 export한다.
+- React와 Pixi 모듈은 optional peer다.
+- `apps/vanilla-consumer`는 React dependency 없이 root API를 production
+  build하고 실제 브라우저에서 Hiyori를 실행한다.
+- `pixi-live2d-display`와 wLipSync runtime은 브라우저 사용 시점에 동적
+  import한다.
+- 계약은 좌표·크기·파라미터·모션 같은 backend 중립 용어만 사용한다.
+- 첫 버전은 Stage당 모델 하나지만 여러 runtime/Canvas 동시 실행은
+  허용한다.
 
-모델은 `autoUpdate:false`이며 `Ticker.shared`나 별도 상시 rAF를 사용하지
-않는다. Ticker 클래스 등록은 하부 라이브러리의 전역 `window.PIXI` 감지를
-막기 위한 것이고 자동 업데이트를 켜지 않는다.
+## Headless runtime
 
-## React 생명주기 결정 (2026-07-30)
+`createLive2D()`는 `Live2DRuntime`을 생성하고 Core → Stage → model 준비가
+끝난 뒤 resolve한다. 초기 실패 시 생성된 자원을 정리하고 reject한다.
 
-- StageStore와 ModelStore는 `useSyncExternalStore`로 저빈도 상태만 전달한다.
-- per-frame 값은 getter로 직접 읽으며 React state로 올리지 않는다.
-- 모델 기능은 `LifecycleScope`에 등록되고 LIFO로 정리된다.
-- Stage는 현재 모델 리소스를 직접 보유해 React effect 정리 순서와 무관하게
-  `기능 → 모델 → Stage`를 보장한다.
-- 모든 정리 함수는 idempotent다.
-- 모든 모델 로드는 AbortSignal과 generation 검사를 거친다.
-- 렌더 오류와 context loss는 티커를 정지하고 전체 Stage retry로 복구한다.
+runtime이 소유하는 것:
 
-React StrictMode의 effect 재실행, 로딩 중 unmount, 빠른 세대 교체는 jsdom
-테스트와 실제 브라우저 반복 마운트로 검증한다.
+- Core script 요청 dedupe와 오류 정규화
+- Stage 생성, ResizeObserver, visibility pause/resume
+- 자동 resolution 선택과 한 방향 품질 강등
+- AbortSignal, 모델 retry와 stale load 폐기
+- fit 재계산, parameter driver와 립싱크 연결
+- 기능 → model → Stage의 idempotent dispose
+- 저빈도 상태 구독과 전체 Stage retry
 
-## 립싱크 결정 (2026-07-30)
+React `Live2DStage`는 컨테이너와 설정을 제공하고,
+`Live2DModel`은 headless controller를 생성·구독·정리한다. 기존 hooks를 위해
+준비된 `ModelHandle`만 내부 context에 연결한다. per-frame 데이터는 React
+state로 올리지 않는다.
 
-`<LipSync>`는 source와 driver 두 입력 경계를 제공하지만 같은 순수 mouth
-controller를 사용한다.
+## Backend 계약
+
+`Live2DBackend`는 `createStage()`와 `loadModel()`만 제공한다.
+
+- `StageHandle`: resize, resolution, 좌표 변환, pause/resume, frame/error
+  구독과 dispose
+- `ModelHandle`: intrinsic size, transform, parameter, focus, motion,
+  expression, after-motion 구독과 dispose
+
+이 경계 덕분에 vanilla/React API와 테스트는 renderer를 몰라도 된다.
+
+## 프레임 순서
+
+고정 계약은 다음과 같다.
 
 ```text
-source: 사용자 AudioNode → 동적 로드한 wLipSync AudioWorklet → mouth getter
-driver: 사용자 분석기 → mouth getter
-                           ↓
-             afterMotionUpdate → ParamMouthOpenY
+motion / expression / eye-blink / physics / look
+→ onAfterMotionUpdate
+   ├─ LipSync
+   └─ parameter drivers
+→ model update
+→ Stage metrics callbacks
+→ draw
 ```
 
-- 말하는 동안 0–1 입 값을 모션 이후에 덮어쓴다.
-- 종료 후 200ms 동안 마지막 값에서 해당 프레임 모션 값으로 smoothstep
-  crossfade하고, 500ms 동안 0을 유지한 뒤 쓰기를 멈춘다.
-- source 모드는 모음 가중치·볼륨으로 입 값을 계산하고 50ms 간격으로
-  갱신·스무딩한다.
-- `active`는 발화 경계일 뿐 분석 노드의 연결 여부가 아니다.
-- AudioNode와 AudioContext의 소유권은 사용자에게 있다. 기능 정리에서는
-  `source.disconnect(lipsyncNode)`, 분석 노드 disconnect와 port close만 한다.
-- source/profile 변경은 세대를 교체하며 늦게 끝난 분석 노드를 즉시
-  정리한다.
-- wLipSync는 브라우저 effect에서 메인 export를 동적 import한다. profile,
-  WASM과 AudioWorklet 파일을 프로젝트가 별도로 동봉하지 않는다.
-- 초기화 또는 getter 실패는 `lipsync-error`로 한 번 보고하고 립싱크만
-  중단한다. 모델과 Stage는 ready 상태를 유지한다.
+pixi-v6에서는 단일 `Application` ticker의 우선순위로 이 순서를 만든다.
+모델은 `autoUpdate:false`이며 `Ticker.shared`나 별도 상시 rAF를 쓰지 않는다.
+직접 cubism-webgl도 같은 순서를 구현해야 한다.
 
-## 렌더 품질 결정 (2026-07-30)
+## 렌더 품질
 
 `quality="auto"`가 기본이다.
 
-- 모바일: 해상도 상한 1.5, 버퍼 예산 150만 픽셀
-- 데스크톱: 해상도 상한 2, 버퍼 예산 400만 픽셀
-- 최저 해상도 1
-- 3초 창에서 33ms 초과 프레임 비율이 5%를 넘으면 0.25 하향
+- 모바일: resolution 상한 1.5, backing buffer 150만 픽셀
+- 데스크톱: resolution 상한 2, backing buffer 400만 픽셀
+- 최저 resolution 1
+- 3초 창에서 33ms 초과 프레임이 5%를 넘으면 0.25 하향
 - 같은 Stage 수명에서는 다시 높이지 않음
-- `preserveDrawingBuffer:false`
 - ResizeObserver는 rAF당 한 번, 0.5px 미만 변화는 무시
-- hidden 시 ticker 정지, 복귀 시 resize 후 재개
+- hidden 시 정지하고 복귀 시 측정 창을 초기화한 뒤 resize/restart
 
-`resolution`을 직접 주면 자동 품질을 끈다.
+고정 `resolution`은 자동 정책을 끈다. 두 옵션을 같이 주면
+`invalid-props`다.
 
-## 장기 WebGL 백엔드 결정 (2026-07-30)
+## 립싱크
 
-장기 “native”는 모바일 네이티브 앱이 아니라 공식 Cubism Web Framework의
-`CubismRenderer_WebGL`을 직접 감싸는 브라우저 백엔드를 뜻한다.
+바닐라 `addLipSync()`와 React `<LipSync>`는 같은 `MouthController` 규칙을
+사용한다.
 
-- React API와 conformance 요구사항은 그대로 유지한다.
-- Core 위에 렌더러를 새로 작성하지 않는다.
-- pixi-v6는 안정적인 기본·비교군으로 유지한다.
-- AIZUCHI 도그푸딩 뒤 gitignored 비공개 실험은 허용하지만, 공식 Framework와
-  셰이더를 포함한 추적 구현·npm export는 Live2D의 서면 확인 뒤 검토한다.
+- driver 모드는 매 프레임 getter를 읽는다.
+- source 모드는 사용자 AudioNode를 wLipSync 분석 node에 연결한다.
+- 사용자 AudioNode/AudioContext 소유권을 가져오지 않는다.
+- 말이 끝나면 200ms crossfade, 500ms closed hold 뒤 파라미터 쓰기를
+  모션에 돌려준다.
+- 실패는 `lipsync-error`로 기능만 중단한다.
 
-Stage, 로더, 프레임 순서, 성능과 공개 게이트의 전체 기준은
-[cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)을 따른다.
+## 오류와 정리
+
+- 초기 바닐라 생성 실패는 `Live2DError` reject다.
+- 준비 후 backend 오류는 상태 구독과 `onError`에 전달된다.
+- context loss는 기존 GPU 상태를 재사용하지 않고 `retry()`로 Stage 전체를
+  다시 만든다.
+- 모든 비동기 generation은 abort/stale 여부를 확인하고 늦게 도착한
+  `ModelHandle`을 즉시 dispose한다.
+- 기능 정리가 model보다 먼저, model이 Stage보다 먼저 실행된다.
+
+## cubism-webgl 상태
+
+Framework 5-r.5 + Cubism 5.3 Core(`core/06`) + 공식 Hiyori 조합으로 다음
+비공개 검증을 통과했다.
+
+- WebGL2 Canvas와 Hiyori idle/physics 렌더
+- motion/effect/physics 뒤 `ParamMouthOpenY = 0.5` 최종 쓰기
+- 20회 Framework/모델/Canvas/WebGL context 생성·정리
+- 마지막 Canvas 하나 외 잔여 Canvas와 브라우저 오류 없음
+
+Core 5.2(`core/05`)는 Framework 5-r.5와 호환되지 않아 moc 로드 중
+실패했다. 따라서 로컬 fetch script도 5.3 경로를 고정한다.
+
+Framework, shader와 spike 수정은 모두 `tmp/`의 ignored 파일이다. 서면
+재배포 확인 전에는 tracked cubism-webgl adapter, package export와 npm
+배포를 만들지 않는다. 이후 구현 계약은
+[cubism-webgl 계획](cubism-webgl-plan.md)을 따른다.

@@ -17,7 +17,9 @@ const cacheDir = path.join(root, 'tmp/asset-cache')
 
 // Versioned Core URL: avoid the compatibility drift explicitly warned about
 // for Live2D's unversioned "Latest" URL.
-const CUBISM_CORE_URL = 'https://cubism.live2d.com/sdk-web/core/05/live2dcubismcore.min.js'
+// Core 06 is Cubism 5.3 and matches Framework 5-r.5. Keeping the destination
+// versioned prevents a stale Core 05 file from being silently reused.
+const CUBISM_CORE_URL = 'https://cubism.live2d.com/sdk-web/core/06/live2dcubismcore.min.js'
 const HIYORI_URL = 'https://cubism.live2d.com/sample-data/bin/hiyori/hiyori_en.zip'
 const TERMS = [
   'https://www.live2d.com/en/sdk/download/web/',
@@ -64,7 +66,7 @@ function findFile(dir, predicate) {
 }
 
 // 1. Cubism Core — <Live2DStage coreUrl> 경로와 일치해야 한다
-const coreDest = path.join(assetsDir, 'js/cubism/live2dcubismcore.min.js')
+const coreDest = path.join(assetsDir, 'js/cubism/5.3/live2dcubismcore.min.js')
 if (existsSync(coreDest)) {
   console.log('[skip] Cubism Core')
 }

@@ -94,6 +94,11 @@ header a {
   inset: 0;
 }
 
+.runtime-host {
+  position: absolute;
+  inset: 0;
+}
+
 aside {
   display: flex;
   flex-direction: column;

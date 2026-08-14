@@ -1,13 +1,13 @@
 {
-  "name": "@live2d-web/playground",
+  "name": "@live2d-web/vanilla-consumer",
+  "type": "module",
   "private": true,
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "vite build",
+    "dev": "vite",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -25,15 +25,11 @@
     "@pixi/ticker": "catalog:",
     "@pixi/utils": "catalog:",
     "live2d-web": "workspace:^",
-    "next": "catalog:",
-    "pixi-live2d-display": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:"
+    "pixi-live2d-display": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }

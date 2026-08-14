@@ -6,7 +6,7 @@ import { ensureCubismCore } from './ensureCubismCore'
 describe('ensureCubismCore', () => {
   afterEach(() => {
     delete window.Live2DCubismCore
-    document.querySelectorAll('script[data-live2d-jsx-core]').forEach(script => script.remove())
+    document.querySelectorAll('script[data-live2d-web-core]').forEach(script => script.remove())
   })
 
   it('passes when the global is already available', async () => {
@@ -24,7 +24,7 @@ describe('ensureCubismCore', () => {
   it('deduplicates concurrent script loads for the same URL', async () => {
     const first = ensureCubismCore('/assets/core-a.js')
     const second = ensureCubismCore('/assets/core-a.js')
-    const scripts = document.querySelectorAll('script[data-live2d-jsx-core]')
+    const scripts = document.querySelectorAll('script[data-live2d-web-core]')
 
     expect(scripts).toHaveLength(1)
     window.Live2DCubismCore = {}
@@ -36,7 +36,7 @@ describe('ensureCubismCore', () => {
   it('rejects when a loaded script did not install the global', async () => {
     const promise = ensureCubismCore('/assets/core-b.js')
     const failedScript = document.querySelector<HTMLScriptElement>(
-      'script[data-live2d-jsx-core]',
+      'script[data-live2d-web-core]',
     )!
     failedScript.dispatchEvent(new Event('load'))
 
@@ -47,7 +47,7 @@ describe('ensureCubismCore', () => {
 
     const retry = ensureCubismCore('/assets/core-b.js')
     const retryScript = document.querySelector<HTMLScriptElement>(
-      'script[data-live2d-jsx-core]',
+      'script[data-live2d-web-core]',
     )!
     expect(retryScript).not.toBe(failedScript)
     window.Live2DCubismCore = {}

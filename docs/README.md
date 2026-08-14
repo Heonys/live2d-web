@@ -1,29 +1,36 @@
-# live2d-jsx 문서 지도
+# live2d-web 문서 지도
 
-상태 기준일: **2026-07-30**. v0.1 alpha와 v0.2 립싱크 구현은 완료됐고
-npm 공개 및 AIZUCHI 도그푸딩 전이다.
+상태 기준일: **2026-08-14**. 바닐라 우선 headless runtime, React binding,
+source/driver 립싱크와 pixi-v6 비교 어댑터가 구현돼 있다. 공식 Framework
+5-r.5 WebGL2 경로는 ignored 비공개 Hiyori 스파이크만 통과했으며 npm 공개와
+공식 cubism-webgl export 전이다.
 
 1. [생태계 조사](ecosystem-survey.md)
 2. [제품 비전](product-vision.md)
 3. [아키텍처](architecture.md)
 4. [API reference](api-design.md)
-5. [AIZUCHI 추출 지도](extraction-map.md)
-6. [라이선스와 상표](licensing.md)
-7. [cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)
-8. [로드맵](roadmap.md)
+5. [라이선스와 상표](licensing.md)
+6. [cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)
+7. [로드맵](roadmap.md)
+8. [과거 AIZUCHI 추출 지도](extraction-map.md)
 
 ## 확정된 결정
 
-- 일반 React 컴포넌트·Context·hooks를 사용하며 custom reconciler는 만들지 않는다.
-- 단일 npm 패키지와 `adapters/pixi-v6` subpath를 사용한다.
-- v0.1은 Stage당 모델 하나다.
+- 제품·npm 패키지 이름은 `live2d-web`이다. 저장소 URL과 실제 디렉터리
+  이름은 외부 rename 전까지 기존 경로를 유지할 수 있다.
+- npm 패키지는 하나이며 `.`, `/react`, `/adapters/pixi-v6`로 경계를
+  나눈다. `/adapters/cubism-webgl`은 서면 허가 전에는 만들지 않는다.
+- 루트는 React와 `"use client"`가 없는 바닐라 API다. React는 optional
+  peer이며 `/react`에만 존재한다.
+- 바닐라와 React가 같은 headless controller를 사용한다.
+- Cubism 4·5 `model3.json/moc3`, WebGL2, Stage당 모델 하나를 첫 범위로
+  고정한다.
 - 자동 품질이 기본이며 고정 `resolution`은 명시적 opt-out이다.
-- 프레임 순서는 모델 update → after-motion driver → frame callback → render다.
-- root import에는 PIXI가 없고 adapter의 Live2D 런타임 import도 SSR-safe하게 지연한다.
-- Core·샘플 모델은 동봉하지 않는다. Framework·셰이더는 현재 비동봉이며,
-  향후 서면 허가를 받은 cubism-webgl adapter에만 조건부 포함한다.
-- 장기 native 목표는 공식 Framework를 감싼 브라우저 직접 WebGL
-  백엔드이며 [별도 구현 계획](cubism-webgl-plan.md)을 따른다.
-- 첫 도그푸딩은 v0.2 AIZUCHI 전환이다.
-- 립싱크는 source/driver 두 입력을 같은 after-motion mouth controller로
-  처리하며 AudioContext는 사용자가 소유한다.
+- 프레임 순서는 모델 motion/effect/physics → 외부 driver → model update →
+  metrics → draw다.
+- Core·Hiyori·립싱크 profile은 항상 비동봉이다. Framework와 셰이더도
+  서면 허가 전에는 비동봉한다.
+- AIZUCHI는 별도 프로젝트이며 구현·출시 게이트가 아니다. 검증 기준은
+  공식 Hiyori와 React/vanilla Playground다.
+- pixi-v6는 cubism-webgl이 공개 기준을 통과할 때까지 비교·호환용으로
+  유지한다.

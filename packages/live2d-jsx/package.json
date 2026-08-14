@@ -1,8 +1,8 @@
 {
-  "name": "live2d-jsx",
+  "name": "live2d-web",
   "type": "module",
   "version": "0.1.0-alpha.0",
-  "description": "Declarative Live2D for React",
+  "description": "A vanilla-first Live2D runtime with optional React and renderer adapters",
   "license": "MIT",
   "homepage": "https://github.com/Heonys/live2d-jsx#readme",
   "repository": {
@@ -12,6 +12,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./react": "./src/react.ts",
     "./adapters/pixi-v6": "./src/adapters/pixi-v6/index.ts"
   },
   "publishConfig": {
@@ -21,6 +22,10 @@
       ".": {
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
+      },
+      "./react": {
+        "types": "./dist/react.d.mts",
+        "default": "./dist/react.mjs"
       },
       "./adapters/pixi-v6": {
         "types": "./dist/adapters/pixi-v6.d.mts",
@@ -78,6 +83,9 @@
       "optional": true
     },
     "pixi-live2d-display": {
+      "optional": true
+    },
+    "react": {
       "optional": true
     }
   },

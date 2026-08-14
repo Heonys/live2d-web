@@ -1,21 +1,51 @@
-# live2d-jsx
+# live2d-web
 
-> Declarative Live2D for React.
+> A vanilla-first Live2D runtime with optional React bindings.
 
-`live2d-jsx` moves Live2D model loading, lifecycle, fitting, parameter drivers,
-render quality and cleanup into React components and hooks. Rendering remains
-behind a backend contract; v0.1 ships a PixiJS v6 adapter powered by
-`pixi-live2d-display@0.4`.
+`live2d-web` owns Live2D model loading, lifecycle, fitting, parameter drivers,
+render quality, retry and cleanup. Rendering stays behind a backend contract,
+so the same runtime can be used directly from JavaScript or through React.
 
-**Status: `0.1.0-alpha.0` is implemented and validated locally, but not
-published to npm yet.** The v0.2 lip-sync API is implemented on the current
-unreleased package version. Gaze and the AIZUCHI migration remain future work.
+**Status: `0.1.0-alpha.0` is implemented and validated locally, but has not
+been published to npm.** The official Cubism WebGL2 path has passed a private
+Framework 5-r.5/Hiyori feasibility spike. It is intentionally not present in
+Git, package exports or the npm tarball until Live2D confirms the Framework and
+shader redistribution terms in writing. Until then, pass the PixiJS v6
+comparison backend explicitly.
+
+## Vanilla API
+
+```ts
+import { createLive2D } from 'live2d-web'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+
+const character = await createLive2D({
+  backend: pixiV6,
+  container: document.querySelector('#character')!,
+  coreUrl: '/assets/live2dcubismcore.min.js',
+  fit: 'upper-body',
+  quality: 'auto',
+  src: '/models/hiyori.model3.json',
+})
+
+await character.motion('Tap@Body')
+character.setParameter('ParamMouthOpenY', 0.5)
+character.pause()
+character.resume()
+character.dispose()
+```
+
+`createLive2D()` resolves only after Core, Stage and the model are ready. It
+also exposes `expression`, `focus`, `getParameter`, `setFit`, `retry`,
+`addParameterDriver`, `addLipSync`, state subscription and idempotent cleanup.
+
+## React API
 
 ```tsx
 'use client'
 
-import { LipSync, Live2DModel, Live2DStage } from 'live2d-jsx'
-import { pixiV6 } from 'live2d-jsx/adapters/pixi-v6'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
 
 export function Character({ voice }: { voice: AudioNode | null }) {
   return (
@@ -36,51 +66,31 @@ export function Character({ voice }: { voice: AudioNode | null }) {
 }
 ```
 
-## Current API
+The React components create and subscribe to the same headless controller used
+by the vanilla API. Per-frame values never pass through React state.
 
-- `<Live2DStage>`: Core loading, stage lifecycle, adaptive quality,
-  `ResizeObserver`, visibility pause/resume, errors and retry.
-- `<Live2DModel>`: one model per stage, retry, stale-load disposal and fitting.
-- `useStage()`: loading/error state and low-frequency render diagnostics.
-- `useLive2DModel()`, `useLive2DParameter()` and `useParameterDriver()`.
-- `<LipSync>`: source mode for WebAudio and driver mode for an existing
-  analyzer. Both write after motion update without per-frame React state.
-- `live2d-jsx/adapters/pixi-v6`: single application ticker, manual model update,
-  guarded render and idempotent cleanup.
+## Package boundaries
 
-`quality="auto"` limits mobile backing buffers to 1.5×/1.5 MP and desktop
-buffers to 2×/4 MP. A fixed `resolution` disables adaptive quality.
+- `live2d-web`: React-free vanilla runtime and renderer-neutral contracts.
+- `live2d-web/react`: client components and hooks. React is an optional peer.
+- `live2d-web/adapters/pixi-v6`: temporary compatibility/A-B backend using
+  `pixi-live2d-display@0.4`; all Pixi peers are optional.
+- `live2d-web/adapters/cubism-webgl`: reserved, but deliberately not exported
+  before the redistribution gate is cleared.
+
+Automatic quality limits mobile backing buffers to 1.5 MP and desktop buffers
+to 4 MP. A fixed `resolution` disables automatic downshifting.
 
 ## Lip sync
 
-Use source mode when your app already has the playing `AudioNode`. The app
-continues to own the node and its `AudioContext`; `live2d-jsx` only adds and
-removes an analysis connection. A wLipSync JSON or binary profile is required
-and is not included in this package.
-
-```tsx
-<LipSync
-  source={voiceNode}
-  active={isVoicePlaying}
-  profile="/profiles/ja.bin"
-  onError={error => console.error(error)}
-/>
-```
-
-Use driver mode when the app already calculates a mouth-open value.
-
-```tsx
-<LipSync
-  driver={{
-    getMouthOpen: () => analyzer.mouthOpen,
-    isSpeaking: () => player.isPlaying,
-  }}
-/>
-```
+Both the vanilla `addLipSync()` API and React `<LipSync>` accept an existing
+driver or a caller-owned WebAudio `AudioNode`. Source mode dynamically loads
+wLipSync. The package does not include a calibration profile and never closes
+or suspends the caller's `AudioContext`.
 
 `ParamMouthOpenY`, the 200 ms release and the 500 ms closed-mouth handoff are
-fixed in this alpha API. Lip-sync failures are non-fatal: the model keeps
-rendering and the failure is sent to `onError` or logged once.
+fixed in this alpha API. The final parameter write happens after SDK motion
+updates without per-frame React renders.
 
 ## Development
 
@@ -94,21 +104,26 @@ pnpm dev
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm build
-pnpm -F @live2d-jsx/playground build
+pnpm verify:package
+pnpm -F @live2d-web/playground build
 pnpm test:e2e
 ```
 
 After reviewing the official terms linked by the command,
-`LIVE2D_ACCEPT_TERMS=1` confirms the local development download. The command
-uses Live2D's official Core and Hiyori distribution URLs and writes only to
+`LIVE2D_ACCEPT_TERMS=1` confirms the local development download. The script
+uses the official Cubism 5.3 Core (`core/06`) and Hiyori URLs and writes only to
 ignored development paths. Neither asset is included in the package.
+
+The Playground provides the React page at `/` and the vanilla-controller page
+at `/vanilla`, both using the same Hiyori manifest.
+`apps/vanilla-consumer` is a separate Vite fixture whose manifest and production
+bundle contain no React dependency.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
 - [API reference](docs/api-design.md)
-- [AIZUCHI extraction map](docs/extraction-map.md)
+- [Cubism WebGL implementation plan and gate](docs/cubism-webgl-plan.md)
 - [Licensing](docs/licensing.md)
 - [Roadmap](docs/roadmap.md)
 
@@ -119,5 +134,5 @@ The project source is MIT licensed. Third-party notices are listed in
 
 This is an unofficial third-party project and is not affiliated with or
 endorsed by Live2D Inc. Live2D and Cubism are trademarks of Live2D Inc.
-`live2d-jsx` does not bundle Cubism Core, Cubism Framework, or sample models.
-Users must obtain and use those materials under Live2D's current terms.
+`live2d-web` does not bundle Cubism Core, Cubism Framework, shaders, sample
+models or a lip-sync profile.
