@@ -8,10 +8,11 @@ so the same runtime can be used directly from JavaScript or through React.
 
 **Status: `0.1.0-alpha.0` is implemented and validated locally, but has not
 been published to npm.** The official Cubism WebGL2 path has passed a private
-Framework 5-r.5/Hiyori feasibility spike. It is intentionally not present in
-Git, package exports or the npm tarball until Live2D confirms the Framework and
-shader redistribution terms in writing. Until then, pass the PixiJS v6
-comparison backend explicitly.
+Framework 5-r.5/Hiyori implementation test. A review-only snapshot of the
+adapter, modified Framework and shaders is tracked under `private/` while this
+repository is private. It is not present in package exports or the npm tarball
+and must not be made public until Live2D confirms the redistribution terms in
+writing. Until then, pass the PixiJS v6 comparison backend explicitly.
 
 ## Vanilla API
 
@@ -135,4 +136,5 @@ The project source is MIT licensed. Third-party notices are listed in
 This is an unofficial third-party project and is not affiliated with or
 endorsed by Live2D Inc. Live2D and Cubism are trademarks of Live2D Inc.
 `live2d-web` does not bundle Cubism Core, Cubism Framework, shaders, sample
-models or a lip-sync profile.
+models or a lip-sync profile. The repository's review-only `private/` snapshot
+is outside the package and is not approved for public redistribution.

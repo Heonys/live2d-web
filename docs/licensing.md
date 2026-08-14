@@ -16,7 +16,8 @@
 
 - Cubism Core와 Hiyori를 비롯한 샘플 모델은 git이나 npm 패키지에 포함하지
   않는다.
-- Cubism Framework와 WebGL 셰이더는 현재 포함하지 않는다. 향후
+- Cubism Framework와 WebGL 셰이더는 비공개 GitHub 검토용 스냅샷으로만
+  `private/`에 둔다. npm 패키지와 공개 저장소에는 포함하지 않으며, 향후
   cubism-webgl adapter의 재배포를 Live2D가 서면으로 허용한 경우에만
   해당 adapter 전용 dist에 포함한다.
 - 개발자는 공식 SDK와 각 샘플의 현재 약관에 동의한 뒤 로컬 ignored
@@ -44,7 +45,9 @@
 요구하므로 Framework 코드와 셰이더를 npm에 함께 포함할 수 있는지도
 Live2D에 서면 확인한다.
 
-- 서면 확인 전에는 gitignored 로컬·비공개 기술 실험만 허용한다.
+- 서면 확인 전에는 로컬 실험과 비공개 저장소의 검토용 스냅샷만 허용한다.
+- 저장소를 공개하기 전에는 허가받지 않은 Framework·셰이더 스냅샷을
+  제거한다.
 - Framework·셰이더 재배포가 허용된 경우에만 adapter 전용 dist에 포함한다.
 - 허용되지 않으면 사용자에게 비공식 설치 절차를 요구하는 공개 어댑터를
   만들지 않고 cubism-webgl을 비공개 실험으로 남긴다.

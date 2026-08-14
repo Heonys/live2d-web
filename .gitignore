@@ -7,4 +7,8 @@ apps/playground/public/assets/
 playwright-report/
 test-results/
 *.tsbuildinfo
-/private/
+private/*
+!private/cubism-webgl-adapter/
+!private/cubism-webgl-adapter/**
+!private/cubism-web-framework-5-r.5/
+!private/cubism-web-framework-5-r.5/**

@@ -6,6 +6,8 @@ export default antfu({
   formatters: true,
   ignores: [
     'docs/**',
+    // Live2D review snapshot and vendored Framework keep their own formatting.
+    'private/**',
     'tmp/**',
     'test-results/**',
     'apps/playground/public/assets/**',
