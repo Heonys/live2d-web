@@ -147,6 +147,7 @@ bundle contain no React dependency.
 - [Architecture](docs/architecture.md)
 - [API reference](docs/api-design.md)
 - [Cubism WebGL implementation plan and gate](docs/cubism-webgl-plan.md)
+- [Cubism WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
 - [Licensing](docs/licensing.md)
 - [Roadmap](docs/roadmap.md)
 
