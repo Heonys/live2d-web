@@ -129,13 +129,21 @@ pnpm test
 pnpm verify:package
 pnpm -F @live2d-web/playground build
 pnpm test:e2e
+pnpm benchmark:smoke
+pnpm benchmark:startup
+pnpm benchmark:matrix
+pnpm benchmark:memory
+pnpm benchmark:models
 LIVE2D_BENCHMARK_MS=300000 pnpm benchmark:backends
 ```
 
 After reviewing the official terms linked by the command,
 `LIVE2D_ACCEPT_TERMS=1` confirms the local development download. The script
-uses the official Cubism 5.3 Core (`core/06`) and Hiyori URLs and writes only to
-ignored development paths. Neither asset is included in the package.
+uses the official Cubism 5.3 Core (`core/06`), Hiyori and the pinned
+`CubismWebSamples@5-r.5` Mark/Mao/Rice/Ren resources, and writes only to ignored
+development paths. None of these assets is included in the package. See the
+[benchmark guide](docs/benchmarking.md) for the focused 18-condition matrix,
+raw result boundary and explicit Markdown promotion command.
 
 The Playground provides React at `/`, the vanilla controller at `/vanilla`,
 and a WebGL/Pixi A-B view at `/compare`, all using the same Hiyori manifest.
@@ -148,6 +156,9 @@ bundle contain no React dependency.
 - [API reference](docs/api-design.md)
 - [Cubism WebGL implementation plan and gate](docs/cubism-webgl-plan.md)
 - [Cubism WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+- [Post-diagnostics WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+- [Multi-model benchmark guide](docs/benchmarking.md)
+- [Multi-model matrix result](docs/benchmarks/2026-08-14-multi-model-matrix.md)
 - [Licensing](docs/licensing.md)
 - [Roadmap](docs/roadmap.md)
 

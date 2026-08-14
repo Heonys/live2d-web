@@ -26,7 +26,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm -F @live2d-web/playground dev --hostname 127.0.0.1 --port 3100',
+      command: 'pnpm -F @live2d-web/playground start --hostname 127.0.0.1 --port 3100',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       url: 'http://127.0.0.1:3100',

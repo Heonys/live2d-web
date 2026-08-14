@@ -9,6 +9,12 @@ interface FrameMetrics {
   medianFps: number
 }
 
+declare global {
+  interface Window {
+    __live2dWebBenchmarkFrames?: number[]
+  }
+}
+
 const durationMs = Number(process.env.LIVE2D_BENCHMARK_MS ?? 300_000)
 
 async function sampleFrames(page: import('@playwright/test').Page): Promise<FrameMetrics> {

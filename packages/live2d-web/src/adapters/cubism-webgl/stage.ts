@@ -2,13 +2,16 @@ import type {
   StageHandle,
   StageOptions,
 } from '../../core/contract'
+import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import type { StageFrameDriver } from './types'
 import { Live2DError } from '../../core/errors'
+import { createGpuTimer, measureSync } from './diagnostics'
 
 interface StageInternals {
   canvas: HTMLCanvasElement
   gl: WebGL2RenderingContext
   disposed: boolean
+  diagnostics?: CubismBenchmarkStageDiagnostics
   attachDriver: (driver: StageFrameDriver) => () => void
   reportError: (error: Live2DError) => void
 }
@@ -46,7 +49,11 @@ export function getStageInternals(stage: StageHandle) {
   return internals
 }
 
-export function createWebGLStage(element: HTMLElement, options: StageOptions): StageHandle {
+export function createWebGLStage(
+  element: HTMLElement,
+  options: StageOptions,
+  diagnostics?: CubismBenchmarkStageDiagnostics,
+): StageHandle {
   if (typeof window === 'undefined')
     throw new Live2DError('browser-only', 'cubism-webgl can only run in a browser.')
 
@@ -61,6 +68,9 @@ export function createWebGLStage(element: HTMLElement, options: StageOptions): S
   })
   if (!gl)
     throw new Live2DError('webgl-unsupported', 'WebGL2 is required by cubism-webgl.')
+  diagnostics?.changeResource('canvas', 1)
+  diagnostics?.changeResource('context', 1)
+  const gpuTimer = createGpuTimer(gl, diagnostics)
 
   let size = {
     height: Math.max(1, options.height),
@@ -72,6 +82,7 @@ export function createWebGLStage(element: HTMLElement, options: StageOptions): S
   let reportedError = false
   let animationFrame = 0
   let accumulatedFrameMs = 0
+  let firstDrawReported = false
   let lastRenderTime: number | undefined
   let lastTickTime: number | undefined
   let driver: StageFrameDriver | undefined
@@ -122,14 +133,39 @@ export function createWebGLStage(element: HTMLElement, options: StageOptions): S
       ? Math.max(0, accumulatedFrameMs - minFrameMs)
       : 0
     try {
-      driver?.update(Math.min(deltaMs, 100))
-      for (const callback of frameCallbacks)
-        callback(deltaMs)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-      gl.viewport(0, 0, canvas.width, canvas.height)
-      gl.clearColor(0, 0, 0, 0)
-      gl.clear(gl.COLOR_BUFFER_BIT)
-      driver?.draw()
+      if (!diagnostics) {
+        driver?.update(Math.min(deltaMs, 100))
+        for (const callback of frameCallbacks)
+          callback(deltaMs)
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+        gl.viewport(0, 0, canvas.width, canvas.height)
+        gl.clearColor(0, 0, 0, 0)
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        driver?.draw()
+      }
+      else {
+        diagnostics.framePhase('frameDelta', deltaMs)
+        measureSync(diagnostics, 'frame', 'stageFrame', () => {
+          driver?.update(Math.min(deltaMs, 100))
+          for (const callback of frameCallbacks)
+            callback(deltaMs)
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+          gl.viewport(0, 0, canvas.width, canvas.height)
+          gl.clearColor(0, 0, 0, 0)
+          gl.clear(gl.COLOR_BUFFER_BIT)
+          gpuTimer?.begin()
+          try {
+            measureSync(diagnostics, 'frame', 'drawCpu', () => driver?.draw())
+          }
+          finally {
+            gpuTimer?.end()
+          }
+        })
+      }
+      if (driver && !firstDrawReported) {
+        firstDrawReported = true
+        diagnostics?.firstDraw()
+      }
     }
     catch (error) {
       reportError(normalizeError(error))
@@ -168,6 +204,7 @@ export function createWebGLStage(element: HTMLElement, options: StageOptions): S
       })
     },
     canvas,
+    diagnostics,
     disposed,
     gl,
     reportError,
@@ -181,11 +218,15 @@ export function createWebGLStage(element: HTMLElement, options: StageOptions): S
     frameCallbacks.clear()
     errorCallbacks.clear()
     canvas.removeEventListener('webglcontextlost', onContextLost)
+    gpuTimer?.poll()
+    gpuTimer?.dispose()
     if (!gl.isContextLost())
       gl.getExtension('WEBGL_lose_context')?.loseContext()
     canvas.width = 1
     canvas.height = 1
     canvas.remove()
+    diagnostics?.changeResource('context', -1)
+    diagnostics?.changeResource('canvas', -1)
     internalsByStage.delete(handle)
   })
 

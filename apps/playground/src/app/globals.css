@@ -184,6 +184,31 @@ label output {
   line-height: 1.5;
 }
 
+.benchmark-page {
+  width: max-content;
+  min-width: 100%;
+  padding-inline: 32px;
+}
+
+.benchmark-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 600px);
+  gap: 16px;
+}
+
+.benchmark-stage {
+  position: relative;
+  width: 600px;
+  height: 600px;
+  overflow: hidden;
+  background: #191720;
+}
+
+.benchmark-stage canvas {
+  position: absolute;
+  inset: 0;
+}
+
 @media (max-width: 760px) {
   main {
     width: min(100% - 20px, 620px);

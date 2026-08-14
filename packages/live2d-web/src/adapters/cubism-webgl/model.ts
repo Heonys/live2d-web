@@ -6,6 +6,7 @@ import type {
   ModelTransform,
   StageHandle,
 } from '../../core/contract'
+import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import type { LayoutBounds } from './types'
 import { CubismDefaultParameterId } from '#cubism-framework/cubismdefaultparameterid'
 import { CubismModelSettingJson } from '#cubism-framework/cubismmodelsettingjson'
@@ -34,6 +35,7 @@ import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismo
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
 import { createTexture, fetchArrayBuffer, resolveAssetUrl } from './assets'
+import { measureAsync, measureSync } from './diagnostics'
 import { acquireFramework } from './framework-manager'
 import { buildMvpMatrix, measureLayout } from './matrix'
 import { getStageInternals } from './stage'
@@ -90,6 +92,7 @@ class FrameworkModel extends CubismUserModel {
     private readonly shaderBaseUrl: string,
     private readonly shaderSources: Readonly<Record<string, string>> | undefined,
     private readonly releaseFramework: () => void,
+    private readonly diagnostics?: CubismBenchmarkStageDiagnostics,
   ) {
     super()
   }
@@ -116,11 +119,15 @@ class FrameworkModel extends CubismUserModel {
           'model3.json does not declare FileReferences.Moc.',
         )
       }
-      const moc = await fetchArrayBuffer(
-        resolveAssetUrl(mocName, this.modelUrl),
-        this.assetController.signal,
+      const moc = await measureAsync(
+        this.diagnostics,
+        'mocFetch',
+        () => fetchArrayBuffer(
+          resolveAssetUrl(mocName, this.modelUrl),
+          this.assetController.signal,
+        ),
       )
-      this.loadModel(moc, true)
+      measureSync(this.diagnostics, 'load', 'mocParse', () => this.loadModel(moc, true))
       if (!this.getModel())
         throw new Live2DError('model-load-failed', 'Cubism Core rejected the moc3 model.')
 
@@ -136,7 +143,11 @@ class FrameworkModel extends CubismUserModel {
         width: this.getModel().getCanvasWidth(),
       }, this.layoutMatrix)
 
-      await this.loadOptionalAssets()
+      await measureAsync(
+        this.diagnostics,
+        'optionalAssets',
+        () => this.loadOptionalAssets(),
+      )
       this.setupEffects()
       await this.setupRenderer()
       this.getModel().saveParameters()
@@ -233,10 +244,14 @@ class FrameworkModel extends CubismUserModel {
     renderer.startUp(gl)
     renderer.setIsPremultipliedAlpha(true)
     try {
-      await renderer.loadShaders(
-        this.shaderBaseUrl,
-        this.assetController.signal,
-        this.shaderSources,
+      await measureAsync(
+        this.diagnostics,
+        'shaderSetup',
+        () => renderer.loadShaders(
+          this.shaderBaseUrl,
+          this.assetController.signal,
+          this.shaderSources,
+        ),
       )
     }
     catch (error) {
@@ -259,8 +274,10 @@ class FrameworkModel extends CubismUserModel {
         gl,
         resolveAssetUrl(name, this.modelUrl),
         this.assetController.signal,
+        this.diagnostics,
       )
       this.textures.push(texture)
+      this.diagnostics?.changeResource('texture', 1)
       renderer.bindTexture(index, texture)
     }
   }
@@ -269,24 +286,55 @@ class FrameworkModel extends CubismUserModel {
     if (this.disposed)
       return
     const deltaSeconds = deltaMs / 1_000
-    this.getModel().loadParameters()
-    this.motionUpdated = false
-    if (this._motionManager.isFinished()) {
-      this.scheduleIdle()
+    if (!this.diagnostics) {
+      this.getModel().loadParameters()
+      this.motionUpdated = false
+      if (this._motionManager.isFinished()) {
+        this.scheduleIdle()
+      }
+      else {
+        this.motionUpdated = this._motionManager.updateMotion(
+          this.getModel(),
+          deltaSeconds,
+        )
+      }
+      this.getModel().saveParameters()
+      this.scheduler.onLateUpdate(this.getModel(), deltaSeconds)
+      for (const [id, value] of this.manualParameters)
+        this.getModel().setParameterValueById(this.parameterId(id), value)
+      for (const callback of this.afterMotionCallbacks)
+        callback(deltaMs)
+      this.getModel().update()
+      return
     }
-    else {
-      this.motionUpdated = this._motionManager.updateMotion(
-        this.getModel(),
-        deltaSeconds,
-      )
-    }
-    this.getModel().saveParameters()
-    this.scheduler.onLateUpdate(this.getModel(), deltaSeconds)
-    for (const [id, value] of this.manualParameters)
-      this.getModel().setParameterValueById(this.parameterId(id), value)
-    for (const callback of this.afterMotionCallbacks)
-      callback(deltaMs)
-    this.getModel().update()
+    measureSync(this.diagnostics, 'frame', 'motion', () => {
+      this.getModel().loadParameters()
+      this.motionUpdated = false
+      if (this._motionManager.isFinished()) {
+        this.scheduleIdle()
+      }
+      else {
+        this.motionUpdated = this._motionManager.updateMotion(
+          this.getModel(),
+          deltaSeconds,
+        )
+      }
+      this.getModel().saveParameters()
+    })
+    measureSync(this.diagnostics, 'frame', 'effectsPhysicsPose', () => {
+      this.scheduler.onLateUpdate(this.getModel(), deltaSeconds)
+    })
+    measureSync(this.diagnostics, 'frame', 'manualParameters', () => {
+      for (const [id, value] of this.manualParameters)
+        this.getModel().setParameterValueById(this.parameterId(id), value)
+    })
+    measureSync(this.diagnostics, 'frame', 'externalDrivers', () => {
+      for (const callback of this.afterMotionCallbacks)
+        callback(deltaMs)
+    })
+    measureSync(this.diagnostics, 'frame', 'coreUpdate', () => {
+      this.getModel().update()
+    })
   }
 
   private scheduleIdle() {
@@ -309,27 +357,33 @@ class FrameworkModel extends CubismUserModel {
     if (cached)
       return cached
     const promise = (async () => {
-      const fileName = this.setting.getMotionFileName(group, index)
-      const buffer = await fetchArrayBuffer(
-        resolveAssetUrl(fileName, this.modelUrl),
-        this.assetController.signal,
-      )
-      const motion = this.loadMotion(
-        buffer,
-        buffer.byteLength,
-        key,
-        undefined,
-        undefined,
-        this.setting,
-        group,
-        index,
-        true,
-      )
-      if (!motion)
-        throw new Live2DError('model-load-failed', `Failed to parse motion ${key}.`)
-      motion.setEffectIds(this.eyeBlinkIds, [])
-      this.loadedMotions.add(motion)
-      return motion
+      this.diagnostics?.changeResource('pendingMotion', 1)
+      try {
+        const fileName = this.setting.getMotionFileName(group, index)
+        const buffer = await fetchArrayBuffer(
+          resolveAssetUrl(fileName, this.modelUrl),
+          this.assetController.signal,
+        )
+        const motion = this.loadMotion(
+          buffer,
+          buffer.byteLength,
+          key,
+          undefined,
+          undefined,
+          this.setting,
+          group,
+          index,
+          true,
+        )
+        if (!motion)
+          throw new Live2DError('model-load-failed', `Failed to parse motion ${key}.`)
+        motion.setEffectIds(this.eyeBlinkIds, [])
+        this.loadedMotions.add(motion)
+        return motion
+      }
+      finally {
+        this.diagnostics?.changeResource('pendingMotion', -1)
+      }
     })()
     this.motionCache.set(key, promise)
     promise.catch(() => this.motionCache.delete(key))
@@ -382,19 +436,25 @@ class FrameworkModel extends CubismUserModel {
     if (cached)
       return cached
     const promise = (async () => {
-      const buffer = await fetchArrayBuffer(
-        resolveAssetUrl(this.setting.getExpressionFileName(index), this.modelUrl),
-        this.assetController.signal,
-      )
-      const expression = this.loadExpression(buffer, buffer.byteLength, id)
-      if (!expression) {
-        throw new Live2DError(
-          'model-load-failed',
-          `Failed to parse expression ${id}.`,
+      this.diagnostics?.changeResource('pendingExpression', 1)
+      try {
+        const buffer = await fetchArrayBuffer(
+          resolveAssetUrl(this.setting.getExpressionFileName(index), this.modelUrl),
+          this.assetController.signal,
         )
+        const expression = this.loadExpression(buffer, buffer.byteLength, id)
+        if (!expression) {
+          throw new Live2DError(
+            'model-load-failed',
+            `Failed to parse expression ${id}.`,
+          )
+        }
+        this.loadedMotions.add(expression)
+        return expression
       }
-      this.loadedMotions.add(expression)
-      return expression
+      finally {
+        this.diagnostics?.changeResource('pendingExpression', -1)
+      }
     })()
     this.expressionCache.set(id, promise)
     promise.catch(() => this.expressionCache.delete(id))
@@ -505,6 +565,10 @@ class FrameworkModel extends CubismUserModel {
     const { gl } = getStageInternals(this.stage)
     for (const texture of this.textures)
       gl.deleteTexture(texture)
+    if (this.textures.length > 0) {
+      for (let index = 0; index < this.textures.length; index++)
+        this.diagnostics?.changeResource('texture', -1)
+    }
     this.textures.length = 0
     this.motionCache.clear()
     this.expressionCache.clear()
@@ -527,12 +591,23 @@ export async function loadFrameworkModel(
   shaderSources: Readonly<Record<string, string>> | undefined,
   options: LoadModelOptions = {},
 ) {
-  const releaseFramework = acquireFramework()
+  const diagnostics = getStageInternals(stage).diagnostics
+  const releaseFramework = acquireFramework(diagnostics)
+  const readyStartedAt = diagnostics ? performance.now() : 0
   let model: FrameworkModel | undefined
   try {
     const modelUrl = new URL(url, window.location.href).href
-    const modelJson = await fetchArrayBuffer(modelUrl, options.signal)
-    const setting = new CubismModelSettingJson(modelJson, modelJson.byteLength)
+    const modelJson = await measureAsync(
+      diagnostics,
+      'modelJsonFetch',
+      () => fetchArrayBuffer(modelUrl, options.signal),
+    )
+    const setting = measureSync(
+      diagnostics,
+      'load',
+      'modelJsonParse',
+      () => new CubismModelSettingJson(modelJson, modelJson.byteLength),
+    )
     model = new FrameworkModel(
       stage,
       modelUrl,
@@ -540,8 +615,11 @@ export async function loadFrameworkModel(
       shaderBaseUrl,
       shaderSources,
       releaseFramework,
+      diagnostics,
     )
     await model.initialize(options.signal)
+    if (diagnostics)
+      diagnostics.loadPhase('ready', performance.now() - readyStartedAt)
     return model.toHandle()
   }
   catch (error) {

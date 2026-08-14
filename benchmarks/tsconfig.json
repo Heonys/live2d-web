@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ESNext", "DOM"],
+    "baseUrl": "..",
+    "paths": {
+      "#cubism-framework/*": ["packages/live2d-web/vendor/cubism-web-framework-5-r.5/types/*"],
+      "@live2d-web/benchmark/*": ["packages/live2d-web/test/benchmark/*"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "**/*.ts",
+    "../apps/playground/src/benchmark/contracts.ts",
+    "../packages/live2d-web/test/benchmark/**/*.ts"
+  ],
+  "exclude": ["../packages/live2d-web/src/react/**", "../node_modules"]
+}

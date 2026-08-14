@@ -12,8 +12,13 @@ source/driver 립싱크와 pixi-v6 비교 어댑터가 구현돼 있다. 공식 
 5. [라이선스와 상표](licensing.md)
 6. [cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)
 7. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-8. [로드맵](roadmap.md)
-9. [과거 AIZUCHI 추출 지도](extraction-map.md)
+8. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+9. [다중 모델 벤치마크와 최적화 판정](benchmarking.md)
+10. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+11. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+12. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+13. [로드맵](roadmap.md)
+14. [과거 AIZUCHI 추출 지도](extraction-map.md)
 
 ## 확정된 결정
 

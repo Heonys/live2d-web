@@ -1,4 +1,6 @@
+import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import { Live2DError } from '../../core/errors'
+import { measureAsync, measureSync } from './diagnostics'
 
 export function resolveAssetUrl(path: string, modelUrl: string) {
   return new URL(path, modelUrl).href
@@ -68,9 +70,17 @@ export async function createTexture(
   gl: WebGL2RenderingContext,
   url: string,
   signal?: AbortSignal,
+  diagnostics?: CubismBenchmarkStageDiagnostics,
 ) {
-  const response = await checkedResponse(url, signal)
-  const source = await decodeImage(await response.blob(), signal)
+  const blob = await measureAsync(diagnostics, 'textureFetch', async () => {
+    const response = await checkedResponse(url, signal)
+    return response.blob()
+  })
+  const source = await measureAsync(
+    diagnostics,
+    'textureDecode',
+    () => decodeImage(blob, signal),
+  )
   if (signal?.aborted) {
     if ('close' in source && typeof source.close === 'function')
       source.close()
@@ -85,22 +95,24 @@ export async function createTexture(
   }
   const previousPremultiply = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL)
   try {
-    gl.bindTexture(gl.TEXTURE_2D, texture)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1)
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      source,
-    )
-    gl.generateMipmap(gl.TEXTURE_2D)
-    gl.bindTexture(gl.TEXTURE_2D, null)
+    measureSync(diagnostics, 'load', 'textureUpload', () => {
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1)
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        source,
+      )
+      gl.generateMipmap(gl.TEXTURE_2D)
+      gl.bindTexture(gl.TEXTURE_2D, null)
+    })
     return texture
   }
   catch (error) {

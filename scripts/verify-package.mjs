@@ -88,12 +88,20 @@ const packResult = JSON.parse(execFileSync(
 ))[0]
 const tarballFiles = packResult.files.map(file => file.path)
 const forbiddenTarballFiles = tarballFiles.filter(file =>
-  /live2dcubismcore|core-compat|hiyori|profile|fixture/i.test(file),
+  /benchmark|live2dcubismcore|core-compat|hiyori|profile|fixture/i.test(file),
 )
 if (forbiddenTarballFiles.length) {
   failures.push(
     `npm tarball contains forbidden Core/model/profile/fixture files: ${forbiddenTarballFiles.join(', ')}`,
   )
+}
+const declarationFiles = readdirSync(dist, { recursive: true })
+  .map(file => String(file))
+  .filter(file => /\.d\.m?ts$/.test(file))
+for (const declarationFile of declarationFiles) {
+  const source = readFileSync(path.join(dist, declarationFile), 'utf8')
+  if (/BenchmarkDiagnostics|benchmark-models/i.test(source))
+    failures.push(`public declaration exposes benchmark internals: ${declarationFile}`)
 }
 for (const requiredFile of [
   'LICENSE',

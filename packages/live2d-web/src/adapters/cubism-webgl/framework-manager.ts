@@ -1,3 +1,4 @@
+import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import { CubismFramework } from '#cubism-framework/live2dcubismframework'
 import { Live2DError } from '../../core/errors'
 
@@ -18,7 +19,7 @@ function once(cleanup: () => void) {
   }
 }
 
-export function acquireFramework() {
+export function acquireFramework(diagnostics?: CubismBenchmarkStageDiagnostics) {
   if (referenceCount === 0) {
     const core = (globalThis as typeof globalThis & {
       Live2DCubismCore?: CubismCore53Global
@@ -38,8 +39,10 @@ export function acquireFramework() {
     CubismFramework.initialize()
   }
   referenceCount++
+  diagnostics?.changeResource('frameworkReference', 1)
   return once(() => {
     referenceCount--
+    diagnostics?.changeResource('frameworkReference', -1)
     if (referenceCount === 0 && CubismFramework.isInitialized())
       CubismFramework.dispose()
   })
