@@ -130,8 +130,8 @@ Core 5.2(`core/05`)는 Framework 5-r.5와 호환되지 않아 moc 로드 중
 실패했다. 따라서 로컬 fetch script도 5.3 경로를 고정한다.
 
 Framework 5-r.5의 단일 소스는
-`packages/live2d-jsx/vendor/cubism-web-framework-5-r.5`이고 adapter는
-`packages/live2d-jsx/src/adapters/cubism-webgl`에 있다. Framework는 adapter
+`packages/live2d-web/vendor/cubism-web-framework-5-r.5`이고 adapter는
+`packages/live2d-web/src/adapters/cubism-webgl`에 있다. Framework는 adapter
 전용 동적 chunk에, 13개 셰이더는 embedded source와 배포 asset에 포함된다.
 Core와 Hiyori는 ignored 개발 자산으로만 둔다. 공개·npm 배포 전 라이선스
 확인은 [라이선스 문서](licensing.md)를 따른다.

@@ -4,10 +4,10 @@
   "version": "0.1.0-alpha.0",
   "description": "A vanilla-first Live2D runtime with optional React and renderer adapters",
   "license": "SEE LICENSE IN LICENSES.md",
-  "homepage": "https://github.com/Heonys/live2d-jsx#readme",
+  "homepage": "https://github.com/Heonys/live2d-web#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Heonys/live2d-jsx.git"
+    "url": "git+https://github.com/Heonys/live2d-web.git"
   },
   "sideEffects": false,
   "imports": {

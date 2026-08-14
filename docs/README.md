@@ -17,8 +17,7 @@ source/driver 립싱크와 pixi-v6 비교 어댑터가 구현돼 있다. 공식 
 
 ## 확정된 결정
 
-- 제품·npm 패키지 이름은 `live2d-web`이다. 저장소 URL과 실제 디렉터리
-  이름은 외부 rename 전까지 기존 경로를 유지할 수 있다.
+- 제품·npm 패키지, 로컬 디렉터리와 GitHub 저장소 이름은 `live2d-web`이다.
 - npm 패키지는 하나이며 `.`, `/react`, `/adapters/cubism-webgl`,
   `/adapters/pixi-v6`로 경계를 나눈다.
 - 루트는 React와 `"use client"`가 없는 바닐라 API다. React는 optional

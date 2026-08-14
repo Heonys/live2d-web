@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '#cubism-framework': fileURLToPath(new URL(
-        './packages/live2d-jsx/vendor/cubism-web-framework-5-r.5/src',
+        './packages/live2d-web/vendor/cubism-web-framework-5-r.5/src',
         import.meta.url,
       )),
     },

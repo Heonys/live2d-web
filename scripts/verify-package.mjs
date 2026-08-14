@@ -8,7 +8,7 @@ import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const packageDirectory = path.join(root, 'packages/live2d-jsx')
+const packageDirectory = path.join(root, 'packages/live2d-web')
 const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')

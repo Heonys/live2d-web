@@ -8,11 +8,11 @@ import { fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const source = path.join(
   root,
-  'packages/live2d-jsx/vendor/cubism-web-framework-5-r.5/Shaders/WebGL',
+  'packages/live2d-web/vendor/cubism-web-framework-5-r.5/Shaders/WebGL',
 )
 const target = path.join(
   root,
-  'packages/live2d-jsx/dist/adapters/cubism-webgl-shaders',
+  'packages/live2d-web/dist/adapters/cubism-webgl-shaders',
 )
 const shaders = readdirSync(source).filter(file => /\.(?:frag|vert)$/i.test(file))
 

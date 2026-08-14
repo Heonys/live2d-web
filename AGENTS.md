@@ -24,8 +24,8 @@ npm 공개 전이다. 공식 Framework 5-r.5 WebGL2 adapter가 기본 backend로
 
 | 경로                         | 패키지                         | 책임                                                                      |
 | ---------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
-| `packages/live2d-jsx`        | `live2d-web`                   | 유일한 퍼블리시 패키지. runtime/core·React·립싱크·어댑터                  |
-| `packages/live2d-jsx/vendor` | —                              | Cubism Web Framework 5-r.5 단일 소스(별도 typecheck·라이선스 유지)        |
+| `packages/live2d-web`        | `live2d-web`                   | 유일한 퍼블리시 패키지. runtime/core·React·립싱크·어댑터                  |
+| `packages/live2d-web/vendor` | —                              | Cubism Web Framework 5-r.5 단일 소스(별도 typecheck·라이선스 유지)        |
 | `apps/playground`            | `@live2d-web/playground`       | Next 개발장. `/` React, `/vanilla` controller API                         |
 | `apps/vanilla-consumer`      | `@live2d-web/vanilla-consumer` | React dependency 없는 Vite 소비자 fixture                                 |
 | `scripts/`                   | —                              | 공식 배포처 fetch-assets(Core + Hiyori, 약관 확인 후 ignored 경로에 준비) |
@@ -45,14 +45,14 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 - `docs/licensing.md` — Cubism Core 비동봉 인과, 상표 고지, 선행 코드 크레딧
 - `docs/cubism-webgl-plan.md` — 공식 Framework 기반 직접 WebGL 백엔드의 구현·성능·공개 게이트
 - `docs/roadmap.md` — headless runtime 완료 상태 → 라이선스 게이트 → WebGL 계획
-- `packages/live2d-jsx/src/core/contract.ts` — 어댑터 계약 타입(architecture.md의 코드화)
-- `packages/live2d-jsx/src/react/` — headless runtime binding, Store, hooks
-- `packages/live2d-jsx/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller
-- `packages/live2d-jsx/src/core/` — 계약·Core 로더·품질·프레이밍
-- `packages/live2d-jsx/src/features/lipsync/` — 순수 mouth controller와 wLipSync source 연결
-- `packages/live2d-jsx/src/react/LipSync.tsx` — source/driver React 생명주기
-- `packages/live2d-jsx/src/adapters/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
-- `packages/live2d-jsx/src/adapters/cubism-webgl/` — 기본 Framework/WebGL2 어댑터
+- `packages/live2d-web/src/core/contract.ts` — 어댑터 계약 타입(architecture.md의 코드화)
+- `packages/live2d-web/src/react/` — headless runtime binding, Store, hooks
+- `packages/live2d-web/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller
+- `packages/live2d-web/src/core/` — 계약·Core 로더·품질·프레이밍
+- `packages/live2d-web/src/features/lipsync/` — 순수 mouth controller와 wLipSync source 연결
+- `packages/live2d-web/src/react/LipSync.tsx` — source/driver React 생명주기
+- `packages/live2d-web/src/adapters/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
+- `packages/live2d-web/src/adapters/cubism-webgl/` — 기본 Framework/WebGL2 어댑터
 - `apps/playground/src/app/page.tsx` — React Hiyori 데모
 - `apps/playground/src/app/vanilla/page.tsx` — `createLive2D()` Hiyori 데모
 - `apps/vanilla-consumer/` — React 없는 import/build/browser 실행 검증

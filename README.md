@@ -155,8 +155,8 @@ bundle contain no React dependency.
 
 The original project source is MIT licensed. The bundled Cubism Web Framework
 and shaders remain under Live2D's license. Package license details and modified
-Framework files are recorded in [LICENSES.md](packages/live2d-jsx/LICENSES.md)
-and [THIRD_PARTY_NOTICES.md](packages/live2d-jsx/THIRD_PARTY_NOTICES.md).
+Framework files are recorded in [LICENSES.md](packages/live2d-web/LICENSES.md)
+and [THIRD_PARTY_NOTICES.md](packages/live2d-web/THIRD_PARTY_NOTICES.md).
 
 This is an unofficial third-party project and is not affiliated with or
 endorsed by Live2D Inc. Live2D and Cubism are trademarks of Live2D Inc.

@@ -8,8 +8,8 @@ export default antfu({
     'docs/**',
     // Vendored Framework keeps its upstream formatting and license headers.
     'private/**',
-    'packages/live2d-jsx/vendor/**',
-    'packages/live2d-jsx/src/adapters/cubism-webgl/shaderSources.generated.ts',
+    'packages/live2d-web/vendor/**',
+    'packages/live2d-web/src/adapters/cubism-webgl/shaderSources.generated.ts',
     'tmp/**',
     'test-results/**',
     'apps/playground/public/assets/**',
@@ -18,7 +18,7 @@ export default antfu({
   ],
 }, {
   // Public API supports React 18.2, so React 19-only context syntax is not used.
-  files: ['packages/live2d-jsx/src/react/**/*.{ts,tsx}'],
+  files: ['packages/live2d-web/src/react/**/*.{ts,tsx}'],
   rules: {
     'react/no-context-provider': 'off',
     'react/no-use-context': 'off',

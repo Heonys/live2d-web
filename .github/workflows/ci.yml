@@ -48,4 +48,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm verify:package
-      - run: pnpm -F @live2d-jsx/playground build
+      - run: pnpm -F @live2d-web/playground build
