@@ -1,6 +1,5 @@
 import type { Live2DInstance } from 'live2d-web'
 import { createLive2D } from 'live2d-web'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import './style.css'
 
 interface AssetManifest {
@@ -18,7 +17,6 @@ async function start() {
       throw new Error('Run `pnpm fetch-assets` before this fixture.')
     const manifest = await response.json() as AssetManifest
     character = await createLive2D({
-      backend: pixiV6,
       container,
       coreUrl: '/assets/js/cubism/5.3/live2dcubismcore.min.js',
       quality: 'auto',

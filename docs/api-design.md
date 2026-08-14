@@ -8,10 +8,8 @@ React 18.2 and React 19 are supported through `live2d-web/react`.
 
 ```ts
 import { createLive2D } from 'live2d-web'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 
 const character = await createLive2D({
-  backend: pixiV6,
   container,
   coreUrl: '/live2dcubismcore.min.js',
   fit: 'upper-body',
@@ -58,9 +56,22 @@ The promise resolves after Core, Stage and model setup. An initial failure
 rejects and disposes partial resources. Runtime errors after readiness update
 the subscribed state and call `onError`. `retry()` recreates the whole Stage.
 
-`backend` is typed as optional for the future default cubism-webgl adapter.
-While that adapter is blocked by the redistribution gate, omitting `backend`
-throws `adapter-error`; pass `pixiV6` for local and compatibility use.
+Omitting `backend` loads Cubism Core first and then dynamically imports the
+default `cubism-webgl` adapter. WebGL2 absence reports `webgl-unsupported`; the
+runtime never falls back to Pixi or WebGL1.
+
+Explicit selection is available from the adapter subpaths:
+
+```ts
+import {
+  createCubismWebGLBackend,
+  cubismWebGL,
+} from 'live2d-web/adapters/cubism-webgl'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+```
+
+`createCubismWebGLBackend({ shaderBaseUrl })` is only needed to serve shaders
+from a custom URL. `pixiV6` requires the optional Pixi peer dependencies.
 
 `addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
 Registered features survive `retry()` and attach to the new model generation.
@@ -68,10 +79,9 @@ Registered features survive `retry()` and attach to the new model generation.
 ## React components
 
 ```tsx
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
 
-<Live2DStage backend={pixiV6} coreUrl="/live2dcubismcore.min.js">
+<Live2DStage coreUrl="/live2dcubismcore.min.js">
   <Live2DModel src="/models/hiyori.model3.json">
     <LipSync driver={driver} />
   </Live2DModel>
@@ -85,9 +95,7 @@ import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
 children. Only one model is allowed per Stage. `src` changes and StrictMode
 effect replays dispose the old headless runtime generation.
 
-The React binding currently keeps `backend` required so a configuration cannot
-silently select a backend that is not legally publishable yet. It becomes
-optional when cubism-webgl passes the public gate.
+`backend` is optional and follows the same default as `createLive2D()`.
 
 ## Lip sync
 
@@ -152,11 +160,11 @@ latest getter after SDK motion update without causing React renders.
 - `render-error`
 - `adapter-error`
 
-The reserved cubism-webgl backend will use `webgl-unsupported` when WebGL2 is
-unavailable; it will not fall back to WebGL1.
+The cubism-webgl backend uses `webgl-unsupported` when WebGL2 is unavailable.
+It does not fall back to WebGL1 or Pixi.
 
 ## Next.js and SSR
 
-The root and pixi adapter entries are SSR-evaluation safe. The React entry is a
-client entry, and renderer/wLipSync runtime modules load only in browser
-lifecycle code.
+The root, cubism-webgl and pixi entries are SSR-evaluation safe. The React
+entry is a client entry. Framework, renderer and wLipSync runtime modules load
+only in browser lifecycle code.

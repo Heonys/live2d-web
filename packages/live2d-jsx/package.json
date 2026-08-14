@@ -3,16 +3,23 @@
   "type": "module",
   "version": "0.1.0-alpha.0",
   "description": "A vanilla-first Live2D runtime with optional React and renderer adapters",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSES.md",
   "homepage": "https://github.com/Heonys/live2d-jsx#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Heonys/live2d-jsx.git"
   },
   "sideEffects": false,
+  "imports": {
+    "#cubism-framework/*": {
+      "types": "./vendor/cubism-web-framework-5-r.5/types/*.d.ts",
+      "default": "./vendor/cubism-web-framework-5-r.5/src/*.ts"
+    }
+  },
   "exports": {
     ".": "./src/index.ts",
     "./react": "./src/react.ts",
+    "./adapters/cubism-webgl": "./src/adapters/cubism-webgl/index.ts",
     "./adapters/pixi-v6": "./src/adapters/pixi-v6/index.ts"
   },
   "publishConfig": {
@@ -27,6 +34,10 @@
         "types": "./dist/react.d.mts",
         "default": "./dist/react.mjs"
       },
+      "./adapters/cubism-webgl": {
+        "types": "./dist/adapters/cubism-webgl.d.mts",
+        "default": "./dist/adapters/cubism-webgl.mjs"
+      },
       "./adapters/pixi-v6": {
         "types": "./dist/adapters/pixi-v6.d.mts",
         "default": "./dist/adapters/pixi-v6.mjs"
@@ -34,12 +45,17 @@
     }
   },
   "files": [
+    "LICENSE",
+    "LICENSES.md",
     "THIRD_PARTY_NOTICES.md",
-    "dist"
+    "dist",
+    "vendor/cubism-web-framework-5-r.5/LICENSE.md"
   ],
   "scripts": {
-    "build": "tsdown",
-    "typecheck": "tsc --noEmit"
+    "build": "pnpm build:shader-sources && pnpm build:framework-types && tsdown && node ../../scripts/copy-cubism-shaders.mjs",
+    "build:framework-types": "tsc -p vendor/cubism-web-framework-5-r.5/tsconfig.live2d-web.json",
+    "build:shader-sources": "node ../../scripts/generate-cubism-shader-sources.mjs",
+    "typecheck": "pnpm build:shader-sources && pnpm build:framework-types && tsc --noEmit"
   },
   "peerDependencies": {
     "@pixi/app": "^6.5.0",
@@ -107,6 +123,7 @@
     "@pixi/ticker": "catalog:",
     "@pixi/utils": "catalog:",
     "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "jsdom": "catalog:",
     "pixi-live2d-display": "catalog:",

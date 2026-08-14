@@ -1,8 +1,8 @@
 # 아키텍처
 
 상태 기준일: **2026-08-14**. headless runtime과 React binding이 같은
-controller를 사용한다. 공개 가능한 renderer는 현재 pixi-v6 비교 어댑터뿐이고,
-공식 cubism-webgl은 ignored 기술 검증 단계다.
+controller를 사용하며, 공식 Framework 기반 cubism-webgl이 기본 backend다.
+pixi-v6는 명시적 비교·호환 backend로 남아 있다.
 
 ## 계층과 패키지 경계
 
@@ -14,8 +14,8 @@ React /react binding ──→ headless Live2DRuntime
                              ├─ resize / visibility / 품질 / retry
                              ├─ model / feature lifecycle
                              └─ Live2DBackend
-                                  ├─ adapters/pixi-v6 (공개 비교용)
-                                  └─ cubism-webgl (비공개 spike)
+                                  ├─ adapters/cubism-webgl (기본)
+                                  └─ adapters/pixi-v6 (비교·호환)
 ```
 
 - `live2d-web` 루트에는 React, `"use client"`, PIXI, Framework가 없다.
@@ -23,8 +23,8 @@ React /react binding ──→ headless Live2DRuntime
 - React와 Pixi 모듈은 optional peer다.
 - `apps/vanilla-consumer`는 React dependency 없이 root API를 production
   build하고 실제 브라우저에서 Hiyori를 실행한다.
-- `pixi-live2d-display`와 wLipSync runtime은 브라우저 사용 시점에 동적
-  import한다.
+- 기본 cubism-webgl과 `pixi-live2d-display`, wLipSync runtime은 브라우저
+  사용 시점에 동적 import한다.
 - 계약은 좌표·크기·파라미터·모션 같은 backend 중립 용어만 사용한다.
 - 첫 버전은 Stage당 모델 하나지만 여러 runtime/Canvas 동시 실행은
   허용한다.
@@ -74,9 +74,10 @@ motion / expression / eye-blink / physics / look
 → draw
 ```
 
-pixi-v6에서는 단일 `Application` ticker의 우선순위로 이 순서를 만든다.
-모델은 `autoUpdate:false`이며 `Ticker.shared`나 별도 상시 rAF를 쓰지 않는다.
-직접 cubism-webgl도 같은 순서를 구현해야 한다.
+cubism-webgl은 Stage당 단일 rAF로 이 순서를 실행한다. 수동
+`setParameter()` override는 SDK update 뒤 다시 적용되고, 외부 driver와
+립싱크가 같은 프레임의 최종값을 덮어쓸 수 있다. pixi-v6에서는 단일
+`Application` ticker의 우선순위로 같은 계약을 만든다.
 
 ## 렌더 품질
 
@@ -115,10 +116,10 @@ pixi-v6에서는 단일 `Application` ticker의 우선순위로 이 순서를 �
   `ModelHandle`을 즉시 dispose한다.
 - 기능 정리가 model보다 먼저, model이 Stage보다 먼저 실행된다.
 
-## cubism-webgl 상태
+## cubism-webgl
 
 Framework 5-r.5 + Cubism 5.3 Core(`core/06`) + 공식 Hiyori 조합으로 다음
-비공개 검증을 통과했다.
+통합 검증을 통과했다.
 
 - WebGL2 Canvas와 Hiyori idle/physics 렌더
 - motion/effect/physics 뒤 `ParamMouthOpenY = 0.5` 최종 쓰기
@@ -128,7 +129,9 @@ Framework 5-r.5 + Cubism 5.3 Core(`core/06`) + 공식 Hiyori 조합으로 다음
 Core 5.2(`core/05`)는 Framework 5-r.5와 호환되지 않아 moc 로드 중
 실패했다. 따라서 로컬 fetch script도 5.3 경로를 고정한다.
 
-Framework, shader와 spike 수정은 모두 `tmp/`의 ignored 파일이다. 서면
-재배포 확인 전에는 tracked cubism-webgl adapter, package export와 npm
-배포를 만들지 않는다. 이후 구현 계약은
-[cubism-webgl 계획](cubism-webgl-plan.md)을 따른다.
+Framework 5-r.5의 단일 소스는
+`packages/live2d-jsx/vendor/cubism-web-framework-5-r.5`이고 adapter는
+`packages/live2d-jsx/src/adapters/cubism-webgl`에 있다. Framework는 adapter
+전용 동적 chunk에, 13개 셰이더는 embedded source와 배포 asset에 포함된다.
+Core와 Hiyori는 ignored 개발 자산으로만 둔다. 공개·npm 배포 전 라이선스
+확인은 [라이선스 문서](licensing.md)를 따른다.

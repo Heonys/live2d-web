@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": false,
+    "emitDeclarationOnly": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "./types",
+    "rootDir": "./src",
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "target": "ESNext"
+  },
+  "include": [
+    "src/**/*.ts",
+    "core-compat.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "types"
+  ]
+}

@@ -1,4 +1,14 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+
+const expressionModel = readFileSync(
+  new URL('./fixtures/cubism-webgl/hiyori-expression.model3.json', import.meta.url),
+  'utf8',
+)
+const mouthExpression = readFileSync(
+  new URL('./fixtures/cubism-webgl/mouth-open.exp3.json', import.meta.url),
+  'utf8',
+)
 
 // PIXI destroys and loses every context, but Playwright WebKit defers removing
 // rapidly replaced contexts from its per-page budget. Keep 20 cycles while
@@ -25,6 +35,10 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   await page.goto('/')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(1)
+  const desktopBufferPixels = await page.locator('[data-live2d-stage] canvas').evaluate(
+    element => (element as HTMLCanvasElement).width * (element as HTMLCanvasElement).height,
+  )
+  expect(desktopBufferPixels).toBeLessThanOrEqual(4_000_000)
 
   await page.getByLabel('Framing').selectOption('full')
   const mouthSlider = page.locator('input[type="range"]')
@@ -70,6 +84,8 @@ test('runs the vanilla API and disposes every canvas', async ({ browserName, pag
 })
 
 test('runs from a consumer app with no React dependency', async ({ page }) => {
+  const unexpectedErrors: string[] = []
+  page.on('pageerror', error => unexpectedErrors.push(error.message))
   await page.goto('http://127.0.0.1:3101')
   await expect(page.locator('#status')).toHaveText('ready')
   await expect(page.locator('#character canvas')).toHaveCount(1)
@@ -77,6 +93,8 @@ test('runs from a consumer app with no React dependency', async ({ page }) => {
   await page.getByRole('button', { name: 'Dispose' }).click()
   await expect(page.locator('#status')).toHaveText('disposed')
   await expect(page.locator('#character canvas')).toHaveCount(0)
+  await page.waitForTimeout(250)
+  expect(unexpectedErrors).toEqual([])
 })
 
 test('obeys the mobile backing-buffer policy', async ({ page }) => {
@@ -192,4 +210,75 @@ test('surfaces WebGL context loss and recreates the stage', async ({ page, brows
   await page.getByRole('button', { name: 'Retry stage' }).click()
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   await expect(page.locator('[data-live2d-stage] canvas')).toHaveCount(1)
+})
+
+test('covers the integrated Framework adapter lifecycle and lazy assets', async ({ browserName, page }) => {
+  const unexpectedErrors: string[] = []
+  page.on('console', (message) => {
+    const sourceUrl = message.location().url
+    const isExpectedAssetFailure = sourceUrl.includes('/motion/hiyori_m07.motion3.json')
+      || sourceUrl.includes('/missing-live2d-shaders/')
+    if (message.type() === 'error' && !isExpectedAssetFailure)
+      unexpectedErrors.push(message.text())
+  })
+  page.on('pageerror', error => unexpectedErrors.push(error.message))
+  await page.route('**/e2e-expression.model3.json', route => route.fulfill({
+    body: expressionModel,
+    contentType: 'application/json',
+  }))
+  await page.route('**/e2e-fixtures/mouth-open.exp3.json', route => route.fulfill({
+    body: mouthExpression,
+    contentType: 'application/json',
+  }))
+
+  await page.goto('/e2e')
+  await expect(page.locator('#e2e-status')).toHaveText('ready')
+
+  await page.route('**/motion/hiyori_m07.motion3.json', route => route.fulfill({
+    body: 'temporary failure',
+    status: 500,
+  }), { times: 1 })
+  await expect(page.evaluate(() => (window as any).__live2dWebE2E.motion()))
+    .rejects
+    .toThrow('HTTP 500')
+  await page.evaluate(() => (window as any).__live2dWebE2E.motion())
+
+  const cycles = await page.evaluate(() => (window as any).__live2dWebE2E.cycle(20))
+  expect(cycles.canvases).toBe(1)
+  expect(cycles.mouth).toBeCloseTo(0.5, 1)
+
+  await page.evaluate(() => (window as any).__live2dWebE2E.focus(600, 300))
+  await expect.poll(async () => Math.abs(await page.evaluate(
+    () => (window as any).__live2dWebE2E.parameter('ParamAngleX'),
+  ))).toBeGreaterThan(0.1)
+
+  expect(await page.evaluate(() => (window as any).__live2dWebE2E.multiple(2))).toEqual({
+    after: 0,
+    during: 2,
+  })
+  await expect(page.locator('#e2e-character canvas')).toHaveCount(1)
+  expect(await page.evaluate(() => (window as any).__live2dWebE2E.abortLoad()))
+    .toBe('AbortError')
+  expect(await page.evaluate(() => (window as any).__live2dWebE2E.expressionFixture()))
+    .toBeGreaterThan(0.1)
+
+  await page.evaluate(() => (window as any).__live2dWebE2E.loseContext())
+  await expect.poll(async () => page.evaluate(
+    () => (window as any).__live2dWebE2E.state()?.status,
+  )).toBe('error')
+  await page.evaluate(() => (window as any).__live2dWebE2E.retry())
+  await expect.poll(async () => page.evaluate(
+    () => (window as any).__live2dWebE2E.state()?.status,
+  )).toBe('ready')
+
+  const shaderFailure = await page.evaluate(
+    () => (window as any).__live2dWebE2E.shaderFailure(),
+  )
+  expect(shaderFailure.code).toBe('render-error')
+  expect(shaderFailure.message).toContain('HTTP 404')
+  await expect(page.locator('#e2e-character canvas')).toHaveCount(0)
+  await page.evaluate(() => (window as any).__live2dWebE2E.start())
+  await expect(page.locator('#e2e-status')).toHaveText('ready')
+
+  expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
 })

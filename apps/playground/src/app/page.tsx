@@ -1,7 +1,6 @@
 'use client'
 
 import type { ModelFit } from 'live2d-web'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import {
   LipSync,
   Live2DModel,
@@ -181,7 +180,6 @@ export default function Home() {
   const stage = manifest && mounted
     ? (
         <Live2DStage
-          backend={pixiV6}
           coreUrl="/assets/js/cubism/5.3/live2dcubismcore.min.js"
           {...(fixedQuality ? { resolution: 1 } : { quality: 'auto' as const })}
           fallback={loadingStage => (
@@ -224,11 +222,14 @@ export default function Home() {
           <p className="eyebrow">LipSync v0.2 playground</p>
           <h1>Declarative Live2D for React</h1>
           <p>
-            PIXI stays behind the adapter. The headless runtime owns loading,
-            retries, fitting, quality and cleanup while React declares the tree.
+            The Framework WebGL adapter is loaded after Cubism Core. The
+            headless runtime owns loading, retries, fitting, quality and cleanup.
           </p>
         </div>
-        <a href="/vanilla">Vanilla playground</a>
+        <nav>
+          <a href="/vanilla">Vanilla playground</a>
+          <a href="/compare">Backend comparison</a>
+        </nav>
       </header>
 
       <section className="workspace">

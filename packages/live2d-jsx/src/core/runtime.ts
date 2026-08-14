@@ -46,10 +46,7 @@ export type RuntimeQualityOptions
 interface BaseCreateLive2DOptions {
   container: HTMLElement
   src: string
-  /**
-   * Temporary until the license-gated cubism-webgl adapter can be published.
-   * Once available, omitting this option selects that adapter.
-   */
+  /** Omit to use the official Framework-based cubism-webgl adapter. */
   backend?: Live2DBackend
   coreUrl?: string
   fit?: ModelFit
@@ -303,13 +300,11 @@ export class Live2DRuntime implements Live2DInstance {
     }
   }
 
-  private resolveBackend() {
+  private async resolveBackend() {
     if (this.options.backend)
       return this.options.backend
-    throw new Live2DError(
-      'adapter-error',
-      'The default cubism-webgl backend is not available until its redistribution terms are confirmed. Pass an explicit backend for local development.',
-    )
+    const { cubismWebGL } = await import('../adapters/cubism-webgl')
+    return cubismWebGL
   }
 
   private teardown() {
@@ -334,7 +329,6 @@ export class Live2DRuntime implements Live2DInstance {
       throw new Live2DError('invalid-props', 'Cannot start a disposed Live2D instance.')
 
     assertOptions(this.options)
-    const backend = this.resolveBackend()
     const policy = this.options.resolution !== undefined
       ? undefined
       : resolveAutoQualityPolicy(
@@ -353,6 +347,12 @@ export class Live2DRuntime implements Live2DInstance {
     try {
       this.updateState({ error: undefined, loadingStage: 'core', status: 'loading' })
       await ensureCubismCore(this.options.coreUrl)
+      if (controller.signal.aborted)
+        throw controller.signal.reason
+
+      // Framework modules read the Core global while evaluating, so the
+      // default adapter must never be imported before Core is ready.
+      const backend = await this.resolveBackend()
       if (controller.signal.aborted)
         throw controller.signal.reason
 

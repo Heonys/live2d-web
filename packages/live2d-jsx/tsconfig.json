@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "lib": ["ESNext", "DOM"]
+    "lib": ["ESNext", "DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "#cubism-framework/*": ["vendor/cubism-web-framework-5-r.5/types/*"]
+    }
   },
   "include": ["src", "test", "tsdown.config.ts"]
 }

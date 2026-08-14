@@ -7,21 +7,17 @@ render quality, retry and cleanup. Rendering stays behind a backend contract,
 so the same runtime can be used directly from JavaScript or through React.
 
 **Status: `0.1.0-alpha.0` is implemented and validated locally, but has not
-been published to npm.** The official Cubism WebGL2 path has passed a private
-Framework 5-r.5/Hiyori implementation test. A review-only snapshot of the
-adapter, modified Framework and shaders is tracked under `private/` while this
-repository is private. It is not present in package exports or the npm tarball
-and must not be made public until Live2D confirms the redistribution terms in
-writing. Until then, pass the PixiJS v6 comparison backend explicitly.
+been published to npm.** The default backend uses the official Cubism Web
+Framework 5-r.5 renderer directly on WebGL2. PixiJS v6 remains available only
+as an explicit compatibility and performance-comparison backend. Public
+repository and npm release are separate release gates.
 
 ## Vanilla API
 
 ```ts
 import { createLive2D } from 'live2d-web'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 
 const character = await createLive2D({
-  backend: pixiV6,
   container: document.querySelector('#character')!,
   coreUrl: '/assets/live2dcubismcore.min.js',
   fit: 'upper-body',
@@ -45,13 +41,11 @@ also exposes `expression`, `focus`, `getParameter`, `setFit`, `retry`,
 ```tsx
 'use client'
 
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import { LipSync, Live2DModel, Live2DStage } from 'live2d-web/react'
 
 export function Character({ voice }: { voice: AudioNode | null }) {
   return (
     <Live2DStage
-      backend={pixiV6}
       coreUrl="/assets/live2dcubismcore.min.js"
       quality="auto"
     >
@@ -70,14 +64,41 @@ export function Character({ voice }: { voice: AudioNode | null }) {
 The React components create and subscribe to the same headless controller used
 by the vanilla API. Per-frame values never pass through React state.
 
+## Backend selection
+
+Omitting `backend` selects the Framework-based WebGL2 backend. It never falls
+back to Pixi or WebGL1.
+
+```ts
+import {
+  createCubismWebGLBackend,
+  cubismWebGL,
+} from 'live2d-web/adapters/cubism-webgl'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+
+// Reusable default WebGL backend instance.
+const defaultBackend = cubismWebGL
+
+// Only needed when shaders must be served from an application-owned URL.
+const customWebGL = createCubismWebGLBackend({
+  shaderBaseUrl: '/live2d-shaders/',
+})
+
+// Compatibility/A-B path; requires the optional Pixi peer dependencies.
+const compatibilityBackend = pixiV6
+```
+
+Cubism Core 5.3 is deliberately not bundled. Supply its official browser file
+with `coreUrl`, or load it before creating a model and omit `coreUrl`.
+
 ## Package boundaries
 
 - `live2d-web`: React-free vanilla runtime and renderer-neutral contracts.
 - `live2d-web/react`: client components and hooks. React is an optional peer.
-- `live2d-web/adapters/pixi-v6`: temporary compatibility/A-B backend using
+- `live2d-web/adapters/cubism-webgl`: default WebGL2 backend containing the
+  Framework runtime and its shader assets, but not Cubism Core.
+- `live2d-web/adapters/pixi-v6`: compatibility/A-B backend using
   `pixi-live2d-display@0.4`; all Pixi peers are optional.
-- `live2d-web/adapters/cubism-webgl`: reserved, but deliberately not exported
-  before the redistribution gate is cleared.
 
 Automatic quality limits mobile backing buffers to 1.5 MP and desktop buffers
 to 4 MP. A fixed `resolution` disables automatic downshifting.
@@ -108,6 +129,7 @@ pnpm test
 pnpm verify:package
 pnpm -F @live2d-web/playground build
 pnpm test:e2e
+LIVE2D_BENCHMARK_MS=300000 pnpm benchmark:backends
 ```
 
 After reviewing the official terms linked by the command,
@@ -115,8 +137,8 @@ After reviewing the official terms linked by the command,
 uses the official Cubism 5.3 Core (`core/06`) and Hiyori URLs and writes only to
 ignored development paths. Neither asset is included in the package.
 
-The Playground provides the React page at `/` and the vanilla-controller page
-at `/vanilla`, both using the same Hiyori manifest.
+The Playground provides React at `/`, the vanilla controller at `/vanilla`,
+and a WebGL/Pixi A-B view at `/compare`, all using the same Hiyori manifest.
 `apps/vanilla-consumer` is a separate Vite fixture whose manifest and production
 bundle contain no React dependency.
 
@@ -130,11 +152,14 @@ bundle contain no React dependency.
 
 ## License and trademark
 
-The project source is MIT licensed. Third-party notices are listed in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+The original project source is MIT licensed. The bundled Cubism Web Framework
+and shaders remain under Live2D's license. Package license details and modified
+Framework files are recorded in [LICENSES.md](packages/live2d-jsx/LICENSES.md)
+and [THIRD_PARTY_NOTICES.md](packages/live2d-jsx/THIRD_PARTY_NOTICES.md).
 
 This is an unofficial third-party project and is not affiliated with or
 endorsed by Live2D Inc. Live2D and Cubism are trademarks of Live2D Inc.
-`live2d-web` does not bundle Cubism Core, Cubism Framework, shaders, sample
-models or a lip-sync profile. The repository's review-only `private/` snapshot
-is outside the package and is not approved for public redistribution.
+`live2d-web` does not bundle Cubism Core, sample models or a lip-sync profile.
+Before making the repository public or publishing npm, confirm that the final
+Framework/shader redistribution and product use comply with Live2D's current
+terms. See [licensing notes](docs/licensing.md).

@@ -1,7 +1,7 @@
 # Third-party notices
 
-`live2d-web` interoperates with the following projects. They are not bundled
-in the root entry point.
+`live2d-web` interoperates with the following projects. Renderer-specific code
+is excluded from the root static bundle.
 
 - [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display),
   copyright Guan, MIT License. Used by the optional PixiJS v6 adapter.
@@ -14,9 +14,12 @@ in the root entry point.
   MIT License. Dynamically loaded by the source lip-sync mode. Its runtime is
   installed as a dependency but no calibration profile is bundled.
 
-Live2D Cubism Core, Cubism Framework and Live2D sample models are owned and
-licensed by Live2D Inc. A Framework and shader review snapshot is present only
-under `private/` in the private repository, retaining Live2D's license and
-copyright headers. It is excluded from the npm package and may not be publicly
-redistributed without written permission. Cubism Core and sample models are
-not included in Git or npm and are obtained separately by the user.
+- [Cubism Web Framework 5-r.5](https://github.com/Live2D/CubismWebFramework)
+  and its WebGL shaders, copyright Live2D Inc., Live2D Open Software License.
+  They are bundled only in the `cubism-webgl` adapter chunks/assets. The
+  Framework source retains its upstream headers, and the package includes the
+  upstream license and a modification record.
+
+Live2D Cubism Core and Live2D sample models are owned and licensed by Live2D
+Inc. They are not included in Git or npm and are obtained separately by the
+user.

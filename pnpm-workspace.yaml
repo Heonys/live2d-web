@@ -11,6 +11,7 @@ trustPolicyExclude:
 packages:
   - apps/**
   - packages/**
+  - '!packages/live2d-jsx/vendor/**'
 
 catalog:
   '@antfu/eslint-config': ^9.2.0

@@ -5,7 +5,7 @@
 
 import { Buffer } from 'node:buffer'
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -20,6 +20,7 @@ const cacheDir = path.join(root, 'tmp/asset-cache')
 // Core 06 is Cubism 5.3 and matches Framework 5-r.5. Keeping the destination
 // versioned prevents a stale Core 05 file from being silently reused.
 const CUBISM_CORE_URL = 'https://cubism.live2d.com/sdk-web/core/06/live2dcubismcore.min.js'
+const CUBISM_PIXI_CORE_URL = 'https://cubism.live2d.com/sdk-web/core/05/live2dcubismcore.min.js'
 const HIYORI_URL = 'https://cubism.live2d.com/sample-data/bin/hiyori/hiyori_en.zip'
 const TERMS = [
   'https://www.live2d.com/en/sdk/download/web/',
@@ -37,8 +38,8 @@ function assertTermsAccepted() {
   )
 }
 
-async function download(url, dest) {
-  if (existsSync(dest))
+async function download(url, dest, { force = false } = {}) {
+  if (!force && existsSync(dest))
     return
   assertTermsAccepted()
   console.log(`[download] ${url}`)
@@ -67,12 +68,30 @@ function findFile(dir, predicate) {
 
 // 1. Cubism Core — <Live2DStage coreUrl> 경로와 일치해야 한다
 const coreDest = path.join(assetsDir, 'js/cubism/5.3/live2dcubismcore.min.js')
-if (existsSync(coreDest)) {
+const currentCoreSource = existsSync(coreDest) ? readFileSync(coreDest, 'utf8') : ''
+const hasCubism53Core = currentCoreSource.includes('MocVersion_53')
+  && currentCoreSource.includes('ColorBlendType_Normal')
+if (hasCubism53Core) {
   console.log('[skip] Cubism Core')
 }
 else {
-  await download(CUBISM_CORE_URL, coreDest)
+  await download(CUBISM_CORE_URL, coreDest, { force: true })
   console.log(`[ok] Cubism Core → ${path.relative(root, coreDest)}`)
+}
+
+// pixi-live2d-display@0.4 embeds an older Framework that cannot consume the
+// Core 5.3 drawable blend-mode layout. Keep its A/B fixture on the final
+// pre-5.3 Core instead of swapping the process-global Core in one page.
+const pixiCoreDest = path.join(assetsDir, 'js/cubism/5.2/live2dcubismcore.min.js')
+const currentPixiCoreSource = existsSync(pixiCoreDest)
+  ? readFileSync(pixiCoreDest, 'utf8')
+  : ''
+if (currentPixiCoreSource.includes('MocVersion_50')) {
+  console.log('[skip] Cubism Core for pixi-v6')
+}
+else {
+  await download(CUBISM_PIXI_CORE_URL, pixiCoreDest, { force: true })
+  console.log(`[ok] Cubism Core for pixi-v6 → ${path.relative(root, pixiCoreDest)}`)
 }
 
 // 2. Hiyori 샘플 모델 (Live2D 공식 무료 샘플)

@@ -8,6 +8,8 @@
   },
   "scripts": {
     "postinstall": "simple-git-hooks || exit 0",
+    "prebenchmark:backends": "pnpm -F @live2d-web/playground build",
+    "benchmark:backends": "playwright test --config benchmarks/playwright.config.ts",
     "dev": "pnpm -F @live2d-web/playground dev",
     "build": "pnpm -F live2d-web build",
     "lint": "eslint .",

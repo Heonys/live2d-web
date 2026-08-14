@@ -7,7 +7,7 @@ import { createContext } from 'react'
 export const StageContext = createContext<StageStore | null>(null)
 
 export interface RuntimeHostContextValue {
-  backend: Live2DBackend
+  backend?: Live2DBackend
   container: HTMLElement | null
   coreUrl?: string
   maxFps?: number

@@ -64,6 +64,12 @@ header a {
   color: #b9adff;
 }
 
+header nav {
+  display: flex;
+  flex: none;
+  gap: 14px;
+}
+
 .eyebrow {
   margin-bottom: 8px;
   color: #c8bdff;

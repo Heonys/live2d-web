@@ -10,8 +10,8 @@ import { RuntimeHostContext, StageContext } from './context'
 import { StageStore } from './store'
 
 interface BaseLive2DStageProps {
-  /** Required until the license-gated cubism-webgl backend can be published. */
-  backend: Live2DBackend
+  /** Omit to use the official Framework-based cubism-webgl adapter. */
+  backend?: Live2DBackend
   coreUrl?: string
   maxFps?: number
   className?: string

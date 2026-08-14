@@ -2,7 +2,6 @@
 
 import type { Live2DInstance, ModelFit } from 'live2d-web'
 import { createLive2D } from 'live2d-web'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import { useEffect, useRef, useState } from 'react'
 
 interface AssetManifest {
@@ -40,7 +39,6 @@ export default function VanillaPlayground() {
           return
 
         const instance = await createLive2D({
-          backend: pixiV6,
           container: containerRef.current,
           coreUrl: '/assets/js/cubism/5.3/live2dcubismcore.min.js',
           fit: 'upper-body',
@@ -92,13 +90,17 @@ export default function VanillaPlayground() {
           <p className="eyebrow">Vanilla runtime playground</p>
           <h1>Live2D without React bindings</h1>
           <p>
-            This page mounts one imperative runtime with
+            This page mounts one imperative
             {' '}
             <code>createLive2D()</code>
-            . PIXI is passed only as a temporary comparison backend.
+            {' '}
+            runtime with the default Framework WebGL backend.
           </p>
         </div>
-        <a href="/">React playground</a>
+        <nav>
+          <a href="/">React playground</a>
+          <a href="/compare">Backend comparison</a>
+        </nav>
       </header>
 
       <section className="workspace">
@@ -155,8 +157,8 @@ export default function VanillaPlayground() {
           </button>
 
           <p className="note">
-            The root import contains no React code. The future cubism-webgl
-            backend remains private until redistribution terms are confirmed.
+            The root import contains no React or Pixi runtime code. Cubism Core
+            remains an application-provided script.
           </p>
         </aside>
       </section>

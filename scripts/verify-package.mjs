@@ -1,20 +1,45 @@
 #!/usr/bin/env node
 
 import { Buffer } from 'node:buffer'
+import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const dist = path.join(root, 'packages/live2d-jsx/dist')
+const packageDirectory = path.join(root, 'packages/live2d-jsx')
+const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
-const adapter = readFileSync(path.join(dist, 'adapters/pixi-v6.mjs'), 'utf8')
-const rootBundle = readdirSync(dist)
-  .filter(file => file.endsWith('.mjs') && file !== 'react.mjs')
-  .map(file => readFileSync(path.join(dist, file), 'utf8'))
-  .join('\n')
+const pixiAdapter = readFileSync(path.join(dist, 'adapters/pixi-v6.mjs'), 'utf8')
+const cubismAdapter = readFileSync(path.join(dist, 'adapters/cubism-webgl.mjs'), 'utf8')
+
+function collectGraph(entryFile, includeDynamic) {
+  const visited = new Set()
+  const sources = []
+  const visit = (file) => {
+    const absolute = path.resolve(dist, file)
+    if (visited.has(absolute))
+      return
+    visited.add(absolute)
+    const source = readFileSync(absolute, 'utf8')
+    sources.push(source)
+    const patterns = [/from\s*["'](\.[^"']+\.mjs)["']/g]
+    if (includeDynamic)
+      patterns.push(/import\(["'](\.[^"']+\.mjs)["']\)/g)
+    for (const pattern of patterns) {
+      for (const match of source.matchAll(pattern)) {
+        visit(path.relative(dist, path.resolve(path.dirname(absolute), match[1])))
+      }
+    }
+  }
+  visit(entryFile)
+  return sources.join('\n')
+}
+
+const rootBundle = collectGraph('index.mjs', false)
+const cubismBundle = collectGraph('adapters/cubism-webgl.mjs', true)
 
 const failures = []
 if (entry.includes('"use client"') || entry.includes('\'use client\''))
@@ -29,8 +54,14 @@ if (rootBundle.includes('CubismFramework') || rootBundle.includes('csmGetVersion
   failures.push('root bundle appears to contain Cubism runtime code')
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
-if (!adapter.includes('import("pixi-live2d-display/cubism4")'))
+if (!rootBundle.includes('import("./adapters/cubism-webgl.mjs")'))
+  failures.push('root runtime does not dynamically import the default cubism-webgl adapter')
+if (!pixiAdapter.includes('import("pixi-live2d-display/cubism4")'))
   failures.push('pixi-live2d-display must remain a browser-time dynamic import')
+if (!cubismBundle.includes('CubismFramework') || !cubismBundle.includes('Live2DCubismCore'))
+  failures.push('cubism-webgl adapter does not contain the bundled Framework runtime')
+if (cubismBundle.includes('@pixi/') || cubismBundle.includes('pixi-live2d-display'))
+  failures.push('cubism-webgl adapter contains a PIXI dependency')
 if (!rootBundle.includes('import("wlipsync")'))
   failures.push('wlipsync must remain a browser-time dynamic import')
 if (rootBundle.includes('wlipsync-single') || rootBundle.includes('audio-processor.js'))
@@ -42,11 +73,56 @@ const bundledAssets = readdirSync(dist, { recursive: true })
 if (bundledAssets.length)
   failures.push(`package dist contains forbidden profile/runtime assets: ${bundledAssets.join(', ')}`)
 
+const shaderDirectory = path.join(dist, 'adapters/cubism-webgl-shaders')
+const shaders = readdirSync(shaderDirectory)
+  .filter(file => /\.(?:frag|vert)$/i.test(file))
+if (shaders.length !== 13)
+  failures.push(`package dist must contain 13 Cubism WebGL shaders, found ${shaders.length}`)
+if (!cubismAdapter.includes('cubism-webgl-shaders') || !cubismAdapter.includes('import.meta.url'))
+  failures.push('cubism-webgl default shader URL is not adapter-relative')
+
+const packResult = JSON.parse(execFileSync(
+  'npm',
+  ['pack', '--dry-run', '--json'],
+  { cwd: packageDirectory, encoding: 'utf8' },
+))[0]
+const tarballFiles = packResult.files.map(file => file.path)
+const forbiddenTarballFiles = tarballFiles.filter(file =>
+  /live2dcubismcore|core-compat|hiyori|profile|fixture/i.test(file),
+)
+if (forbiddenTarballFiles.length) {
+  failures.push(
+    `npm tarball contains forbidden Core/model/profile/fixture files: ${forbiddenTarballFiles.join(', ')}`,
+  )
+}
+for (const requiredFile of [
+  'LICENSE',
+  'LICENSES.md',
+  'THIRD_PARTY_NOTICES.md',
+  'vendor/cubism-web-framework-5-r.5/LICENSE.md',
+]) {
+  if (!tarballFiles.includes(requiredFile))
+    failures.push(`npm tarball is missing ${requiredFile}`)
+}
+const tarballShaders = tarballFiles.filter(file =>
+  file.startsWith('dist/adapters/cubism-webgl-shaders/')
+  && /\.(?:frag|vert)$/.test(file),
+)
+if (tarballShaders.length !== 13)
+  failures.push(`npm tarball must contain 13 Cubism shaders, found ${tarballShaders.length}`)
+
 try {
   await import(pathToFileURL(path.join(dist, 'index.mjs')).href)
 }
 catch (error) {
   failures.push(`root bundle is not SSR-evaluation safe: ${String(error)}`)
+}
+
+try {
+  await import(pathToFileURL(path.join(dist, 'adapters/cubism-webgl.mjs')).href)
+}
+catch (error) {
+  failures.push(`cubism-webgl adapter is not SSR-evaluation safe: ${String(error)}`)
 }
 
 if (failures.length) {
@@ -55,5 +131,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/adapter boundaries verified')
+  console.log('[package] vanilla/react/pixi/cubism boundaries verified')
 }

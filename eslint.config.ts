@@ -6,8 +6,10 @@ export default antfu({
   formatters: true,
   ignores: [
     'docs/**',
-    // Live2D review snapshot and vendored Framework keep their own formatting.
+    // Vendored Framework keeps its upstream formatting and license headers.
     'private/**',
+    'packages/live2d-jsx/vendor/**',
+    'packages/live2d-jsx/src/adapters/cubism-webgl/shaderSources.generated.ts',
     'tmp/**',
     'test-results/**',
     'apps/playground/public/assets/**',
