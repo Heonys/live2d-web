@@ -11,6 +11,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
 import path from 'node:path'
@@ -68,9 +69,12 @@ async function download(url, dest, { force = false } = {}) {
   writeFileSync(dest, Buffer.from(await res.arrayBuffer()))
 }
 
-function unzip(zipPath, destDir) {
+// unzip의 인자 순서는 `unzip [-opts] file.zip [members...] -d exdir`이다.
+// 패턴이 하나도 맞지 않으면 exit 11로 실패하므로, 아카이브 구조가 바뀌면
+// 빈 폴더가 조용히 생기는 대신 빌드가 멈춘다.
+function unzip(zipPath, destDir, members = []) {
   mkdirSync(destDir, { recursive: true })
-  execFileSync('unzip', ['-oq', zipPath, '-d', destDir], { stdio: 'inherit' })
+  execFileSync('unzip', ['-oq', zipPath, ...members, '-d', destDir], { stdio: 'inherit' })
 }
 
 function findFile(dir, predicate) {
@@ -160,24 +164,44 @@ else {
 }
 
 // 2. Hiyori 샘플 모델 (Live2D 공식 무료 샘플)
+// 공식 zip은 hiyori_pro와 hiyori_free 두 모델을 담고 있다. 이용 조건이 서로
+// 다르므로 무료 모델의 runtime만 풀고, 나머지(편집기 원본 .cmo3/.can3, Pro
+// 모델)는 배포에서 제외한다. ReadMe.txt는 Live2D가 동봉한 약관이라 남긴다.
 const hiyoriDir = path.join(assetsDir, 'live2d/hiyori')
-let model3 = findFile(hiyoriDir, name => name.endsWith('.model3.json'))
+const hiyoriModelDir = path.join(hiyoriDir, 'hiyori_free')
+let model3 = findFile(hiyoriModelDir, name => name.endsWith('.model3.json'))
 if (model3) {
   console.log('[skip] Hiyori')
 }
 else {
   const zip = path.join(cacheDir, 'hiyori_en.zip')
   await download(HIYORI_URL, zip)
-  unzip(zip, hiyoriDir)
-  model3 = findFile(hiyoriDir, name => name.endsWith('.model3.json'))
+  // 예전 서드파티 zip이 남긴 트리를 정리한다(gitignore된 재생성 가능 경로).
+  rmSync(path.join(hiyoriDir, 'hiyori_free_zh'), { force: true, recursive: true })
+  unzip(zip, hiyoriDir, ['hiyori_free/runtime/*', 'hiyori_free/ReadMe.txt'])
+  model3 = findFile(hiyoriModelDir, name => name.endsWith('.model3.json'))
   if (!model3)
-    throw new Error('Hiyori zip에서 model3.json을 찾지 못했다')
+    throw new Error('Hiyori zip에서 hiyori_free/runtime의 model3.json을 찾지 못했다')
   console.log(`[ok] Hiyori → ${path.relative(root, model3)}`)
 }
 
-// 3. manifest — 앱 코드가 모델 경로를 하드코딩하지 않게 하는 간접층
+// 3. manifest — 앱 코드가 모델 경로를 하드코딩하지 않게 하는 간접층.
+// moc3와 texture URL도 싣는다. 이 둘은 원래 model3.json을 파싱해야 알 수 있어서
+// 데모가 Core 로딩과 겹쳐 미리 받아둘 수 없었다.
+function modelChildUrls(model3Path) {
+  const references = JSON.parse(readFileSync(model3Path, 'utf8')).FileReferences ?? {}
+  const resolve = relativePath => toPublicUrl(
+    path.resolve(path.dirname(model3Path), relativePath),
+  )
+  return {
+    moc3: resolve(references.Moc),
+    textures: (references.Textures ?? []).map(resolve),
+  }
+}
+
 const manifest = {
   model3: toPublicUrl(model3),
+  ...modelChildUrls(model3),
 }
 writeFileSync(path.join(hiyoriDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
 

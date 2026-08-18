@@ -1,11 +1,11 @@
 {
   "Version": 3,
   "FileReferences": {
-    "Moc": "/assets/live2d/hiyori/hiyori_free_zh/runtime/hiyori_free_t08.moc3",
+    "Moc": "/assets/live2d/hiyori/hiyori_free/runtime/hiyori_free_t08.moc3",
     "Textures": [
-      "/assets/live2d/hiyori/hiyori_free_zh/runtime/hiyori_free_t08.2048/texture_00.png"
+      "/assets/live2d/hiyori/hiyori_free/runtime/hiyori_free_t08.2048/texture_00.png"
     ],
-    "Physics": "/assets/live2d/hiyori/hiyori_free_zh/runtime/hiyori_free_t08.physics3.json",
+    "Physics": "/assets/live2d/hiyori/hiyori_free/runtime/hiyori_free_t08.physics3.json",
     "Expressions": [
       {
         "Name": "fixture",

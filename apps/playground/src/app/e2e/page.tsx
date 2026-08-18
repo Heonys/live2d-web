@@ -9,7 +9,7 @@ import {
 import { useEffect } from 'react'
 
 const CORE_URL = '/assets/js/cubism/5.3/live2dcubismcore.min.js'
-const MODEL_URL = '/assets/live2d/hiyori/hiyori_free_zh/runtime/hiyori_free_t08.model3.json'
+const MODEL_URL = '/assets/live2d/hiyori/hiyori_free/runtime/hiyori_free_t08.model3.json'
 
 declare global {
   interface Window {
