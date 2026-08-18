@@ -186,6 +186,31 @@ written after the SDK update and cleared immediately, so it never persists as a
 manual override. When speech ends, the release/hold sequence finishes and
 motion curves regain the mouth parameter automatically.
 
+## Decisions on 2026-08-18 (defect round)
+
+공개 전 감사에서 확인된 결함을 고치며 정해진 계약이다.
+
+- **사용자 pause는 `retry()`를 넘어 유지된다**: `hidden`/`offscreen`은 관찰자가
+  매 세대 다시 보고하지만 `user`는 pause 이유 집합 말고 진실 소스가 없다.
+  React의 `paused` effect는 `retry()`로 재실행되지 않으므로, 버리면 컨텍스트
+  복구 때마다 `paused`가 조용히 풀린다. 스테이지 생성 전에 요청된 pause도
+  생성 직후 적용된다.
+- **`motion()`은 렌더 에러 시 reject한다**: 렌더 에러 뒤에는 프레임 루프가
+  다시 돌지 않아 재생이 끝날 수 없다. dispose 시에는 기존대로 resolve한다.
+  이미 `void controller.motion(...)`을 catch 없이 쓰는 코드가 많고, pixi
+  어댑터도 destroy 시 resolve하므로 두 backend를 같게 유지한다.
+- **`ensureCubismCore()`는 페이지가 먼저 넣은 `<script>`를 채택하지 않는다**:
+  `load`/`error`는 일회성이라 이미 발화한 엘리먼트에 리스너를 달면 promise가
+  영원히 미결이 된다. 중복 제거는 `pendingLoads`가 담당한다. 30초 타임아웃과
+  `AbortSignal`을 추가했고, 한 호출자의 abort는 공유 로드를 오염시키지 않는다.
+- **pixi-v6 어댑터의 좌표계는 CSS 픽셀이다**: `toWorld`가 CSS 픽셀을 돌려주고
+  `focus`/`hitTest`가 내부에서 PIXI global 공간으로 환산한다. 이전에는 계약대로
+  CSS 픽셀을 넘기는 `instance.focus()`가 고DPI에서 어긋났다.
+- **pixi-v6의 `setParameter`도 지속 오버라이드다**: 어댑터가 값을 기록해 매
+  motion 업데이트 뒤 다시 적용한다. 다만 pixi 파이프라인에서 expression과
+  physics/pose는 그 뒤에 실행되므로, 그 둘이 구동하는 파라미터에 대해서는 기본
+  어댑터만큼의 우선순위를 보장하지 않는다.
+
 ## Decisions on 2026-08-18 (interaction round)
 
 - **motion() resolves at playback end, not start**: sequencing ("say the next

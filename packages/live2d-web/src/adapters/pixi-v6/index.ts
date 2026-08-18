@@ -217,9 +217,11 @@ function createStage(element: HTMLElement, options: StageOptions): StageHandle {
       const rect = canvas.getBoundingClientRect()
       const width = rect.width || 1
       const height = rect.height || 1
+      // Stage space is CSS pixels, the same space getSize() reports. The model
+      // handle scales into PIXI global space, which also carries `resolution`.
       return {
-        x: (clientX - rect.left) / width * canvas.width,
-        y: (clientY - rect.top) / height * canvas.height,
+        x: (clientX - rect.left) / width * size.width,
+        y: (clientY - rect.top) / height * size.height,
       }
     },
   }
@@ -302,8 +304,16 @@ async function loadModel(
 
   const initialSize = { height: model.height, width: model.width }
   const afterMotionCallbacks = new Set<(deltaMs: number) => void>()
+  const manualParameters = new Map<string, number>()
+  const frameWatchers = new Set<() => void>()
   let lastMotionUpdateMs = Number.NaN
   let disposed = false
+
+  // PIXI global space carries the stage scale, which is the stage resolution.
+  const toGlobal = (x: number, y: number) => ({
+    x: x * internals.app.stage.scale.x,
+    y: y * internals.app.stage.scale.y,
+  })
 
   const onAfterMotionUpdate = () => {
     const timestamp = performance.now()
@@ -311,8 +321,17 @@ async function loadModel(
       ? 0
       : timestamp - lastMotionUpdateMs
     lastMotionUpdateMs = timestamp
+    // Same order as the default adapter: manual overrides land after the motion
+    // update, then drivers run, then the Core update consumes both.
+    if (manualParameters.size > 0) {
+      const core = model.internalModel.coreModel as unknown as CoreModelParameters
+      for (const [id, value] of manualParameters)
+        core.setParameterValueById(id, value)
+    }
     for (const callback of afterMotionCallbacks)
       callback(deltaMs)
+    for (const watcher of [...frameWatchers])
+      watcher()
   }
   const updateModel = () => {
     try {
@@ -331,6 +350,10 @@ async function loadModel(
   const dispose = idempotent(() => {
     disposed = true
     afterMotionCallbacks.clear()
+    manualParameters.clear()
+    for (const watcher of [...frameWatchers])
+      watcher()
+    frameWatchers.clear()
     model.internalModel.off('afterMotionUpdate', onAfterMotionUpdate)
     if (!internals.disposed) {
       internals.app.ticker.remove(updateModel)
@@ -342,6 +365,8 @@ async function loadModel(
   const internal = model.internalModel as unknown as {
     hitAreas?: Record<string, unknown>
     motionManager?: {
+      currentGroup?: string
+      currentIndex?: number
       expressionManager?: { resetExpression: () => void }
       isFinished?: () => boolean
       off?: (event: string, listener: () => void) => void
@@ -359,17 +384,19 @@ async function loadModel(
       if (!disposed)
         internal.motionManager?.expressionManager?.resetExpression()
     },
-    // pixi-live2d-display writes are already transient: the next motion update
-    // overwrites them, so there is no persistent override entry to remove.
-    clearParameter() {},
+    clearParameter(id) {
+      manualParameters.delete(id)
+    },
     dispose,
     async expression(id) {
       if (!disposed)
         await model.expression(id)
     },
     focus(x, y) {
-      if (!disposed)
-        model.focus(x, y)
+      if (!disposed) {
+        const point = toGlobal(x, y)
+        model.focus(point.x, point.y)
+      }
     },
     getIntrinsicSize: () => ({ ...initialSize }),
     getModelInfo() {
@@ -391,7 +418,10 @@ async function loadModel(
       return core.getParameterValueById(id)
     },
     hitTest(x, y) {
-      return disposed ? [] : model.hitTest(x, y)
+      if (disposed)
+        return []
+      const point = toGlobal(x, y)
+      return model.hitTest(point.x, point.y)
     },
     isMotionPlaying() {
       return !disposed && internal.motionManager?.isFinished?.() === false
@@ -403,18 +433,31 @@ async function loadModel(
       const started = await model.motion(group, index, priority)
       if (started === false || disposed)
         return
-      // pixi resolves at playback start; wait for the untyped runtime events
-      // so the contract's "resolves when playback finishes" holds here too.
+      const manager = internal.motionManager
+      if (!manager?.on)
+        return
+      // motionFinish carries no motion identity, so a motion that interrupts
+      // this one would otherwise hold the promise until the interrupter ends.
+      // currentGroup/currentIndex identify the playback that actually started.
+      const ownGroup = manager.currentGroup
+      const ownIndex = manager.currentIndex
+      const superseded = () => manager.currentGroup !== ownGroup
+        || manager.currentIndex !== ownIndex
       await new Promise<void>((resolve) => {
+        let check = () => {}
         const done = () => {
-          internal.motionManager?.off?.('motionFinish', done)
-          internal.motionManager?.off?.('destroy', done)
+          manager.off?.('motionFinish', check)
+          manager.off?.('destroy', done)
+          frameWatchers.delete(check)
           resolve()
         }
-        internal.motionManager?.on?.('motionFinish', done)
-        internal.motionManager?.on?.('destroy', done)
-        if (!internal.motionManager?.on)
-          resolve()
+        check = () => {
+          if (disposed || superseded() || manager.isFinished?.() !== false)
+            done()
+        }
+        manager.on?.('motionFinish', check)
+        manager.on?.('destroy', done)
+        frameWatchers.add(check)
       })
     },
     onAfterMotionUpdate(callback) {
@@ -426,6 +469,9 @@ async function loadModel(
     setParameter(id, value) {
       if (disposed)
         return
+      // Recorded so the next motion update cannot overwrite it, matching the
+      // documented "persists until clearParameter()" behaviour.
+      manualParameters.set(id, value)
       const core = model.internalModel.coreModel as unknown as CoreModelParameters
       core.setParameterValueById(id, value)
     },
