@@ -9,13 +9,17 @@ backend다.
 2. [API reference](api-design.md)
 3. [라이선스와 상표](licensing.md)
 4. [벤치마크 가이드](benchmarking.md)
-5. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-6. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-7. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-8. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-9. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-10. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-11. [Apple M2 Pro 하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+5. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+   — 최신 backend A/B 판정
+6. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+   — 실제 GPU에서의 셰이더·ready 비용
+7. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+8. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+9. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+10. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+11. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+12. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+13. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
