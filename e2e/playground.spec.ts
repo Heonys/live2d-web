@@ -45,6 +45,8 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   await mouthSlider.fill('0.8')
   await expect(mouthSlider).toHaveValue('0.8')
 
+  // The mount/unmount QA buttons live in the collapsed developer tools.
+  await page.getByText('Developer tools').click()
   for (let index = 0; index < 20; index++) {
     await page.getByRole('button', { name: 'Unmount canvas' }).click()
     await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
@@ -194,6 +196,7 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ page }) =
   )
   test.skip(!supported, 'AudioWorklet is unavailable in this browser.')
 
+  await page.getByText('Developer tools').click()
   await page.getByLabel('Lip-sync mode').selectOption('source')
   await page.getByRole('button', { name: 'Start test signal' }).click()
   await expect(page.getByTestId('lipsync-status')).toHaveText('source active')

@@ -1,7 +1,7 @@
 :root {
   color: #ecebf4;
   background: #111019;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -11,7 +11,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 0%, #30294d 0, transparent 35%), #111019;
+  background: #111019;
 }
 
 button,
@@ -65,8 +65,8 @@ header {
 
 header h1 {
   margin: 0 0 8px;
-  font-size: clamp(2rem, 6vw, 4.5rem);
-  letter-spacing: -0.055em;
+  font-size: clamp(1.7rem, 3.5vw, 2.5rem);
+  letter-spacing: -0.02em;
 }
 
 header p {
@@ -88,11 +88,9 @@ header nav {
 
 .eyebrow {
   margin-bottom: 8px;
-  color: #c8bdff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  color: #858092;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .workspace {
@@ -110,7 +108,7 @@ header nav {
   padding: 16px;
   border: 1px solid #393548;
   border-radius: 18px;
-  background: rgb(25 23 32 / 88%);
+  background: #191720;
 }
 
 .stage-shell {
@@ -119,7 +117,7 @@ header nav {
   overflow: hidden;
   border: 1px solid #393548;
   border-radius: 22px;
-  background: linear-gradient(180deg, rgb(101 88 139 / 32%), transparent 55%), #191720;
+  background: #191720;
   box-shadow: 0 24px 70px rgb(0 0 0 / 35%);
 }
 
@@ -141,7 +139,69 @@ aside {
   padding: 20px;
   border: 1px solid #393548;
   border-radius: 18px;
-  background: rgb(25 23 32 / 88%);
+  background: #191720;
+}
+
+.install {
+  display: inline-block;
+  margin: 10px 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #393548;
+  border-radius: 8px;
+  color: #ecebf4;
+  background: #191720;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.stage-hint {
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+  bottom: 14px;
+  left: 50%;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid #393548;
+  border-radius: 8px;
+  color: #a5a1b2;
+  background: #211e2b;
+  font-size: 0.78rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.hit-readout {
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 14px;
+  padding: 6px 10px;
+  border: 1px solid #393548;
+  border-radius: 8px;
+  color: #ecebf4;
+  background: #211e2b;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-tools {
+  border-top: 1px solid #393548;
+  padding-top: 14px;
+}
+
+.dev-tools summary {
+  color: #858092;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.dev-tools .dev-tools-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
 }
 
 label {
@@ -168,18 +228,17 @@ label output {
   left: 14px;
   display: flex;
   gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 999px;
-  color: #c8c4d4;
-  background: rgb(17 16 25 / 78%);
+  padding: 6px 10px;
+  border: 1px solid #393548;
+  border-radius: 8px;
+  color: #a5a1b2;
+  background: #211e2b;
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
-  backdrop-filter: blur(8px);
 }
 
 .diagnostics strong {
-  color: #9ee6be;
+  color: #ecebf4;
 }
 
 .stage-overlay,
