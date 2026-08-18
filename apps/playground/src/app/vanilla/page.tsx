@@ -2,15 +2,16 @@
 
 import type { Live2DInstance, ModelFit } from 'live2d-web'
 
+import type { AssetManifest } from '../../lib/assetManifest'
 import { createLive2D } from 'live2d-web'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-
-interface AssetManifest {
-  model3: string
-}
+import { preload } from 'react-dom'
+import { StageLoading } from '../../components/StageLoading'
+import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
 
 export default function VanillaPlayground() {
+  preload(CUBISM_CORE_URL, { as: 'script' })
   const containerRef = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<Live2DInstance | null>(null)
   const [error, setError] = useState('')
@@ -37,12 +38,13 @@ export default function VanillaPlayground() {
         if (!response.ok)
           throw new Error('Run `pnpm fetch-assets` before starting the playground.')
         const manifest = await response.json() as AssetManifest
+        warmUpModelAssets(manifest)
         if (!containerRef.current || controller.signal.aborted)
           return
 
         const instance = await createLive2D({
           container: containerRef.current,
-          coreUrl: '/assets/js/cubism/5.3/live2dcubismcore.min.js',
+          coreUrl: CUBISM_CORE_URL,
           fit: 'upper-body',
           onError: runtimeError => setError(`${runtimeError.code}: ${runtimeError.message}`),
           quality: 'auto',
@@ -113,6 +115,7 @@ export default function VanillaPlayground() {
           <output className="diagnostics" data-testid="vanilla-status">
             <strong>{mounted ? status : 'disposed'}</strong>
           </output>
+          {mounted && !error && status === 'loading' && <StageLoading />}
           {error && (
             <div className="stage-overlay error-panel" role="alert">
               <strong>Runtime error</strong>

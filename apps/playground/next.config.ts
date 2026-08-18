@@ -12,6 +12,14 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
+      {
+        // 유일하게 가변인 파일. 모델 경로가 바뀌면 낡은 사본을 든 재방문자가
+        // 영구히 404를 받으므로 immutable에서 제외한다.
+        source: '/assets/live2d/:model/manifest.json',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        ],
+      },
     ]
   },
 }

@@ -285,7 +285,8 @@ label output {
 }
 
 .stage-overlay,
-.empty-stage {
+.empty-stage,
+.stage-loading {
   position: absolute;
   z-index: 4;
   inset: 0;
@@ -294,7 +295,56 @@ label output {
   padding: 28px;
   color: #c8c4d4;
   text-align: center;
+}
+
+/* Errors can appear over a live canvas, so this one stays translucent. */
+.stage-overlay {
   background: rgb(17 16 25 / 58%);
+}
+
+/* These two replace the canvas rather than cover it, so they are the stage
+   surface itself. A scrim would composite to a value off the brightness ladder. */
+.empty-stage,
+.stage-loading {
+  background: #191720;
+}
+
+.stage-loading {
+  justify-items: center;
+}
+
+/* Stands where the character will be, so its arrival is not a jump. */
+.stage-loading-plate {
+  width: 220px;
+  height: 300px;
+  border-radius: 18px;
+  background: #272433;
+  animation: stage-loading-breathe 1.8s ease-in-out infinite;
+}
+
+.stage-loading-label {
+  margin: 18px 0 0;
+  color: #a5a1b2;
+  font-size: 0.82rem;
+}
+
+/* Compositor-only, and 55% of #272433 over #191720 lands on #211e2a, the chip
+   level. The plate breathes between two neighbouring rungs of the ladder. */
+@keyframes stage-loading-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-loading-plate {
+    animation: none;
+  }
 }
 
 .error-panel {
@@ -396,5 +446,10 @@ label output {
 
   .stage-shell {
     height: 68vh;
+  }
+
+  .stage-loading-plate {
+    width: 170px;
+    height: 230px;
   }
 }

@@ -2,6 +2,7 @@
 
 import type { ModelFit, ModelInfo } from 'live2d-web'
 import type { Live2DModelController } from 'live2d-web/react'
+import type { AssetManifest } from '../lib/assetManifest'
 import {
   LipSync,
   Live2DCanvas,
@@ -10,11 +11,10 @@ import {
 } from 'live2d-web/react'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { preload } from 'react-dom'
+import { StageLoading } from '../components/StageLoading'
+import { CUBISM_CORE_URL, warmUpModelAssets } from '../lib/assetManifest'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
-
-interface AssetManifest {
-  model3: string
-}
 
 interface MotionOption {
   group: string
@@ -89,6 +89,15 @@ function Diagnostics() {
   )
 }
 
+// The error panel is translucent, so an ungated hint used to show through
+// underneath a render error.
+function StageHint() {
+  const stage = useLive2DCanvas()
+  if (stage.status !== 'ready')
+    return null
+  return <p className="stage-hint">Click the character. She follows your pointer.</p>
+}
+
 function StageError({
   code,
   message,
@@ -108,6 +117,9 @@ function StageError({
 }
 
 export default function Home() {
+  // The runtime injects the Core script only after hydration, so the preload
+  // scanner never sees it. This starts the 223KB download during HTML parse.
+  preload(CUBISM_CORE_URL, { as: 'script' })
   const [manifest, setManifest] = useState<AssetManifest | null>(null)
   const [assetError, setAssetError] = useState('')
   const [fit, setFit] = useState<ModelFit>('upper-body')
@@ -261,7 +273,10 @@ export default function Home() {
         }
         return response.json() as Promise<AssetManifest>
       })
-      .then(setManifest)
+      .then((loaded) => {
+        warmUpModelAssets(loaded)
+        setManifest(loaded)
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
           setAssetError(error instanceof Error ? error.message : String(error))
@@ -355,16 +370,9 @@ export default function Home() {
   const stage = manifest && mounted
     ? (
         <Live2DCanvas
-          coreUrl="/assets/js/cubism/5.3/live2dcubismcore.min.js"
+          coreUrl={CUBISM_CORE_URL}
           {...(fixedQuality ? { resolution: 1 } : { quality: 'auto' as const })}
-          fallback={loadingStage => (
-            <div className="stage-overlay">
-              Loading
-              {' '}
-              {loadingStage}
-              …
-            </div>
-          )}
+          fallback={() => <StageLoading />}
           errorFallback={(error, retry) => (
             <StageError code={error.code} message={error.message} retry={retry} />
           )}
@@ -391,14 +399,19 @@ export default function Home() {
           </Live2DModel>
           <Diagnostics />
           {hitReadout && <output className="hit-readout">{hitReadout}</output>}
-          <p className="stage-hint">Click the character. She follows your pointer.</p>
+          <StageHint />
         </Live2DCanvas>
       )
-    : (
-        <div className="empty-stage">
-          {assetError || (mounted ? 'Loading assets…' : 'Canvas unmounted')}
-        </div>
-      )
+    : assetError
+      ? (
+          <div className="stage-overlay error-panel" role="alert">
+            <strong>Demo assets unavailable</strong>
+            <p>{assetError}</p>
+          </div>
+        )
+      : mounted
+        ? <StageLoading />
+        : <div className="empty-stage">Canvas unmounted</div>
 
   return (
     <main>

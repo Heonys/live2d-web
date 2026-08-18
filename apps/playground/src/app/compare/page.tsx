@@ -2,6 +2,7 @@
 
 import type { Live2DBackend } from 'live2d-web'
 
+import type { AssetManifest } from '../../lib/assetManifest'
 import { cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
 import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import {
@@ -13,10 +14,12 @@ import {
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
-
-interface AssetManifest {
-  model3: string
-}
+import { StageLoading } from '../../components/StageLoading'
+import {
+  CUBISM_CORE_URL,
+  CUBISM_CORE_URL_PIXI,
+  warmUpModelAssets,
+} from '../../lib/assetManifest'
 
 declare global {
   interface Window {
@@ -98,7 +101,10 @@ function BackendComparisonContent() {
           throw new Error('Run `pnpm fetch-assets` before starting the playground.')
         return response.json() as Promise<AssetManifest>
       })
-      .then(setManifest)
+      .then((loaded) => {
+        warmUpModelAssets(loaded)
+        setManifest(loaded)
+      })
       .catch((caught: unknown) => {
         if (!controller.signal.aborted)
           setError(caught instanceof Error ? caught.message : String(caught))
@@ -133,10 +139,11 @@ function BackendComparisonContent() {
                   key={backendName}
                   backend={backend}
                   coreUrl={backendName === 'cubism-webgl'
-                    ? '/assets/js/cubism/5.3/live2dcubismcore.min.js'
-                    : '/assets/js/cubism/5.2/live2dcubismcore.min.js'}
+                    ? CUBISM_CORE_URL
+                    : CUBISM_CORE_URL_PIXI}
                   resolution={1}
                   maxFps={60}
+                  fallback={() => <StageLoading />}
                   errorFallback={stageError => (
                     <div className="stage-overlay error-panel" role="alert">
                       {stageError.code}
@@ -151,7 +158,13 @@ function BackendComparisonContent() {
                   <Diagnostics backendName={backendName} />
                 </Live2DCanvas>
               )
-            : <div className="empty-stage">{error || 'Loading local assets…'}</div>}
+            : error
+              ? (
+                  <div className="stage-overlay error-panel" role="alert">
+                    {error}
+                  </div>
+                )
+              : <StageLoading />}
         </div>
 
         <aside>

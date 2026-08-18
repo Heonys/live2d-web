@@ -25,6 +25,18 @@ function actionableWebGLErrors(browserName: string, errors: string[]) {
   )
 }
 
+test('preloads Cubism Core from the server-rendered HTML', async ({ page }) => {
+  // The runtime injects the Core script after hydration, so without this link
+  // the preload scanner never sees it. React hoists the tag into <head>, which
+  // only works while the call sits outside a subtree that opts out of SSR.
+  const html = await (await page.request.get('/')).text()
+  const preloadIndex = html.indexOf('/assets/js/cubism/5.3/live2dcubismcore.min.js')
+
+  expect(html).toContain('rel="preload"')
+  expect(preloadIndex).toBeGreaterThan(-1)
+  expect(preloadIndex).toBeLessThan(html.indexOf('</head>'))
+})
+
 test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, page }) => {
   const unexpectedErrors: string[] = []
   page.on('console', (message) => {
@@ -35,6 +47,19 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   await page.goto('/')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
+
+  // The page warms the model assets while Cubism Core loads. The runtime's own
+  // request has to reuse that entry: a mismatch would download the 2.7MB
+  // texture twice, which is the failure mode the plain fetch() warm-up avoids.
+  // Chromium only: WebKit reports the full body size even for a cache hit, so
+  // there the metric cannot tell a reused entry from a second download.
+  if (browserName === 'chromium') {
+    const textureBytes = await page.evaluate(() => performance.getEntriesByType('resource')
+      .filter(entry => entry.name.includes('texture_00.png'))
+      .reduce((total, entry) => total + (entry as PerformanceResourceTiming).transferSize, 0))
+    expect(textureBytes).toBeLessThan(3_200_000)
+  }
+
   const desktopBufferPixels = await page.locator('[data-live2d-canvas] canvas').evaluate(
     element => (element as HTMLCanvasElement).width * (element as HTMLCanvasElement).height,
   )

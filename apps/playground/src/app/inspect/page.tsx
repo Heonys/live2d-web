@@ -8,6 +8,7 @@ import type {
 import type { Live2DModelController } from 'live2d-web/react'
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { InspectorModelMetadata } from '../../inspector/modelMetadata'
+import type { AssetManifest } from '../../lib/assetManifest'
 import { Live2DError } from 'live2d-web'
 import {
   Live2DCanvas,
@@ -23,11 +24,10 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { preload } from 'react-dom'
+import { StageLoading } from '../../components/StageLoading'
 import { resolveInspectorModelUrl } from '../../inspector/modelMetadata'
-
-interface AssetManifest {
-  model3: string
-}
+import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
 
 type ResolutionMode = 'auto' | '1' | '2'
 
@@ -164,6 +164,9 @@ function InspectorContent() {
         return response.json() as Promise<AssetManifest>
       })
       .then((manifest) => {
+        // Only the bundled demo model is warmed. A user-supplied ?src= model
+        // must never be prefetched from the local manifest.
+        warmUpModelAssets(manifest)
         const resolved = resolveInspectorModelUrl(manifest.model3, window.location.href)
         prepareSource(resolved)
       })
@@ -263,15 +266,9 @@ function InspectorContent() {
             ? (
                 <Live2DCanvas
                   key={sourceKey}
-                  coreUrl="/assets/js/cubism/5.3/live2dcubismcore.min.js"
+                  coreUrl={CUBISM_CORE_URL}
                   {...canvasQuality}
-                  fallback={stage => (
-                    <div className="stage-overlay">
-                      Loading
-                      {stage}
-                      …
-                    </div>
-                  )}
+                  fallback={() => <StageLoading />}
                   onError={setRuntimeError}
                   errorFallback={(error, retry) => (
                     <div className="stage-overlay error-panel" role="alert">
@@ -461,6 +458,10 @@ function InspectorContent() {
 }
 
 export default function InspectorPage() {
+  // Outside the Suspense boundary on purpose: InspectorContent reads
+  // useSearchParams(), which opts that subtree out of SSR, so a preload
+  // emitted from inside it would arrive too late for the preload scanner.
+  preload(CUBISM_CORE_URL, { as: 'script' })
   return (
     <Suspense fallback={<main>Loading inspector…</main>}>
       <InspectorContent />
