@@ -113,7 +113,7 @@ header nav {
 
 .stage-shell {
   position: relative;
-  min-height: 660px;
+  height: 660px;
   overflow: hidden;
   border: 1px solid #393548;
   border-radius: 22px;
@@ -202,6 +202,49 @@ aside {
   flex-direction: column;
   gap: 14px;
   margin-top: 14px;
+}
+
+.code-sample {
+  margin-top: 18px;
+  padding: 16px 20px;
+  border: 1px solid #393548;
+  border-radius: 18px;
+  background: #191720;
+}
+
+.code-sample summary {
+  color: #a5a1b2;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.code-sample pre {
+  margin: 14px 0 0;
+  padding: 14px;
+  overflow-x: auto;
+  border: 1px solid #393548;
+  border-radius: 10px;
+  background: #111019;
+  color: #c8c4d4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.tok-k {
+  color: #9fb4dc;
+}
+
+.tok-s {
+  color: #a8c793;
+}
+
+.tok-t {
+  color: #d3a2ac;
+}
+
+.tok-a {
+  color: #bfb2dd;
 }
 
 label {
@@ -352,6 +395,6 @@ label output {
   }
 
   .stage-shell {
-    min-height: 68vh;
+    height: 68vh;
   }
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import type { Live2DBackend } from 'live2d-web'
+
 import { cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
 import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
 import {
@@ -9,6 +10,7 @@ import {
   useLive2DCanvas,
   useLive2DModel,
 } from 'live2d-web/react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 
@@ -114,11 +116,12 @@ function BackendComparisonContent() {
             Both backends use the same Hiyori model, CSS size and fixed 1×
             backing-buffer resolution. Their required Core versions differ.
           </p>
+          <code className="install">npm install live2d-web</code>
         </div>
         <nav>
-          <a href="/">React playground</a>
-          <a href="/vanilla">Vanilla playground</a>
-          <a href="/inspect">Model inspector</a>
+          <Link href="/">React playground</Link>
+          <Link href="/vanilla">Vanilla playground</Link>
+          <Link href="/inspect">Model inspector</Link>
         </nav>
       </header>
 

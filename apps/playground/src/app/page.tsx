@@ -8,6 +8,7 @@ import {
   Live2DModel,
   useLive2DCanvas,
 } from 'live2d-web/react'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
 
@@ -18,6 +19,46 @@ interface AssetManifest {
 interface MotionOption {
   group: string
   index: number
+}
+
+const DEMO_CODE = `import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
+
+<Live2DCanvas coreUrl="/live2dcubismcore.min.js" quality="auto">
+  <Live2DModel
+    src="/models/hiyori/hiyori.model3.json"
+    fit="upper-body"
+    followPointer
+    onTap={(hitAreas) => hitAreas.includes('Body') && controller.motion('Tap')}
+    onLoad={setController}
+  >
+    <LipSync mouthOpen={mouth} speaking={mouth > 0} />
+  </Live2DModel>
+</Live2DCanvas>`
+
+// Dependency-free demo highlighter: strings, keywords, JSX tags, attributes.
+const CODE_TOKENS = /('[^']*'|"[^"]*")|(\b(?:import|from|return)\b)|(<\/?[A-Z][A-Za-z0-9]*|\/>)|([a-zA-Z]\w*(?==))/g
+
+function HighlightedCode({ code }: { code: string }) {
+  const parts: React.ReactNode[] = []
+  let cursor = 0
+  for (const match of code.matchAll(CODE_TOKENS)) {
+    if (match.index > cursor)
+      parts.push(code.slice(cursor, match.index))
+    const [text, string, keyword, tag, attribute] = match
+    const className = string
+      ? 'tok-s'
+      : keyword
+        ? 'tok-k'
+        : tag
+          ? 'tok-t'
+          : attribute
+            ? 'tok-a'
+            : undefined
+    parts.push(<span key={match.index} className={className}>{text}</span>)
+    cursor = match.index + text.length
+  }
+  parts.push(code.slice(cursor))
+  return <code>{parts}</code>
 }
 
 function Diagnostics() {
@@ -73,6 +114,9 @@ export default function Home() {
   const [controller, setController] = useState<Live2DModelController | null>(null)
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
   const [motionValue, setMotionValue] = useState('')
+  const [playingMotion, setPlayingMotion] = useState<string | null>(null)
+  const playGenerationRef = useRef(0)
+  const codeSampleRef = useRef<HTMLDetailsElement>(null)
   const [expression, setExpression] = useState('')
   const [hitReadout, setHitReadout] = useState('')
   const [mouthOpen, setMouthOpen] = useState(0)
@@ -267,30 +311,46 @@ export default function Home() {
     setController(nextController)
     const info = nextController.getModelInfo()
     setModelInfo(info)
-    const groups = Object.entries(info.motions)
-    const firstGroup = groups[0]
-    setMotionValue(firstGroup && firstGroup[1] > 0 ? `${firstGroup[0]}:0` : '')
+    // Default to a tap-style motion: playing an Idle entry is visually
+    // indistinguishable from the automatic idle loop.
+    const groups = Object.keys(info.motions).filter(group => info.motions[group] > 0)
+    const preferred = groups.find(group => group.toLowerCase().includes('tap')) ?? groups[0]
+    setMotionValue(preferred ? `${preferred}:0` : '')
     setExpression(info.expressions[0] ?? '')
   }, [])
 
+  // motion() resolves when playback finishes, so the demo can show exactly
+  // when the requested motion starts and ends.
+  const runMotion = useCallback((group: string, index?: number) => {
+    if (!controller)
+      return
+    const generation = ++playGenerationRef.current
+    setPlayingMotion(index === undefined ? group : `${group} ${index + 1}`)
+    void controller
+      .motion(group, index)
+      .catch(() => {})
+      .finally(() => {
+        if (playGenerationRef.current === generation)
+          setPlayingMotion(null)
+      })
+  }, [controller])
+
   const handleTap = useCallback((hitAreas: string[]) => {
     setHitReadout(hitAreas.length ? `Hit: ${hitAreas.join(', ')}` : 'Hit: none')
-    if (!controller || !modelInfo)
+    if (!modelInfo)
       return
     const tapGroup = Object.keys(modelInfo.motions).find(group =>
       group.toLowerCase().includes('tap'))
     if (tapGroup)
-      void controller.motion(tapGroup).catch(() => {})
-  }, [controller, modelInfo])
+      runMotion(tapGroup)
+  }, [modelInfo, runMotion])
 
   const playMotion = useCallback(() => {
-    if (!controller || !motionValue)
+    if (!motionValue)
       return
     const separator = motionValue.lastIndexOf(':')
-    void controller
-      .motion(motionValue.slice(0, separator), Number(motionValue.slice(separator + 1)))
-      .catch(() => {})
-  }, [controller, motionValue])
+    runMotion(motionValue.slice(0, separator), Number(motionValue.slice(separator + 1)))
+  }, [motionValue, runMotion])
 
   const stage = manifest && mounted
     ? (
@@ -354,9 +414,9 @@ export default function Home() {
         </div>
         <nav>
           <a href="https://github.com/Heonys/live2d-web">GitHub</a>
-          <a href="/vanilla">Vanilla</a>
-          <a href="/inspect">Inspector</a>
-          <a href="/compare">Backends</a>
+          <Link href="/vanilla">Vanilla</Link>
+          <Link href="/inspect">Inspector</Link>
+          <Link href="/compare">Backends</Link>
         </nav>
       </header>
 
@@ -389,31 +449,49 @@ export default function Home() {
           </label>
           <button
             type="button"
-            disabled={!controller || !motionValue}
+            disabled={!controller || !motionValue || playingMotion !== null}
             onClick={playMotion}
           >
-            Play motion
+            {playingMotion ? 'Playing…' : 'Play motion'}
           </button>
+          {playingMotion && (
+            <output className="note" data-testid="playing-motion">
+              Playing
+              {' '}
+              {playingMotion}
+            </output>
+          )}
 
-          <label>
-            Expression
-            <select
-              aria-label="Expression"
-              disabled={!modelInfo?.expressions.length}
-              value={expression}
-              onChange={event => setExpression(event.target.value)}
-            >
-              {!modelInfo?.expressions.length && <option value="">No expressions</option>}
-              {modelInfo?.expressions.map(id => <option key={id} value={id}>{id}</option>)}
-            </select>
-          </label>
-          <button
-            type="button"
-            disabled={!controller || !expression}
-            onClick={() => void controller?.expression(expression).catch(() => {})}
-          >
-            Apply expression
-          </button>
+          {modelInfo?.expressions.length
+            ? (
+                <>
+                  <label>
+                    Expression
+                    <select
+                      aria-label="Expression"
+                      value={expression}
+                      onChange={event => setExpression(event.target.value)}
+                    >
+                      {modelInfo.expressions.map(id => (
+                        <option key={id} value={id}>{id}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!controller || !expression}
+                    onClick={() => void controller?.expression(expression).catch(() => {})}
+                  >
+                    Apply expression
+                  </button>
+                </>
+              )
+            : modelInfo && (
+              <p className="note">
+                This model ships no expression files, so the expression
+                control is hidden. Try your own model in the Inspector.
+              </p>
+            )}
 
           <label>
             Framing
@@ -450,6 +528,19 @@ export default function Home() {
               {micError && <p className="note">{micError}</p>}
             </>
           )}
+
+          <button
+            type="button"
+            onClick={() => {
+              const details = codeSampleRef.current
+              if (details) {
+                details.open = true
+                details.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
+          >
+            View code
+          </button>
 
           <details className="dev-tools">
             <summary>Developer tools</summary>
@@ -511,6 +602,13 @@ export default function Home() {
           </details>
         </aside>
       </section>
+
+      <details ref={codeSampleRef} className="code-sample">
+        <summary>Show the code behind this demo</summary>
+        <pre>
+          <HighlightedCode code={DEMO_CODE} />
+        </pre>
+      </details>
     </main>
   )
 }

@@ -4,6 +4,7 @@ import type {
   Live2DErrorDetails,
   ModelFit,
 } from 'live2d-web'
+
 import type { Live2DModelController } from 'live2d-web/react'
 import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { InspectorModelMetadata } from '../../inspector/modelMetadata'
@@ -13,6 +14,7 @@ import {
   Live2DModel,
   useLive2DCanvas,
 } from 'live2d-web/react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   Suspense,
@@ -227,11 +229,12 @@ function InspectorContent() {
             Load a same-origin or CORS-enabled Cubism 4/5 model URL and inspect
             its motions, expressions, parameters and rendering quality.
           </p>
+          <code className="install">npm install live2d-web</code>
         </div>
         <nav>
-          <a href="/">React playground</a>
-          <a href="/vanilla">Vanilla playground</a>
-          <a href="/compare">Backend comparison</a>
+          <Link href="/">React playground</Link>
+          <Link href="/vanilla">Vanilla playground</Link>
+          <Link href="/compare">Backend comparison</Link>
         </nav>
       </header>
 

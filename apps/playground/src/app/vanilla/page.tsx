@@ -1,7 +1,9 @@
 'use client'
 
 import type { Live2DInstance, ModelFit } from 'live2d-web'
+
 import { createLive2D } from 'live2d-web'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
 interface AssetManifest {
@@ -96,11 +98,12 @@ export default function VanillaPlayground() {
             {' '}
             runtime with the default Framework WebGL backend.
           </p>
+          <code className="install">npm install live2d-web</code>
         </div>
         <nav>
-          <a href="/">React playground</a>
-          <a href="/inspect">Model inspector</a>
-          <a href="/compare">Backend comparison</a>
+          <Link href="/">React playground</Link>
+          <Link href="/inspect">Model inspector</Link>
+          <Link href="/compare">Backend comparison</Link>
         </nav>
       </header>
 
