@@ -622,6 +622,17 @@ export default function Home() {
           <HighlightedCode code={DEMO_CODE} />
         </pre>
       </details>
+
+      <footer className="site-footer">
+        <p>
+          An unofficial library for Live2D, not affiliated with Live2D Inc.
+          Live2D and Cubism are trademarks of Live2D Inc. Shipping an app built
+          with it may need its own
+          {' '}
+          <a href="https://www.live2d.com/en/sdk/license/">Cubism SDK license</a>
+          .
+        </p>
+      </footer>
     </main>
   )
 }

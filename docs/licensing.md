@@ -5,11 +5,29 @@
 > every modification is recorded in the package's `THIRD_PARTY_NOTICES.md`.
 > Cubism Core, sample models and lip-sync calibration profiles are never
 > bundled; users obtain them under Live2D's own terms. This is an unofficial
-> project, not affiliated with or endorsed by Live2D Inc. Live2D and Cubism
-> are trademarks of Live2D Inc.
+> project, not developed, provided or endorsed by Live2D Inc. Live2D and
+> Cubism are trademarks of Live2D Inc. Releasing an application built with
+> this library can require its own Live2D Cubism SDK publishing license,
+> depending on the application and the size of the business behind it.
 
 상태 기준일: **2026-08-18**. 이 문서는 법률 자문이 아니라 프로젝트의
 배포 경계를 기록한다.
+
+## Live2D 확인 결과 (2026-08-18)
+
+공개 전에 주식회사 Live2D에 사양을 설명하고 회신을 받았다.
+
+- **이 라이브러리 자체에는 출판허락계약이 필요하지 않다.** GitHub과 npm에
+  무료 오픈소스로 공개하는 것도 문제없다는 회신을 받았다. 단, 이 판단은
+  회신 시점에 설명한 사양을 전제로 한다.
+- **이용자 쪽은 별개다.** 이 라이브러리를 써서 제3자 개발자가 애플리케이션이나
+  서비스를 제작·릴리스하는 경우, 그 내용과 사업자 규모 등에 따라 별도의
+  Live2D Cubism SDK 출판허락계약이 필요할 수 있다. 이 사실을 이용자에게
+  안내해달라는 요청을 받았고, README 3종과 npm 표지 상단에 명기했다.
+- **패키지 이름에 대한 요청.** `live2d-web`처럼 Live2D를 명칭의 주체로 쓰면
+  공식 제품으로 오인될 수 있으니 고유 명칭을 주체로 해달라는 요청을 함께
+  받았다. 이름은 검색 노출을 이유로 유지하되, 비공식임을 README와 npm 표지
+  최상단에 명확히 표기하는 것으로 대응한다.
 
 ## 프로젝트 코드
 

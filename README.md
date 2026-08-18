@@ -5,6 +5,11 @@
 > Put a Live2D character on the web with one call. No PixiJS, no globals,
 > React optional.
 
+An unofficial library for Live2D, not affiliated with Live2D Inc. Shipping an
+app built with it may need its own
+[Cubism SDK license](https://www.live2d.com/en/sdk/license/); details in
+[licensing notes](docs/licensing.md).
+
 `live2d-web` owns Live2D model loading, lifecycle, fitting, interaction
 (tap hit testing, pointer tracking), lip sync, parameter drivers, render
 quality, retry and cleanup. Rendering stays behind a backend contract, so the
@@ -224,9 +229,13 @@ and shaders remain under Live2D's license. Package license details and modified
 Framework files are recorded in [LICENSES.md](packages/live2d-web/LICENSES.md)
 and [THIRD_PARTY_NOTICES.md](packages/live2d-web/THIRD_PARTY_NOTICES.md).
 
-This is an unofficial third-party project and is not affiliated with or
-endorsed by Live2D Inc. Live2D and Cubism are trademarks of Live2D Inc.
-`live2d-web` does not bundle Cubism Core, sample models or a lip-sync profile.
-Before making the repository public or publishing npm, confirm that the final
-Framework/shader redistribution and product use comply with Live2D's current
-terms. See [licensing notes](docs/licensing.md).
+This is an unofficial third-party project. It is not developed, provided or
+endorsed by Live2D Inc., and it is not one of their official products. Live2D
+and Cubism are trademarks of Live2D Inc. `live2d-web` does not bundle Cubism
+Core, sample models or a lip-sync profile.
+
+An application you build with this library may need its own Live2D Cubism SDK
+publishing license, depending on what it is and on the size of the business
+releasing it. See
+[Live2D's SDK license terms](https://www.live2d.com/en/sdk/license/) and the
+[licensing notes](docs/licensing.md).

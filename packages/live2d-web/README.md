@@ -3,6 +3,10 @@
 > Put a Live2D character on the web with one call. No PixiJS, no globals,
 > React optional.
 
+An unofficial library for Live2D, not affiliated with Live2D Inc. Shipping an
+app built with it may need its own
+[Cubism SDK license](https://www.live2d.com/en/sdk/license/).
+
 ```bash
 npm install live2d-web
 ```

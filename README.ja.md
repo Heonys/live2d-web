@@ -5,6 +5,11 @@
 > 1回の呼び出しでウェブにLive2Dキャラクターを表示。PixiJS不要、グローバル
 > 汚染なし、Reactは任意。
 
+株式会社Live2Dとは無関係の非公式ライブラリです。本ライブラリで制作した
+アプリケーションをリリースする場合、別途
+[Cubism SDK のライセンス](https://www.live2d.com/ja/sdk/license/)が必要となる
+ことがあります。詳細は[ライセンスドキュメント](docs/licensing.md)にあります。
+
 `live2d-web` は、Live2Dモデルのロード、ライフサイクル、フィッティング、
 インタラクション（タップのヒットテスト、ポインター追跡）、リップシンク、
 パラメータドライバー、描画品質、リトライとクリーンアップをランタイムが
@@ -227,8 +232,12 @@ Framework とシェーダーは Live2D のライセンスに従います。パ�
 [THIRD_PARTY_NOTICES.md](packages/live2d-web/THIRD_PARTY_NOTICES.md) に
 記録されています。
 
-本プロジェクトは非公式のサードパーティプロジェクトであり、Live2D Inc. とは
-無関係で、承認も受けていません。Live2D および Cubism は Live2D Inc. の商標
-です。`live2d-web` は Cubism Core、サンプルモデル、リップシンクプロファイル
-を同梱しません。詳細は[ライセンスドキュメント](docs/licensing.md)を参照して
-ください。
+本プロジェクトは非公式のサードパーティプロジェクトです。株式会社Live2Dが
+開発・提供する公式製品ではなく、同社が開発に関与した製品でもありません。
+Live2D および Cubism は株式会社Live2Dの商標です。`live2d-web` は Cubism Core、
+サンプルモデル、リップシンクプロファイルを同梱しません。
+
+本ライブラリで制作したアプリケーション等は、その内容や事業者規模等に応じて、
+別途 Live2D Cubism SDK の出版許諾契約が必要となる場合があります。
+[Live2D Cubism SDK のライセンス条件](https://www.live2d.com/ja/sdk/license/)と
+[ライセンスドキュメント](docs/licensing.md)をご確認ください。

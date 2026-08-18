@@ -5,6 +5,10 @@
 > 호출 한 번으로 웹에 Live2D 캐릭터를 올립니다. PixiJS 없이, 전역 오염 없이,
 > React는 선택 사항입니다.
 
+Live2D Inc.와 무관한 비공식 라이브러리입니다. 이걸로 만든 앱을 배포할 때는
+별도의 [Cubism SDK 라이선스](https://www.live2d.com/en/sdk/license/)가 필요할
+수 있습니다. 자세한 내용은 [라이선스 문서](docs/licensing.md)에 있습니다.
+
 `live2d-web`은 Live2D 모델의 로딩, 생명주기, 화면 맞춤, 상호작용(탭 히트
 테스트, 포인터 추적), 립싱크, 파라미터 드라이버, 렌더 품질, 재시도와 정리를
 런타임이 소유합니다. 렌더링은 백엔드 계약 뒤에 있어서, 같은 런타임을 순수
@@ -219,7 +223,12 @@ Framework 파일 목록은 [LICENSES.md](packages/live2d-web/LICENSES.md)와
 [THIRD_PARTY_NOTICES.md](packages/live2d-web/THIRD_PARTY_NOTICES.md)에
 기록되어 있습니다.
 
-이 프로젝트는 비공식 서드파티 프로젝트이며 Live2D Inc.와 무관하고 승인받지
-않았습니다. Live2D와 Cubism은 Live2D Inc.의 상표입니다. `live2d-web`은
-Cubism Core, 샘플 모델, 립싱크 프로파일을 번들하지 않습니다. 자세한 경계는
+이 프로젝트는 비공식 서드파티 프로젝트입니다. Live2D Inc.가 개발하거나
+제공하거나 승인한 제품이 아니며, 그들의 공식 제품이 아닙니다. Live2D와
+Cubism은 Live2D Inc.의 상표입니다. `live2d-web`은 Cubism Core, 샘플 모델,
+립싱크 프로파일을 번들하지 않습니다.
+
+이 라이브러리로 만든 애플리케이션은 그 내용과 릴리스하는 사업자의 규모에 따라
+별도의 Live2D Cubism SDK 출판 라이선스가 필요할 수 있습니다.
+[Live2D SDK 라이선스 조건](https://www.live2d.com/en/sdk/license/)과
 [라이선스 문서](docs/licensing.md)를 참고하세요.

@@ -284,6 +284,24 @@ label output {
   color: #ecebf4;
 }
 
+.site-footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #393548;
+  color: #858092;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.site-footer p {
+  margin: 0 0 8px;
+  max-width: 760px;
+}
+
+.site-footer a {
+  color: #b9adff;
+}
+
 .stage-overlay,
 .empty-stage,
 .stage-loading {
