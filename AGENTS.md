@@ -38,13 +38,13 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 ## Key Path Index
 
 - `docs/README.md` — 문서 지도 + 확정된 결정 목록
-- `docs/ecosystem-survey.md` — npm 실측 + `live2d-web` 이름 변경 결정 기록
+- `private/docs/ecosystem-survey.md` — npm 실측 + `live2d-web` 이름 변경 결정 기록
 - `docs/architecture.md` — 구현된 어댑터·프레임·생명주기·품질 계약
 - `docs/api-design.md` — 컴포넌트·훅 시그니처 + per-frame 규약 + 에러 모델
-- `docs/extraction-map.md` — 과거 AIZUCHI 참조 구현 이관 기록
+- `private/docs/extraction-map.md` — 과거 AIZUCHI 참조 구현 이관 기록
 - `docs/licensing.md` — Cubism Core 비동봉 인과, 상표 고지, 선행 코드 크레딧
-- `docs/cubism-webgl-plan.md` — 공식 Framework 기반 직접 WebGL 백엔드의 구현·성능·공개 게이트
-- `docs/roadmap.md` — headless runtime 완료 상태 → 라이선스 게이트 → WebGL 계획
+- `private/docs/cubism-webgl-plan.md` — 공식 Framework 기반 직접 WebGL 백엔드의 구현·성능·공개 게이트
+- `private/docs/roadmap.md` — headless runtime 완료 상태 → 라이선스 게이트 → WebGL 계획
 - `packages/live2d-web/src/core/contract.ts` — 어댑터 계약 타입(architecture.md의 코드화)
 - `packages/live2d-web/src/react/` — headless runtime binding, Store, hooks
 - `packages/live2d-web/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller

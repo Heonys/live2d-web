@@ -1,10 +1,16 @@
 # live2d-web
 
-> A vanilla-first Live2D runtime with optional React bindings.
+**English** | [한국어](README.ko.md) | [日本語](README.ja.md)
 
-`live2d-web` owns Live2D model loading, lifecycle, fitting, parameter drivers,
-render quality, retry and cleanup. Rendering stays behind a backend contract,
-so the same runtime can be used directly from JavaScript or through React.
+> Put a Live2D character on the web with one call. No PixiJS, no globals,
+> React optional.
+
+`live2d-web` owns Live2D model loading, lifecycle, fitting, interaction
+(tap hit testing, pointer tracking), lip sync, parameter drivers, render
+quality, retry and cleanup. Rendering stays behind a backend contract, so the
+same runtime can be used directly from JavaScript or through React.
+
+Live demo: coming with the first public release.
 
 **Status: `0.1.0-alpha.0` is implemented and validated locally, but has not
 been published to npm.** The default backend uses the official Cubism Web
@@ -179,22 +185,12 @@ pnpm dev
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm verify:package
-pnpm -F @live2d-web/playground build
 pnpm test:e2e
-pnpm benchmark:smoke
-pnpm benchmark:startup
-pnpm benchmark:matrix
-pnpm benchmark:memory
-pnpm benchmark:memory:backends
-pnpm benchmark:models
-LIVE2D_BENCHMARK_MS=300000 pnpm benchmark:backends
-
-# Headed system Chrome; refuses software or unidentified renderers.
-pnpm benchmark:hardware:smoke
-pnpm benchmark:hardware:matrix
-pnpm benchmark:backends:hardware
+pnpm verify:package
 ```
+
+Benchmark suites (startup, 18-condition matrix, memory, backend A/B and
+hardware runs) are documented in the [benchmark guide](docs/benchmarking.md).
 
 After reviewing the official terms linked by the command,
 `LIVE2D_ACCEPT_TERMS=1` confirms the local development download. The script
@@ -213,17 +209,13 @@ bundle contain no React dependency.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
+Start from the [documentation map](docs/README.md). Highlights:
+
 - [API reference](docs/api-design.md)
-- [Cubism WebGL implementation plan and gate](docs/cubism-webgl-plan.md)
-- [Cubism WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-- [Post-diagnostics WebGL vs Pixi v6 benchmark](docs/benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-- [WebGL vs Pixi JS heap benchmark](docs/benchmarks/2026-08-15-backend-memory.md)
-- [Apple M2 Pro hardware smoke](docs/benchmarks/2026-08-15-hardware-smoke.md)
-- [Multi-model benchmark guide](docs/benchmarking.md)
-- [Multi-model matrix result](docs/benchmarks/2026-08-14-multi-model-matrix.md)
+- [Architecture](docs/architecture.md)
 - [Licensing](docs/licensing.md)
-- [Roadmap](docs/roadmap.md)
+- [Benchmark guide](docs/benchmarking.md) and
+  [WebGL vs Pixi v6 results](docs/benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
 
 ## License and trademark
 

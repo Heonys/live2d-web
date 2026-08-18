@@ -1,6 +1,14 @@
 # 라이선스와 상표
 
-상태 기준일: **2026-08-14**. 이 문서는 법률 자문이 아니라 프로젝트의
+> **English summary**: live2d-web's own code is MIT licensed. The bundled
+> Cubism Web Framework and its WebGL shaders remain under Live2D's license;
+> every modification is recorded in the package's `THIRD_PARTY_NOTICES.md`.
+> Cubism Core, sample models and lip-sync calibration profiles are never
+> bundled; users obtain them under Live2D's own terms. This is an unofficial
+> project, not affiliated with or endorsed by Live2D Inc. Live2D and Cubism
+> are trademarks of Live2D Inc.
+
+상태 기준일: **2026-08-18**. 이 문서는 법률 자문이 아니라 프로젝트의
 배포 경계를 기록한다.
 
 ## 프로젝트 코드
@@ -51,8 +59,7 @@ Live2D에 서면 확인한다.
   제거하고 pixi-v6만 남긴다.
 - Cubism Core와 모델은 결과와 무관하게 계속 비동봉한다.
 
-구체적인 문의 항목과 공개 게이트는
-[cubism-webgl 백엔드 구현 계획](cubism-webgl-plan.md)에 기록한다.
+구체적인 문의 내역과 공개 게이트는 내부 운영 문서에 기록한다.
 
 ## 립싱크
 
