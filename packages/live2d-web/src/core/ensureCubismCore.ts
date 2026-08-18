@@ -6,6 +6,14 @@ declare global {
   }
 }
 
+/**
+ * Cubism 5.3 Core URL that Live2D publishes for hosting use. Handy to get
+ * started (`coreUrl: OFFICIAL_CUBISM_CORE_URL`); self-host the file for
+ * production so your app does not depend on a third-party host.
+ */
+export const OFFICIAL_CUBISM_CORE_URL
+  = 'https://cubism.live2d.com/sdk-web/core/06/live2dcubismcore.min.js'
+
 const pendingLoads = new Map<string, Promise<void>>()
 
 function resourceHttpStatus(url: string) {
@@ -27,9 +35,10 @@ function coreDetails(url?: string) {
 }
 
 function coreMissingMessage() {
-  return 'Live2D Cubism Core is not loaded. Download it from the official Cubism SDK and either pass coreUrl to <Live2DCanvas> or load it before the model:\n'
+  return 'Live2D Cubism Core is not loaded. Pass a coreUrl option (to createLive2D() or <Live2DCanvas>), '
+    + 'for example the OFFICIAL_CUBISM_CORE_URL constant, or load the script before creating a model:\n'
     + '  <script src="/path/to/live2dcubismcore.min.js"></script>\n'
-    + 'Official SDK: https://www.live2d.com/sdk/download/web/'
+    + 'Official SDK download: https://www.live2d.com/sdk/download/web/'
 }
 
 function assertBrowser(): void {

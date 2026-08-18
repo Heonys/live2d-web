@@ -10,7 +10,7 @@ export type {
   StageHandle,
   StageOptions,
 } from './core/contract'
-export { ensureCubismCore } from './core/ensureCubismCore'
+export { ensureCubismCore, OFFICIAL_CUBISM_CORE_URL } from './core/ensureCubismCore'
 export { Live2DError } from './core/errors'
 export type {
   Live2DAssetType,
@@ -35,11 +35,13 @@ export type {
 export type { LipSyncProfile } from './features/lipsync/source'
 export type { Live2DModelController } from './react/controller'
 export {
+  useLive2D,
   useLive2DCanvas,
   useLive2DModel,
   useLive2DParameter,
   useParameterDriver,
 } from './react/hooks'
+export type { UseLive2DOptions, UseLive2DResult } from './react/hooks'
 export { LipSync } from './react/LipSync'
 export type { LipSyncDriver, LipSyncProps } from './react/LipSync'
 export { Live2DCanvas } from './react/Live2DCanvas'

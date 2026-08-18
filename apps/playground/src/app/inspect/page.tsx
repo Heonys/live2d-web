@@ -21,10 +21,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import {
-  parseInspectorModelMetadata,
-  resolveInspectorModelUrl,
-} from '../../inspector/modelMetadata'
+import { resolveInspectorModelUrl } from '../../inspector/modelMetadata'
 
 interface AssetManifest {
   model3: string
@@ -178,52 +175,6 @@ function InspectorContent() {
     return () => abortController.abort()
   }, [initialQuery, prepareSource])
 
-  useEffect(() => {
-    if (!source)
-      return
-    const abortController = new AbortController()
-    const resolvedSource = resolveInspectorModelUrl(source, window.location.href)
-    fetch(resolvedSource, { signal: abortController.signal })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Live2DError(
-            'model-load-failed',
-            `Failed to load ${resolvedSource}: HTTP ${response.status}`,
-            {
-              details: {
-                assetType: 'model3',
-                httpStatus: response.status,
-                url: resolvedSource,
-              },
-            },
-          )
-        }
-        return response.json()
-      })
-      .then((value) => {
-        const parsed = parseInspectorModelMetadata(value)
-        setMetadata(parsed)
-        const firstMotion = parsed.motions[0]
-        setMotionValue(firstMotion ? `${firstMotion.group}:${firstMotion.index}` : '')
-        setExpression(parsed.expressions[0] ?? '')
-      })
-      .catch((error: unknown) => {
-        if (!abortController.signal.aborted) {
-          setMetadataError(error instanceof Live2DError
-            ? error
-            : new Live2DError(
-                'model-load-failed',
-                error instanceof Error ? error.message : String(error),
-                {
-                  cause: error,
-                  details: { assetType: 'model3', url: resolvedSource },
-                },
-              ))
-        }
-      })
-    return () => abortController.abort()
-  }, [generation, source])
-
   const canvasQuality = resolutionMode === 'auto'
     ? { quality: 'auto' as const }
     : { resolution: Number(resolutionMode) }
@@ -342,6 +293,21 @@ function InspectorContent() {
                     onLoad={(nextController) => {
                       setRuntimeError(undefined)
                       setController(nextController)
+                      // The library owns model metadata now; no second fetch
+                      // and no hand parsing of model3.json.
+                      const info = nextController.getModelInfo()
+                      const motions = Object.entries(info.motions).flatMap(
+                        ([group, count]) => Array.from(
+                          { length: count },
+                          (_, index) => ({ group, index }),
+                        ),
+                      )
+                      setMetadata({ expressions: info.expressions, motions })
+                      const firstMotion = motions[0]
+                      setMotionValue(
+                        firstMotion ? `${firstMotion.group}:${firstMotion.index}` : '',
+                      )
+                      setExpression(info.expressions[0] ?? '')
                     }}
                     onError={setRuntimeError}
                   />

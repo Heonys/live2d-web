@@ -47,9 +47,16 @@ export interface ModelHandle {
   /** Persists as a per-frame override until clearParameter() removes it. */
   setParameter: (id: string, value: number) => void
   clearParameter: (id: string) => void
+  /** Stage-local coordinates, same space as toWorld() output. */
   focus: (x: number, y: number) => void
-  motion: (group: string, index?: number) => Promise<void>
+  /** Hit-area names containing the stage-local point, in declaration order. */
+  hitTest: (x: number, y: number) => string[]
+  getModelInfo: () => ModelInfo
+  /** Resolves when playback finishes (including interruption), not when it starts. */
+  motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
+  isMotionPlaying: () => boolean
   expression: (id?: string) => Promise<void>
+  clearExpression: () => void
   /**
    * Runs after the SDK motion manager has written its values, before render.
    * The returned unsubscribe function must be idempotent.
@@ -58,7 +65,24 @@ export interface ModelHandle {
   dispose: () => void
 }
 
+export type MotionPriority = 'force' | 'idle' | 'normal'
+
+export interface MotionOptions {
+  /** Playback priority. 'force' interrupts anything (default). */
+  priority?: MotionPriority
+}
+
+/** Version-neutral model metadata extracted from the model settings file. */
+export interface ModelInfo {
+  expressions: string[]
+  hitAreas: string[]
+  /** Motion group name to motion count within that group. */
+  motions: Record<string, number>
+}
+
 export interface LoadModelOptions {
+  /** Idle motion group name, or false to disable automatic idle playback. */
+  idleMotion?: string | false
   signal?: AbortSignal
 }
 

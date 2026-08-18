@@ -43,6 +43,7 @@ runtime이 소유하는 것:
 - 자동 resolution 선택과 한 방향 품질 강등
 - AbortSignal, 모델 retry와 stale load 폐기
 - fit 재계산, parameter driver와 립싱크 연결
+- client 좌표 → stage 좌표 변환(focusAt/hitTest)과 followPointer 배선
 - 기능 → model → Stage의 idempotent dispose
 - 저빈도 상태 구독과 전체 Stage retry
 
@@ -58,7 +59,8 @@ per-frame 데이터는 React state로 올리지 않는다.
 
 - `StageHandle`: resize, resolution, 좌표 변환, pause/resume, frame/error
   구독과 dispose
-- `ModelHandle`: intrinsic size, transform, parameter, focus, motion,
+- `ModelHandle`: intrinsic size, transform, parameter, focus, hitTest,
+  모델 메타데이터(getModelInfo), motion(재생 완료 시 resolve, 우선순위),
   expression, after-motion 구독과 dispose
 
 이 경계 덕분에 vanilla/React API와 테스트는 renderer를 몰라도 된다.

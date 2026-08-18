@@ -1,12 +1,21 @@
 export type Live2DErrorCode
+  /** Called outside a browser (SSR, worker, tests without DOM). */
   = | 'browser-only'
+    /** Cubism Core is not loaded and no working coreUrl was provided. */
     | 'core-missing'
+    /** The backend requires WebGL2 and the browser could not create it. */
     | 'webgl-unsupported'
+    /** An option or argument value is invalid; never retried. */
     | 'invalid-props'
+    /** A React component is mounted outside its required parent. */
     | 'invalid-tree'
+    /** Lip sync failed; only the feature stops, the stage keeps running. */
     | 'lipsync-error'
+    /** A model asset failed to fetch or parse (see details.assetType/url). */
     | 'model-load-failed'
+    /** The stage or renderer failed after setup (including context loss). */
     | 'render-error'
+    /** The backend rejected the call (e.g. a foreign StageHandle). */
     | 'adapter-error'
 
 export type Live2DAssetType

@@ -25,6 +25,8 @@ type CreateLive2DOptions = {
   backend?: Live2DBackend
   coreUrl?: string
   fit?: ModelFit
+  followPointer?: boolean
+  idleMotion?: string | false
   maxFps?: number
   pauseWhenOffscreen?: boolean
   retries?: number
@@ -38,9 +40,14 @@ type CreateLive2DOptions = {
 interface Live2DInstance {
   getState(): Live2DRuntimeState
   subscribe(listener: () => void): () => void
-  motion(group: string, index?: number): Promise<void>
+  motion(group: string, index?: number, options?: MotionOptions): Promise<void>
+  isMotionPlaying(): boolean
   expression(id?: string): Promise<void>
+  clearExpression(): void
+  getModelInfo(): ModelInfo
   focus(x: number, y: number): void
+  focusAt(clientX: number, clientY: number): void
+  hitTest(clientX: number, clientY: number): string[]
   getParameter(id: string): number
   setParameter(id: string, value: number): void
   clearParameter(id: string): void
@@ -52,7 +59,21 @@ interface Live2DInstance {
   retry(): Promise<void>
   dispose(): void
 }
+
+interface MotionOptions {
+  priority?: 'force' | 'idle' | 'normal' // default 'force'
+}
+
+interface ModelInfo {
+  expressions: string[]
+  hitAreas: string[]
+  motions: Record<string, number> // group name -> motion count
+}
 ```
+
+`motion()` resolves when playback finishes (or is interrupted), so sequencing
+is a plain `await`. `focusAt`/`hitTest` take viewport client coordinates;
+`focus` takes stage-local CSS pixels.
 
 `setParameter()` is a persistent per-frame override that is re-applied after
 every SDK update until `clearParameter()` removes it. `pauseWhenOffscreen`
@@ -101,17 +122,22 @@ import { LipSync, Live2DModel, Live2DCanvas } from 'live2d-web/react'
 `pauseWhenOffscreen`, `className`, `style`, loading/error fallbacks and
 `onError`.
 
-`Live2DModelProps` provides `src`, `fit`, `retries`, `onLoad`, `onError` and
-children. Only one model is allowed per Canvas. `src` changes and StrictMode
-effect replays dispose the old headless runtime generation.
+`Live2DModelProps` provides `src`, `fit`, `followPointer`, `idleMotion`,
+`paused`, `retries`, `onLoad`, `onError`, `onTap` and children. Only one model
+is allowed per Canvas. `src` changes and StrictMode effect replays dispose the
+old headless runtime generation; toggling `followPointer`/`paused`/`onTap`
+never does.
 
 `onLoad` receives the same React-only controller returned by
 `useLive2DModel()`. It deliberately excludes renderer and lifecycle methods:
 
 ```ts
 interface Live2DModelController {
-  motion(group: string, index?: number): Promise<void>
+  motion(group: string, index?: number, options?: MotionOptions): Promise<void>
+  isMotionPlaying(): boolean
   expression(id?: string): Promise<void>
+  clearExpression(): void
+  getModelInfo(): ModelInfo
   focus(x: number, y: number): void
   getParameter(id: string): number
   setParameter(id: string, value: number): void
@@ -135,18 +161,22 @@ interface LipSyncDriver {
 }
 
 type RuntimeLipSyncOptions =
-  | { driver: LipSyncDriver }
-  | {
-      source: AudioNode
-      profile: string | URL | ArrayBuffer | LipSyncProfile
-      isSpeaking: () => boolean
-    }
+  { parameterId?: string } & (
+    | { driver: LipSyncDriver }
+    | {
+        source: AudioNode
+        profile: string | URL | ArrayBuffer | LipSyncProfile
+        isSpeaking: () => boolean
+      }
+  )
 ```
 
-React `<LipSync>` accepts the same driver mode, or
-`source + active + profile`. Source mode dynamically imports wLipSync. The
-caller owns the `AudioNode` and `AudioContext`; cleanup removes only the
-analysis edge and node owned by this feature.
+React `<LipSync>` accepts the same driver mode, `source + active + profile`,
+or plain `mouthOpen + speaking` values when a stable driver reference is
+inconvenient. Source mode dynamically imports wLipSync. The caller owns the
+`AudioNode` and `AudioContext`; cleanup removes only the analysis edge and
+node owned by this feature. `parameterId` retargets models that do not use
+`ParamMouthOpenY`.
 
 Mouth values are clamped to 0–1. `ParamMouthOpenY`, a 200 ms smoothstep release
 and a 500 ms closed-mouth hold are fixed for this alpha.
@@ -155,6 +185,27 @@ Lip-sync and parameter-driver writes are transient: each frame's value is
 written after the SDK update and cleared immediately, so it never persists as a
 manual override. When speech ends, the release/hold sequence finishes and
 motion curves regain the mouth parameter automatically.
+
+## Decisions on 2026-08-18 (interaction round)
+
+- **motion() resolves at playback end, not start**: sequencing ("say the next
+  line when the motion ends") was impossible; the queue-entry handle the
+  Framework already returns is now polled by the frame loop. Interruption also
+  resolves. Priority ('idle'|'normal'|'force') is exposed; default stays force.
+- **One coordinate system for users**: `focusAt`/`hitTest` take viewport
+  client coordinates only. pixi-live2d-display exposes three coordinate
+  spaces; we deliberately do not. Contract-level `focus`/`hitTest` use
+  stage-local CSS pixels; the runtime converts.
+- **Hit testing is AABB per hit-area drawable** (official sample semantics)
+  via the inverse of the adapter's own MVP matrix; the vendor `isHit` is not
+  used because this adapter does not populate `_modelMatrix`.
+- **Metadata is one normalized shape** (`getModelInfo()`); unknown
+  motion/expression errors list the available names.
+- **followPointer/onTap/paused live outside CreateLive2DOptions in React** so
+  toggling them never recreates the runtime.
+- **useLive2DParameter now clears its override on unmount/id change** — the
+  previous behavior left the parameter pinned forever (bug).
+- **HTTP 4xx never retries**; retries are for transient failures only.
 
 ## Decisions on 2026-08-18
 
@@ -195,10 +246,14 @@ useLive2DCanvas(): {
 useLive2DModel(): Live2DModelController | null
 useLive2DParameter(id: string, value: number): void
 useParameterDriver(id: string, getter: () => number): void
+useLive2D(options): { instance, state, error, retry }
 ```
 
-`useLive2DParameter` is for discrete changes. `useParameterDriver` reads the
-latest getter after SDK motion update without causing React renders.
+`useLive2DParameter` is for discrete changes and clears its override on
+unmount or id change. `useParameterDriver` reads the latest getter after SDK
+motion update without causing React renders. `useLive2D` owns a vanilla
+instance from React (StrictMode-safe) for apps that want the full
+`Live2DInstance` instead of the declarative components.
 
 ## Errors
 

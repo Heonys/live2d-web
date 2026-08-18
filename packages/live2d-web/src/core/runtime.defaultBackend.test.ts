@@ -11,12 +11,16 @@ const adapterState = vi.hoisted(() => ({
 vi.mock('../adapters/cubism-webgl', () => {
   adapterState.evaluatedAfterCore = Boolean(window.Live2DCubismCore)
   const model: ModelHandle = {
+    clearExpression: () => {},
     clearParameter: () => {},
     dispose: () => {},
     expression: async () => {},
     focus: () => {},
     getIntrinsicSize: () => ({ height: 2, width: 1 }),
+    getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
     getParameter: () => 0,
+    hitTest: () => [],
+    isMotionPlaying: () => false,
     motion: async () => {},
     onAfterMotionUpdate: () => () => {},
     setParameter: () => {},

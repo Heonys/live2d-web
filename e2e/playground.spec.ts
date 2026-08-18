@@ -265,6 +265,23 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
   await page.goto('/e2e')
   await expect(page.locator('#e2e-status')).toHaveText('ready')
 
+  // hitTest takes viewport client coordinates: points over the character
+  // report hit areas while points outside the canvas report none.
+  const hits = await page.evaluate(() => {
+    const rect = document.querySelector('#e2e-character')!.getBoundingClientRect()
+    const bridge = (window as any).__live2dWebE2E
+    const probes = [0.3, 0.5, 0.7].flatMap(ratio => bridge.hitTest(
+      rect.left + rect.width / 2,
+      rect.top + rect.height * ratio,
+    ))
+    return {
+      outside: bridge.hitTest(rect.left - 40, rect.top - 40),
+      probes,
+    }
+  })
+  expect(hits.probes.length).toBeGreaterThan(0)
+  expect(hits.outside).toEqual([])
+
   await page.route('**/motion/hiyori_m07.motion3.json', route => route.fulfill({
     body: 'temporary failure',
     status: 500,

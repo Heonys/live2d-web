@@ -2,6 +2,8 @@ import type { LipSyncProfileInput } from '../features/lipsync/source'
 import type {
   Live2DBackend,
   ModelHandle,
+  ModelInfo,
+  MotionOptions,
   StageHandle,
 } from './contract'
 import type { ModelFit } from './fit'
@@ -44,17 +46,29 @@ export type RuntimeQualityOptions
     | { quality?: never, resolution: number }
 
 interface BaseCreateLive2DOptions {
+  /** Element that receives the canvas. Must have a CSS size. */
   container: HTMLElement
+  /** Absolute or site-relative URL of the model3.json file. Sibling assets load relative to it. */
   src: string
   /** Omit to use the official Framework-based cubism-webgl adapter. */
   backend?: Live2DBackend
+  /** URL of the official live2dcubismcore.min.js. Omit only when the Core global is already loaded. */
   coreUrl?: string
+  /** Layout preset or custom scale/offset. Default 'upper-body'. */
   fit?: ModelFit
+  /** Make the model look toward the pointer while it is over the container. Default false. */
+  followPointer?: boolean
+  /** Idle motion group name (default 'Idle'), or false to disable automatic idle playback. */
+  idleMotion?: string | false
+  /** Frame-rate cap. Omit for the display refresh rate. */
   maxFps?: number
   /** Pause rendering while the container is outside the viewport. Default true. */
   pauseWhenOffscreen?: boolean
+  /** Model-load retry count for transient failures (default 2). HTTP 4xx never retries. */
   retries?: number
+  /** Aborts the initial load. */
   signal?: AbortSignal
+  /** Called for runtime errors after the instance became ready. */
   onError?: (error: Live2DError) => void
 }
 
@@ -70,7 +84,11 @@ export interface LipSyncDriver {
 }
 
 export type RuntimeLipSyncOptions
-  = ({ onError?: (error: Live2DError) => void } & (
+  = ({
+    onError?: (error: Live2DError) => void
+    /** Mouth parameter to drive. Default ParamMouthOpenY. */
+    parameterId?: string
+  } & (
     | { driver: LipSyncDriver }
     | {
       source: AudioNode
@@ -80,20 +98,45 @@ export type RuntimeLipSyncOptions
   ))
 
 export interface Live2DInstance {
+  /** Current lifecycle/render state snapshot. */
   readonly getState: () => Live2DRuntimeState
+  /** Notifies on state changes. Returns an idempotent unsubscribe. */
   readonly subscribe: (listener: () => void) => () => void
-  motion: (group: string, index?: number) => Promise<void>
+  /** Plays a motion. Resolves when playback finishes (or is interrupted). */
+  motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
+  /** True while any motion (including idle) is playing. */
+  isMotionPlaying: () => boolean
+  /** Applies an expression by name, or a random one when omitted. */
   expression: (id?: string) => Promise<void>
+  /** Returns the model to its default (no expression) state. */
+  clearExpression: () => void
+  /** Motion groups, expressions and hit areas declared by the model. */
+  getModelInfo: () => ModelInfo
+  /** Makes the model look at a stage-local point (0,0 = container top-left, CSS pixels). */
   focus: (x: number, y: number) => void
+  /** Like focus(), but takes viewport client coordinates (e.g. PointerEvent clientX/Y). */
+  focusAt: (clientX: number, clientY: number) => void
+  /** Hit-area names under the given client coordinates. Empty before ready. */
+  hitTest: (clientX: number, clientY: number) => string[]
+  /** Reads the current value of a Cubism parameter. */
   getParameter: (id: string) => number
+  /** Persistent per-frame override until clearParameter() removes it. */
   setParameter: (id: string, value: number) => void
+  /** Removes a setParameter() override so motion curves regain the parameter. */
   clearParameter: (id: string) => void
+  /** Changes the layout preset without reloading the model. */
   setFit: (fit: ModelFit) => void
+  /** Writes a value after each SDK update. Returns an idempotent cleanup. */
   addParameterDriver: (id: string, driver: ParameterDriver) => () => void
+  /** Attaches lip sync. Returns an idempotent cleanup. */
   addLipSync: (options: RuntimeLipSyncOptions) => () => void
+  /** Pauses rendering until resume(). Hidden-tab/offscreen pauses stack separately. */
   pause: () => void
+  /** Releases a pause() call. Rendering resumes when no pause reason remains. */
   resume: () => void
+  /** Recreates the whole stage after a runtime error (e.g. context loss). */
   retry: () => Promise<void>
+  /** Releases the model, canvas and GL context. Safe to call twice. */
   dispose: () => void
 }
 
@@ -190,6 +233,25 @@ function assertOptions(options: CreateLive2DOptions) {
     throw new Live2DError(
       'invalid-props',
       'pauseWhenOffscreen must be a boolean.',
+    )
+  }
+  if (
+    options.followPointer !== undefined
+    && typeof options.followPointer !== 'boolean'
+  ) {
+    throw new Live2DError(
+      'invalid-props',
+      'followPointer must be a boolean.',
+    )
+  }
+  if (
+    options.idleMotion !== undefined
+    && options.idleMotion !== false
+    && (typeof options.idleMotion !== 'string' || options.idleMotion.trim() === '')
+  ) {
+    throw new Live2DError(
+      'invalid-props',
+      'idleMotion must be a non-empty motion group name or false.',
     )
   }
 }
@@ -395,6 +457,12 @@ export class Live2DRuntime implements Live2DInstance {
 
       this.updateState({ loadingStage: 'stage' })
       const rect = this.options.container.getBoundingClientRect()
+      if (rect.width < 1 || rect.height < 1) {
+        console.warn(
+          '[live2d-web] The container has zero size, so the canvas will be 1x1 '
+          + 'and nothing will be visible. Give the container a CSS width and height.',
+        )
+      }
       let width = Math.max(1, rect.width)
       let height = Math.max(1, rect.height)
       const resolution = this.options.resolution !== undefined
@@ -525,6 +593,25 @@ export class Live2DRuntime implements Live2DInstance {
       this.applyFit()
       for (const feature of this.features)
         feature.attach(model)
+      if (this.options.followPointer) {
+        const container = this.options.container
+        const onPointerMove = (event: PointerEvent) => {
+          if (this.model && this.stage === stage)
+            this.focusAt(event.clientX, event.clientY)
+        }
+        const onPointerLeave = () => {
+          if (this.model && this.stage === stage) {
+            const size = stage.getSize()
+            this.model.focus(size.width / 2, size.height / 2)
+          }
+        }
+        container.addEventListener('pointermove', onPointerMove)
+        container.addEventListener('pointerleave', onPointerLeave)
+        this.stageCleanup.push(() => {
+          container.removeEventListener('pointermove', onPointerMove)
+          container.removeEventListener('pointerleave', onPointerLeave)
+        })
+      }
       this.updateState({
         error: undefined,
         loadingStage: undefined,
@@ -557,13 +644,21 @@ export class Live2DRuntime implements Live2DInstance {
     let lastError: Live2DError | undefined
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        return await backend.loadModel(stage, this.options.src, { signal })
+        return await backend.loadModel(stage, this.options.src, {
+          idleMotion: this.options.idleMotion,
+          signal,
+        })
       }
       catch (error) {
         if (signal.aborted)
           throw error
         lastError = asLive2DError(error, 'model-load-failed')
-        if (lastError.code === 'invalid-props' || attempt === retries)
+        // HTTP 4xx means a wrong URL or missing asset; retrying only delays
+        // the failure. Retries exist for transient network/server issues.
+        const status = lastError.details?.httpStatus
+        const permanent = lastError.code === 'invalid-props'
+          || (status !== undefined && status >= 400 && status < 500)
+        if (permanent || attempt === retries)
           break
         await wait(attempt === 0 ? 250 : 500, signal)
       }
@@ -603,16 +698,43 @@ export class Live2DRuntime implements Live2DInstance {
     ))
   }
 
-  motion(group: string, index?: number) {
-    return this.requireModel().motion(group, index)
+  motion(group: string, index?: number, options?: MotionOptions) {
+    return this.requireModel().motion(group, index, options)
+  }
+
+  isMotionPlaying() {
+    return this.model?.isMotionPlaying() ?? false
   }
 
   expression(id?: string) {
     return this.requireModel().expression(id)
   }
 
+  clearExpression() {
+    this.requireModel().clearExpression()
+  }
+
+  getModelInfo() {
+    return this.requireModel().getModelInfo()
+  }
+
   focus(x: number, y: number) {
     this.requireModel().focus(x, y)
+  }
+
+  focusAt(clientX: number, clientY: number) {
+    const model = this.requireModel()
+    if (!this.stage)
+      return
+    const point = this.stage.toWorld(clientX, clientY)
+    model.focus(point.x, point.y)
+  }
+
+  hitTest(clientX: number, clientY: number): string[] {
+    if (!this.model || !this.stage)
+      return []
+    const point = this.stage.toWorld(clientX, clientY)
+    return this.model.hitTest(point.x, point.y)
   }
 
   getParameter(id: string) {
@@ -675,6 +797,7 @@ export class Live2DRuntime implements Live2DInstance {
       else if (!options.onError && !this.options.onError)
         console.error('[live2d-web] lip sync disabled:', normalized)
     }
+    const parameterId = options.parameterId ?? MOUTH_PARAMETER_ID
     const feature = new ManagedFeature(async (model) => {
       const controller = new MouthController()
       const sourceConnection = 'source' in options
@@ -694,7 +817,7 @@ export class Live2DRuntime implements Live2DInstance {
           const speaking = driver.isSpeaking()
           const value = controller.update({
             deltaMs,
-            motionValue: model.getParameter(MOUTH_PARAMETER_ID),
+            motionValue: model.getParameter(parameterId),
             mouthOpen: speaking ? driver.getMouthOpen() : 0,
             speaking,
           })
@@ -702,8 +825,8 @@ export class Live2DRuntime implements Live2DInstance {
             // Write transiently so the release/hold handoff actually returns
             // ParamMouthOpenY to motion curves instead of pinning the last
             // lip-sync value as a persistent override.
-            model.setParameter(MOUTH_PARAMETER_ID, value)
-            model.clearParameter(MOUTH_PARAMETER_ID)
+            model.setParameter(parameterId, value)
+            model.clearParameter(parameterId)
           }
         }
         catch (error) {
@@ -713,7 +836,7 @@ export class Live2DRuntime implements Live2DInstance {
       })
       return () => {
         unsubscribe()
-        model.clearParameter(MOUTH_PARAMETER_ID)
+        model.clearParameter(parameterId)
         sourceConnection?.dispose()
       }
     }, reportLipSyncError)

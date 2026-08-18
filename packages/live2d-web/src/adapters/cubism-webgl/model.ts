@@ -1,9 +1,13 @@
 import type { CubismIdHandle } from '#cubism-framework/id/cubismid'
+import type { CubismMatrix44 } from '#cubism-framework/math/cubismmatrix44'
 import type { CubismMotion } from '#cubism-framework/motion/cubismmotion'
+import type { CubismMotionQueueEntryHandle } from '#cubism-framework/motion/cubismmotionqueuemanager'
 import type {
   LoadModelOptions,
   ModelHandle,
+  ModelInfo,
   ModelTransform,
+  MotionPriority,
   StageHandle,
 } from '../../core/contract'
 import type { Live2DAssetType, Live2DErrorDetails } from '../../core/errors'
@@ -28,6 +32,7 @@ import { CubismBreathUpdater } from '#cubism-framework/motion/cubismbreathupdate
 import { CubismExpressionUpdater } from '#cubism-framework/motion/cubismexpressionupdater'
 import { CubismEyeBlinkUpdater } from '#cubism-framework/motion/cubismeyeblinkupdater'
 import { CubismLookUpdater } from '#cubism-framework/motion/cubismlookupdater'
+import { InvalidMotionQueueEntryHandleValue } from '#cubism-framework/motion/cubismmotionqueuemanager'
 import { CubismPhysicsUpdater } from '#cubism-framework/motion/cubismphysicsupdater'
 import { CubismPoseUpdater } from '#cubism-framework/motion/cubismposeupdater'
 import { CubismUpdateScheduler } from '#cubism-framework/motion/cubismupdatescheduler'
@@ -51,6 +56,11 @@ import { getStageInternals } from './stage'
 const PRIORITY_IDLE = 1
 const PRIORITY_FORCE = 3
 const PREFETCH_DELAY_MS = 1_000
+const MOTION_PRIORITIES: Record<MotionPriority, number> = {
+  force: 3,
+  idle: 1,
+  normal: 2,
+}
 
 function once(cleanup: () => void) {
   let active = true
@@ -86,6 +96,12 @@ class FrameworkModel extends CubismUserModel {
   private readonly loadedMotions = new Set<ACubismMotion>()
   private layoutMatrix: CubismModelMatrix | undefined
   private readonly manualParameters = new Map<string, number>()
+  private readonly motionResolvers: {
+    handle: CubismMotionQueueEntryHandle
+    resolve: () => void
+  }[] = []
+
+  private mvpMatrix: CubismMatrix44 | undefined
   private readonly motionCache = new Map<string, Promise<CubismMotion>>()
   private readonly parameterIds = new Map<string, CubismIdHandle>()
   // Keys of in-flight loads. Dispose settles their diagnostics counters
@@ -111,6 +127,7 @@ class FrameworkModel extends CubismUserModel {
     private readonly setting: CubismModelSettingJson,
     private readonly shaderBaseUrl: string,
     private readonly shaderSources: Readonly<Record<string, string>> | undefined,
+    private readonly idleMotionGroup: string | false,
     private readonly releaseFramework: () => void,
     private readonly diagnostics?: CubismBenchmarkStageDiagnostics,
   ) {
@@ -223,14 +240,14 @@ class FrameworkModel extends CubismUserModel {
     })
     // The delay may have been cut short by dispose; the settings object is
     // released at that point, so bail out before touching it.
-    if (this.disposed)
+    if (this.disposed || this.idleMotionGroup === false)
       return
-    const count = this.setting.getMotionCount('Idle')
+    const count = this.setting.getMotionCount(this.idleMotionGroup)
     for (let index = 0; index < count; index++) {
       if (this.disposed)
         return
       try {
-        await this.loadMotionAsset('Idle', index)
+        await this.loadMotionAsset(this.idleMotionGroup, index)
       }
       catch {
         // Prefetch is best-effort; playback surfaces real failures.
@@ -440,6 +457,7 @@ class FrameworkModel extends CubismUserModel {
         )
       }
       this.getModel().saveParameters()
+      this.settleFinishedMotions()
       this.scheduler.onLateUpdate(this.getModel(), deltaSeconds)
       for (const [id, value] of this.manualParameters)
         this.getModel().setParameterValueById(this.parameterId(id), value)
@@ -462,6 +480,7 @@ class FrameworkModel extends CubismUserModel {
       }
       this.getModel().saveParameters()
     })
+    this.settleFinishedMotions()
     measureSync(this.diagnostics, 'frame', 'effectsPhysicsPose', () => {
       this.scheduler.onLateUpdate(this.getModel(), deltaSeconds)
     })
@@ -479,10 +498,11 @@ class FrameworkModel extends CubismUserModel {
   }
 
   private scheduleIdle() {
-    if (this.idlePending || this.setting.getMotionCount('Idle') === 0)
+    const group = this.idleMotionGroup
+    if (group === false || this.idlePending || this.setting.getMotionCount(group) === 0)
       return
     this.idlePending = true
-    void this.playMotion('Idle', undefined, PRIORITY_IDLE)
+    void this.playMotion(group, undefined, PRIORITY_IDLE)
       .catch((error) => {
         if (!this.disposed)
           getStageInternals(this.stage).reportError(asModelError(error, 'Idle motion failed'))
@@ -540,18 +560,39 @@ class FrameworkModel extends CubismUserModel {
     return promise
   }
 
+  private motionGroupNames() {
+    return Array.from(
+      { length: this.setting.getMotionGroupCount() },
+      (_, index) => this.setting.getMotionGroupName(index),
+    )
+  }
+
+  private settleFinishedMotions() {
+    for (let index = this.motionResolvers.length - 1; index >= 0; index--) {
+      const pending = this.motionResolvers[index]
+      if (this._motionManager.isFinishedByHandle(pending.handle)) {
+        this.motionResolvers.splice(index, 1)
+        pending.resolve()
+      }
+    }
+  }
+
   private async playMotion(group: string, index: number | undefined, priority: number) {
     if (this.disposed)
       return
     const count = this.setting.getMotionCount(group)
     if (count === 0) {
-      throw new Live2DError('invalid-props', `Unknown Live2D motion group: ${group}`)
+      throw new Live2DError(
+        'invalid-props',
+        `Unknown Live2D motion group: ${group}. Available groups: ${
+          this.motionGroupNames().join(', ') || '(none)'}`,
+      )
     }
     const selected = index ?? Math.floor(Math.random() * count)
     if (!Number.isInteger(selected) || selected < 0 || selected >= count) {
       throw new Live2DError(
         'invalid-props',
-        `Motion index ${selected} is outside group ${group}.`,
+        `Motion index ${selected} is outside group ${group} (0-${count - 1}).`,
       )
     }
     if (priority === PRIORITY_FORCE)
@@ -559,17 +600,87 @@ class FrameworkModel extends CubismUserModel {
     else if (!this._motionManager.reserveMotion(priority))
       return
 
+    let handle: CubismMotionQueueEntryHandle
     try {
       const motion = await this.loadMotionAsset(group, selected)
       if (this.disposed)
         return
-      this._motionManager.startMotionPriority(motion, false, priority)
+      handle = this._motionManager.startMotionPriority(motion, false, priority)
     }
     catch (error) {
       if (this.disposed)
         return
       this._motionManager.setReservePriority(0)
       throw error
+    }
+    if (handle === InvalidMotionQueueEntryHandleValue)
+      return
+    // Resolve when playback actually ends (settled by the frame loop), so
+    // callers can sequence follow-up actions with a plain await.
+    await new Promise<void>((resolve) => {
+      this.motionResolvers.push({ handle, resolve })
+    })
+  }
+
+  private hitTestStagePoint(x: number, y: number): string[] {
+    if (this.disposed || !this.layoutMatrix)
+      return []
+    if (!this.mvpMatrix || this.mvpDirty) {
+      // Rebuild for querying but keep mvpDirty so draw() still refreshes the
+      // renderer copy on the next frame.
+      this.mvpMatrix = buildMvpMatrix(
+        this.stage.getSize(),
+        this.transform,
+        this.layoutMatrix,
+        this.bounds,
+      )
+    }
+    const size = this.stage.getSize()
+    const ndcX = x / Math.max(1, size.width) * 2 - 1
+    const ndcY = 1 - y / Math.max(1, size.height) * 2
+    const modelX = this.mvpMatrix.invertTransformX(ndcX)
+    const modelY = this.mvpMatrix.invertTransformY(ndcY)
+    const hits: string[] = []
+    for (let area = 0; area < this.setting.getHitAreasCount(); area++) {
+      const drawableIndex = this.getModel().getDrawableIndex(this.setting.getHitAreaId(area))
+      if (drawableIndex < 0 || this.getModel().getDrawableOpacity(drawableIndex) <= 0)
+        continue
+      const vertexCount = this.getModel().getDrawableVertexCount(drawableIndex)
+      const vertices = this.getModel().getDrawableVertices(drawableIndex)
+      if (vertexCount === 0)
+        continue
+      let left = vertices[0]
+      let right = vertices[0]
+      let bottom = vertices[1]
+      let top = vertices[1]
+      for (let vertex = 1; vertex < vertexCount; vertex++) {
+        const vx = vertices[vertex * 2]
+        const vy = vertices[vertex * 2 + 1]
+        left = Math.min(left, vx)
+        right = Math.max(right, vx)
+        bottom = Math.min(bottom, vy)
+        top = Math.max(top, vy)
+      }
+      if (modelX >= left && modelX <= right && modelY >= bottom && modelY <= top)
+        hits.push(this.setting.getHitAreaName(area))
+    }
+    return hits
+  }
+
+  private readModelInfo(): ModelInfo {
+    const motions: Record<string, number> = {}
+    for (const group of this.motionGroupNames())
+      motions[group] = this.setting.getMotionCount(group)
+    return {
+      expressions: Array.from(
+        { length: this.setting.getExpressionCount() },
+        (_, index) => this.setting.getExpressionName(index),
+      ),
+      hitAreas: Array.from(
+        { length: this.setting.getHitAreasCount() },
+        (_, index) => this.setting.getHitAreaName(index),
+      ),
+      motions,
     }
   }
 
@@ -633,14 +744,15 @@ class FrameworkModel extends CubismUserModel {
       )
       if (!this.layoutMatrix)
         return
-      if (this.mvpDirty) {
-        renderer.setMvpMatrix(buildMvpMatrix(
+      if (this.mvpDirty || !this.mvpMatrix) {
+        this.mvpMatrix = buildMvpMatrix(
           this.stage.getSize(),
           this.transform,
           this.layoutMatrix,
           this.bounds,
-        ))
+        )
         this.mvpDirty = false
+        renderer.setMvpMatrix(this.mvpMatrix)
       }
       renderer.drawModel(this.shaderBaseUrl)
     }
@@ -659,6 +771,10 @@ class FrameworkModel extends CubismUserModel {
 
   toHandle(): ModelHandle {
     return {
+      clearExpression: () => {
+        if (!this.disposed)
+          this._expressionManager.stopAllMotions()
+      },
       clearParameter: (id) => {
         this.manualParameters.delete(id)
       },
@@ -672,8 +788,13 @@ class FrameworkModel extends CubismUserModel {
         }
         const selectedId = id ?? this.setting.getExpressionName(Math.floor(Math.random() * count))
         const index = this.findExpression(selectedId)
-        if (index < 0)
-          throw new Live2DError('invalid-props', `Unknown Live2D expression: ${selectedId}`)
+        if (index < 0) {
+          throw new Live2DError(
+            'invalid-props',
+            `Unknown Live2D expression: ${selectedId}. Available: ${
+              this.readModelInfo().expressions.join(', ')}`,
+          )
+        }
         try {
           const expression = await this.loadExpressionAsset(selectedId, index)
           if (!this.disposed)
@@ -692,8 +813,15 @@ class FrameworkModel extends CubismUserModel {
         )
       },
       getIntrinsicSize: () => ({ height: this.bounds.height, width: this.bounds.width }),
+      getModelInfo: () => this.readModelInfo(),
       getParameter: id => this.getModel().getParameterValueById(this.parameterId(id)),
-      motion: (group, index) => this.playMotion(group, index, PRIORITY_FORCE),
+      hitTest: (x, y) => this.hitTestStagePoint(x, y),
+      isMotionPlaying: () => !this.disposed && !this._motionManager.isFinished(),
+      motion: (group, index, options) => this.playMotion(
+        group,
+        index,
+        MOTION_PRIORITIES[options?.priority ?? 'force'],
+      ),
       onAfterMotionUpdate: (callback) => {
         this.afterMotionCallbacks.add(callback)
         return once(() => this.afterMotionCallbacks.delete(callback))
@@ -724,6 +852,8 @@ class FrameworkModel extends CubismUserModel {
     for (let i = this.pendingExpressionKeys.size; i > 0; i--)
       this.diagnostics?.changeResource('pendingExpression', -1)
     this.pendingExpressionKeys.clear()
+    for (const pending of this.motionResolvers.splice(0))
+      pending.resolve()
     this.detachDriver?.()
     this.detachDriver = undefined
     this.afterMotionCallbacks.clear()
@@ -793,6 +923,7 @@ export async function loadFrameworkModel(
       setting,
       shaderBaseUrl,
       shaderSources,
+      options.idleMotion ?? 'Idle',
       releaseFramework,
       diagnostics,
     )

@@ -38,12 +38,16 @@ function createHarness(): Harness {
   const events: string[] = []
   let mouth = 0.4
   const model: ModelHandle = {
+    clearExpression: () => {},
     clearParameter: () => {},
     dispose: () => events.push('model:dispose'),
     expression: async () => {},
     focus: () => {},
     getIntrinsicSize: () => ({ height: 1000, width: 500 }),
+    getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
     getParameter: () => mouth,
+    hitTest: () => [],
+    isMotionPlaying: () => false,
     motion: async () => {},
     onAfterMotionUpdate(callback) {
       afterMotion.add(callback)

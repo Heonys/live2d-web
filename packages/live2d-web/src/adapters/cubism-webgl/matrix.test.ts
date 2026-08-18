@@ -34,4 +34,26 @@ describe('cubism CSS fit to clip-space matrix', () => {
 
     expect([...first]).toEqual([...second])
   })
+
+  it('inverts stage pixels back to model space for hit testing', () => {
+    const layout = new CubismModelMatrix(4, 2)
+    layout.setupFromLayout(new Map([['center_x', 0.25]]))
+    const bounds = measureLayout({ height: 2, width: 4 }, layout)
+    const stage = { height: 800, width: 400 }
+    const transform = fitModel(stage, bounds, 'full')
+    const mvp = buildMvpMatrix(stage, transform, layout, bounds)
+
+    // The hit-test path: stage CSS pixels -> NDC -> inverse MVP -> model
+    // space. Round-tripping a known model point must be lossless.
+    for (const [modelX, modelY] of [[0, 0], [-1.5, 0.75], [2, -1]]) {
+      const ndcX = mvp.transformX(modelX)
+      const ndcY = mvp.transformY(modelY)
+      const stageX = (ndcX + 1) / 2 * stage.width
+      const stageY = (1 - ndcY) / 2 * stage.height
+      const backNdcX = stageX / stage.width * 2 - 1
+      const backNdcY = 1 - stageY / stage.height * 2
+      expect(mvp.invertTransformX(backNdcX)).toBeCloseTo(modelX, 6)
+      expect(mvp.invertTransformY(backNdcY)).toBeCloseTo(modelY, 6)
+    }
+  })
 })

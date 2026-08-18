@@ -194,6 +194,8 @@ export function createWebGLStage(
 
   canvas.style.display = 'block'
   canvas.style.height = '100%'
+  // Without this, dragging the character scrolls the page on touch devices.
+  canvas.style.touchAction = 'none'
   canvas.style.width = '100%'
   canvas.addEventListener('webglcontextlost', onContextLost)
   element.appendChild(canvas)

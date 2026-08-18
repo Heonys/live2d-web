@@ -34,6 +34,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
     let disposed = false
     const afterMotion = new Set<(deltaMs: number) => void>()
     const model: ModelHandle = {
+      clearExpression: () => {},
       clearParameter: () => {},
       dispose: () => {
         if (disposed)
@@ -44,7 +45,10 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
       expression: async () => {},
       focus: () => {},
       getIntrinsicSize: () => ({ height: 1000, width: 500 }),
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
       getParameter: () => 0,
+      hitTest: () => [],
+      isMotionPlaying: () => false,
       motion: async () => {},
       onAfterMotionUpdate: (callback) => {
         afterMotion.add(callback)
@@ -203,10 +207,13 @@ describe('live2DCanvas lifecycle', () => {
     await waitFor(() => expect(observed).toBeDefined())
     expect(observed).toBe(loaded)
     expect(Object.keys(observed!)).toEqual([
+      'clearExpression',
       'clearParameter',
       'expression',
       'focus',
+      'getModelInfo',
       'getParameter',
+      'isMotionPlaying',
       'motion',
       'setParameter',
     ])

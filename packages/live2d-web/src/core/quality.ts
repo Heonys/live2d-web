@@ -12,15 +12,25 @@ export const DEFAULT_AUTO_QUALITY_POLICY = {
   sampleWindowMs: 3_000,
 } as const
 
+/** Overrides for the automatic quality policy. Omitted fields use DEFAULT_AUTO_QUALITY_POLICY. */
 export interface AutoQualityPolicy {
+  /** Resolution (backing-buffer multiplier) cap on desktop. Default 2. */
   desktopMaxResolution?: number
+  /** Backing-buffer pixel cap on desktop. Default 4,000,000. */
   desktopPixelBudget?: number
+  /** Frame duration counted as "long". Default 33 ms. */
   longFrameMs?: number
+  /** Long-frame ratio that triggers a downshift. Default 0.05 (5%). */
   longFrameRatioThreshold?: number
+  /** Floor the resolution never drops below. Default 1. */
   minResolution?: number
+  /** Resolution cap on mobile viewports. Default 1.5. */
   mobileMaxResolution?: number
+  /** Backing-buffer pixel cap on mobile. Default 1,500,000. */
   mobilePixelBudget?: number
+  /** Amount removed per downshift. Default 0.25. */
   resolutionStep?: number
+  /** Measurement window per downshift decision. Default 3,000 ms. */
   sampleWindowMs?: number
 }
 

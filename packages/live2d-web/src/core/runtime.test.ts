@@ -33,6 +33,7 @@ function createRuntimeHarness(pending = false): RuntimeHarness {
     let disposed = false
     const parameters = new Map<string, number>()
     return {
+      clearExpression: () => {},
       clearParameter(id) {
         parameters.delete(id)
         events.push(`clearParameter:${id}`)
@@ -50,7 +51,10 @@ function createRuntimeHarness(pending = false): RuntimeHarness {
         events.push(`focus:${x}:${y}`)
       },
       getIntrinsicSize: () => ({ height: 1_000, width: 500 }),
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
       getParameter: id => parameters.get(id) ?? 0,
+      hitTest: () => [],
+      isMotionPlaying: () => false,
       async motion(group, index) {
         events.push(`motion:${group}:${index ?? 'random'}`)
       },

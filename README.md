@@ -12,29 +12,59 @@ Framework 5-r.5 renderer directly on WebGL2. PixiJS v6 remains available only
 as an explicit compatibility and performance-comparison backend. Public
 repository and npm release are separate release gates.
 
+## Getting started
+
+```bash
+npm install live2d-web   # published after the public-release gates pass
+```
+
+Two files make a character:
+
+1. **Cubism Core** (`live2dcubismcore.min.js`) — Live2D's closed-source engine,
+   deliberately not bundled. Download the official Web SDK from
+   https://www.live2d.com/sdk/download/web/, copy the file into your static
+   assets and pass its URL as `coreUrl`. To try things quickly you can pass the
+   `OFFICIAL_CUBISM_CORE_URL` constant (Live2D's hosted copy); self-host for
+   production.
+2. **A model directory** — `model3.json` references its `.moc3`, textures,
+   motions and physics by relative path, so serve the whole model directory
+   (for example under `public/models/hiyori/`) and point `src` at the
+   `model3.json`.
+
 ## Vanilla API
 
 ```ts
-import { createLive2D } from 'live2d-web'
+import { createLive2D, OFFICIAL_CUBISM_CORE_URL } from 'live2d-web'
 
 const character = await createLive2D({
   container: document.querySelector('#character')!,
-  coreUrl: '/assets/live2dcubismcore.min.js',
+  coreUrl: OFFICIAL_CUBISM_CORE_URL,
   fit: 'upper-body',
+  followPointer: true,
   quality: 'auto',
-  src: '/models/hiyori.model3.json',
+  src: '/models/hiyori/hiyori.model3.json',
 })
 
-await character.motion('Tap@Body')
+// Interaction: hit-test taps, sequence motions, discover what the model has.
+container.addEventListener('click', async (event) => {
+  if (character.hitTest(event.clientX, event.clientY).includes('Body'))
+    await character.motion('Tap@Body') // resolves when playback finishes
+})
+console.log(character.getModelInfo()) // { motions, expressions, hitAreas }
+
 character.setParameter('ParamMouthOpenY', 0.5)
+character.clearParameter('ParamMouthOpenY')
 character.pause()
 character.resume()
 character.dispose()
 ```
 
 `createLive2D()` resolves only after Core, Stage and the model are ready. It
-also exposes `expression`, `focus`, `getParameter`, `setFit`, `retry`,
-`addParameterDriver`, `addLipSync`, state subscription and idempotent cleanup.
+also exposes `expression`/`clearExpression`, `focus`/`focusAt`,
+`isMotionPlaying`, `setFit`, `retry`, `addParameterDriver`, `addLipSync`,
+state subscription and idempotent cleanup. Motion playback accepts a
+`priority` ('idle' | 'normal' | 'force') and the idle group is configurable
+via `idleMotion` (or `false` to disable idle playback).
 
 ## React API
 
@@ -46,6 +76,7 @@ import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
 export function Character({ voice }: { voice: AudioNode | null }) {
   return (
     <Live2DCanvas
+      // Self-hosted Core file; OFFICIAL_CUBISM_CORE_URL also works here.
       coreUrl="/assets/live2dcubismcore.min.js"
       quality="auto"
     >
@@ -63,8 +94,28 @@ export function Character({ voice }: { voice: AudioNode | null }) {
 
 The React components create and subscribe to the same headless controller used
 by the vanilla API. `Live2DModel.onLoad` and `useLive2DModel()` return the same
-safe React controller with only motion, expression, focus and parameter
+safe React controller with motion, expression, focus, parameter and model-info
 methods. Per-frame values never pass through React state.
+
+`<Live2DModel>` also accepts `followPointer`, `paused` and
+`onTap={(hitAreas, event) => ...}` — toggling them never reloads the model.
+`<LipSync>` additionally accepts plain `mouthOpen`/`speaking` values when a
+stable driver object is inconvenient. For React apps that want the vanilla
+instance directly, `useLive2D({ container, src, ... })` owns the full
+lifecycle (StrictMode-safe) and returns `{ instance, state, error, retry }`.
+
+## Troubleshooting
+
+- **Nothing visible, status is ready**: the container has no CSS size; the
+  canvas collapsed to 1x1 (a console warning is printed). Give the container a
+  width and height.
+- **Model 404s**: the model directory must be served as static files; all
+  sibling assets load relative to the model3.json URL. HTTP 4xx fails fast
+  without retries.
+- **Several characters feel slow**: each canvas owns a WebGL context and its
+  own render loop; browsers cap contexts around 8-16. Prefer a few canvases.
+- **Mobile scrolls while dragging the character**: the canvas sets
+  `touch-action: none`, but a scrolling ancestor may still need it.
 
 ## Backend selection
 

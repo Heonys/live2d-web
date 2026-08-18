@@ -4,13 +4,16 @@ export type {
   Live2DBackend,
   LoadModelOptions,
   ModelHandle,
+  ModelInfo,
   ModelTransform,
+  MotionOptions,
+  MotionPriority,
   Point,
   Size,
   StageHandle,
   StageOptions,
 } from './core/contract'
-export { ensureCubismCore } from './core/ensureCubismCore'
+export { ensureCubismCore, OFFICIAL_CUBISM_CORE_URL } from './core/ensureCubismCore'
 export { Live2DError } from './core/errors'
 export type {
   Live2DAssetType,
@@ -44,4 +47,9 @@ export type {
   RuntimeQualityOptions,
   RuntimeRenderState,
 } from './core/runtime'
+export {
+  MOUTH_HANDOFF_HOLD_MS,
+  MOUTH_PARAMETER_ID,
+  MOUTH_RELEASE_MS,
+} from './features/lipsync/mouthController'
 export type { LipSyncProfile } from './features/lipsync/source'

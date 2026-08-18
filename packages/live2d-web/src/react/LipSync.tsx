@@ -16,6 +16,8 @@ export interface LipSyncDriver {
 
 interface LipSyncErrorProps {
   onError?: (error: Live2DError) => void
+  /** Mouth parameter to drive. Default ParamMouthOpenY. */
+  parameterId?: string
 }
 
 export type LipSyncProps
@@ -24,12 +26,25 @@ export type LipSyncProps
     source?: never
     active?: never
     profile?: never
+    mouthOpen?: never
+    speaking?: never
   }
   | LipSyncErrorProps & {
     source: AudioNode | null
     active: boolean
     profile: string | URL | ArrayBuffer | LipSyncProfile
     driver?: never
+    mouthOpen?: never
+    speaking?: never
+  }
+  | LipSyncErrorProps & {
+    /** Latest mouth openness (0-1). Plain values; no stable ref needed. */
+    mouthOpen: number
+    speaking: boolean
+    driver?: never
+    source?: never
+    active?: never
+    profile?: never
   }
 
 function isAudioNodeLike(value: unknown): value is AudioNode {
@@ -57,12 +72,23 @@ function resolveMode(props: LipSyncProps) {
   const hasSourceProps = 'source' in candidate
     || 'active' in candidate
     || 'profile' in candidate
+  const hasValueProps = 'mouthOpen' in candidate || 'speaking' in candidate
 
-  if (hasDriver === hasSourceProps) {
+  if (Number(hasDriver) + Number(hasSourceProps) + Number(hasValueProps) !== 1) {
     throw new Live2DErrorClass(
       'invalid-props',
-      '<LipSync> requires exactly one mode: driver or source/active/profile.',
+      '<LipSync> requires exactly one mode: driver, source/active/profile, or mouthOpen/speaking.',
     )
+  }
+
+  if (hasValueProps) {
+    if (typeof candidate.mouthOpen !== 'number' || typeof candidate.speaking !== 'boolean') {
+      throw new Live2DErrorClass(
+        'invalid-props',
+        '<LipSync mouthOpen/speaking> requires a number and a boolean.',
+      )
+    }
+    return 'values' as const
   }
 
   if (hasDriver) {
@@ -110,9 +136,13 @@ export function LipSync(props: LipSyncProps) {
   ).runtime
   const activeRef = useRef(false)
   const driverRef = useRef<LipSyncDriver | null>(null)
+  const mouthOpenRef = useRef(0)
   const onErrorRef = useRef(props.onError)
+  const speakingRef = useRef(false)
   activeRef.current = mode === 'source' ? Boolean(props.active) : false
   driverRef.current = mode === 'driver' ? props.driver ?? null : null
+  mouthOpenRef.current = mode === 'values' ? props.mouthOpen ?? 0 : 0
+  speakingRef.current = mode === 'values' ? Boolean(props.speaking) : false
   onErrorRef.current = props.onError
 
   const source = mode === 'source' ? props.source : null
@@ -128,13 +158,20 @@ export function LipSync(props: LipSyncProps) {
         console.error('[live2d-web] lip sync disabled:', error)
     }
 
-    if (mode === 'driver') {
+    if (mode === 'driver' || mode === 'values') {
+      const driver = mode === 'driver'
+        ? {
+            getMouthOpen: () => driverRef.current?.getMouthOpen() ?? 0,
+            isSpeaking: () => driverRef.current?.isSpeaking() ?? false,
+          }
+        : {
+            getMouthOpen: () => mouthOpenRef.current,
+            isSpeaking: () => speakingRef.current,
+          }
       return context.lifecycle.add(runtime.addLipSync({
-        driver: {
-          getMouthOpen: () => driverRef.current?.getMouthOpen() ?? 0,
-          isSpeaking: () => driverRef.current?.isSpeaking() ?? false,
-        },
+        driver,
         onError: report,
+        parameterId: props.parameterId,
       }))
     }
 
@@ -143,10 +180,11 @@ export function LipSync(props: LipSyncProps) {
     return context.lifecycle.add(runtime.addLipSync({
       isSpeaking: () => activeRef.current,
       onError: report,
+      parameterId: props.parameterId,
       profile,
       source,
     }))
-  }, [context.lifecycle, mode, profile, runtime, source])
+  }, [context.lifecycle, mode, profile, props.parameterId, runtime, source])
 
   return null
 }

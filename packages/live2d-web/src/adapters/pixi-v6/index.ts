@@ -154,6 +154,7 @@ function createStage(element: HTMLElement, options: StageOptions): StageHandle {
   canvas.style.display = 'block'
   canvas.style.height = '100%'
   canvas.style.objectFit = 'cover'
+  canvas.style.touchAction = 'none'
   canvas.style.width = '100%'
   canvas.addEventListener('webglcontextlost', onContextLost)
   element.appendChild(canvas)
@@ -338,7 +339,26 @@ async function loadModel(
     model.destroy()
   })
 
+  const internal = model.internalModel as unknown as {
+    hitAreas?: Record<string, unknown>
+    motionManager?: {
+      expressionManager?: { resetExpression: () => void }
+      isFinished?: () => boolean
+      off?: (event: string, listener: () => void) => void
+      on?: (event: string, listener: () => void) => void
+      playing?: boolean
+    }
+    settings?: {
+      expressions?: { Name?: string, name?: string }[]
+      motions?: Record<string, unknown[]>
+    }
+  }
+
   return {
+    clearExpression() {
+      if (!disposed)
+        internal.motionManager?.expressionManager?.resetExpression()
+    },
     // pixi-live2d-display writes are already transient: the next motion update
     // overwrites them, so there is no persistent override entry to remove.
     clearParameter() {},
@@ -352,15 +372,50 @@ async function loadModel(
         model.focus(x, y)
     },
     getIntrinsicSize: () => ({ ...initialSize }),
+    getModelInfo() {
+      const motions: Record<string, number> = {}
+      for (const [group, list] of Object.entries(internal.settings?.motions ?? {}))
+        motions[group] = Array.isArray(list) ? list.length : 0
+      return {
+        expressions: (internal.settings?.expressions ?? [])
+          .map(entry => entry.Name ?? entry.name ?? '')
+          .filter(name => name !== ''),
+        hitAreas: Object.keys(internal.hitAreas ?? {}),
+        motions,
+      }
+    },
     getParameter(id) {
       if (disposed)
         return 0
       const core = model.internalModel.coreModel as unknown as CoreModelParameters
       return core.getParameterValueById(id)
     },
-    async motion(group, index) {
-      if (!disposed)
-        await model.motion(group, index)
+    hitTest(x, y) {
+      return disposed ? [] : model.hitTest(x, y)
+    },
+    isMotionPlaying() {
+      return !disposed && internal.motionManager?.isFinished?.() === false
+    },
+    async motion(group, index, options) {
+      if (disposed)
+        return
+      const priority = { force: 3, idle: 1, normal: 2 }[options?.priority ?? 'force']
+      const started = await model.motion(group, index, priority)
+      if (started === false || disposed)
+        return
+      // pixi resolves at playback start; wait for the untyped runtime events
+      // so the contract's "resolves when playback finishes" holds here too.
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          internal.motionManager?.off?.('motionFinish', done)
+          internal.motionManager?.off?.('destroy', done)
+          resolve()
+        }
+        internal.motionManager?.on?.('motionFinish', done)
+        internal.motionManager?.on?.('destroy', done)
+        if (!internal.motionManager?.on)
+          resolve()
+      })
     },
     onAfterMotionUpdate(callback) {
       if (disposed)

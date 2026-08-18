@@ -19,6 +19,7 @@ declare global {
       expressionFixture: () => Promise<number>
       fit: (fit: 'full' | 'upper-body') => void
       focus: (x: number, y: number) => void
+      hitTest: (x: number, y: number) => string[]
       loseContext: () => void
       motion: () => Promise<{
         code: string
@@ -157,6 +158,7 @@ export default function E2EHarness() {
       },
       fit: fit => character?.setFit(fit),
       focus: (x, y) => character?.focus(x, y),
+      hitTest: (x, y) => character?.hitTest(x, y) ?? [],
       loseContext() {
         container.querySelector('canvas')
           ?.getContext('webgl2')

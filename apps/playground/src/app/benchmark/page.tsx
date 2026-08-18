@@ -121,10 +121,14 @@ function BenchmarkContent() {
         return snapshot()
       }
       instances = fulfilled
-      await Promise.all(instances.map(instance => instance.motion(
-        selectedModel.motion.group,
-        selectedModel.motion.index,
-      )))
+      // motion() resolves when playback finishes; the benchmark only needs
+      // playback started, so do not fold motion duration into readyMs.
+      for (const instance of instances) {
+        void instance.motion(
+          selectedModel.motion.group,
+          selectedModel.motion.index,
+        ).catch(() => {})
+      }
       await diagnostics.waitForFirstDraw(stageCount)
       if (disposed || currentGeneration !== generation) {
         disposeInstances(instances)
@@ -143,10 +147,10 @@ function BenchmarkContent() {
             CANVAS_SIZE * (0.25 + index * 0.1),
             CANVAS_SIZE * 0.4,
           )
-          await instance.motion(
+          void instance.motion(
             selectedModel.motion.group,
             selectedModel.motion.index,
-          )
+          ).catch(() => {})
           const expression = selectedModel.expected.expressions[0]
           if (expression)
             await instance.expression(expression)

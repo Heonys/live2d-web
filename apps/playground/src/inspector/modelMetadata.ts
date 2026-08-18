@@ -8,12 +8,6 @@ export interface InspectorModelMetadata {
   motions: InspectorMotion[]
 }
 
-function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined
-}
-
 export function resolveInspectorModelUrl(input: string, baseUrl: string) {
   const trimmed = input.trim()
   if (!trimmed)
@@ -26,26 +20,5 @@ export function resolveInspectorModelUrl(input: string, baseUrl: string) {
   return url.href
 }
 
-export function parseInspectorModelMetadata(value: unknown): InspectorModelMetadata {
-  const root = record(value)
-  const references = record(root?.FileReferences)
-  if (!root || !references)
-    throw new Error('Invalid model3.json: FileReferences is missing.')
-
-  const motionsRecord = record(references.Motions)
-  const motions = motionsRecord
-    ? Object.entries(motionsRecord).flatMap(([group, entries]) => (
-        Array.isArray(entries)
-          ? entries.map((_, index) => ({ group, index }))
-          : []
-      ))
-    : []
-  const expressions = Array.isArray(references.Expressions)
-    ? references.Expressions.flatMap((entry) => {
-        const name = record(entry)?.Name
-        return typeof name === 'string' && name.trim() ? [name] : []
-      })
-    : []
-
-  return { expressions, motions }
-}
+// Motion/expression discovery moved into the library: the inspector reads
+// controller.getModelInfo() instead of re-fetching and parsing model3.json.
