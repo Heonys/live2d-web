@@ -51,6 +51,8 @@ interface BaseCreateLive2DOptions {
   coreUrl?: string
   fit?: ModelFit
   maxFps?: number
+  /** Pause rendering while the container is outside the viewport. Default true. */
+  pauseWhenOffscreen?: boolean
   retries?: number
   signal?: AbortSignal
   onError?: (error: Live2DError) => void
@@ -85,6 +87,7 @@ export interface Live2DInstance {
   focus: (x: number, y: number) => void
   getParameter: (id: string) => number
   setParameter: (id: string, value: number) => void
+  clearParameter: (id: string) => void
   setFit: (fit: ModelFit) => void
   addParameterDriver: (id: string, driver: ParameterDriver) => () => void
   addLipSync: (options: RuntimeLipSyncOptions) => () => void
@@ -96,6 +99,7 @@ export interface Live2DInstance {
 
 type Listener = () => void
 type Cleanup = () => void
+type PauseReason = 'hidden' | 'offscreen' | 'user'
 
 interface RuntimeFeature {
   attach: (model: ModelHandle) => void
@@ -179,6 +183,15 @@ function assertOptions(options: CreateLive2DOptions) {
       'maxFps must be a finite number greater than 0.',
     )
   }
+  if (
+    options.pauseWhenOffscreen !== undefined
+    && typeof options.pauseWhenOffscreen !== 'boolean'
+  ) {
+    throw new Live2DError(
+      'invalid-props',
+      'pauseWhenOffscreen must be a boolean.',
+    )
+  }
 }
 
 function wait(ms: number, signal: AbortSignal) {
@@ -247,8 +260,11 @@ export class Live2DRuntime implements Live2DInstance {
   private disposed = false
   private features: RuntimeFeature[] = []
   private fit: ModelFit
+  private intersectionObserver: IntersectionObserver | undefined
   private listeners = new Set<Listener>()
   private model: ModelHandle | undefined
+  private onStageResume: (() => void) | undefined
+  private pauseReasons = new Set<PauseReason>()
   private resizeAnimationFrame = 0
   private resizeObserver: ResizeObserver | undefined
   private stage: StageHandle | undefined
@@ -307,11 +323,30 @@ export class Live2DRuntime implements Live2DInstance {
     return cubismWebGL
   }
 
+  private addPauseReason(reason: PauseReason) {
+    if (this.pauseReasons.has(reason))
+      return
+    const wasRunning = this.pauseReasons.size === 0
+    this.pauseReasons.add(reason)
+    if (wasRunning)
+      this.stage?.pause()
+  }
+
+  private removePauseReason(reason: PauseReason) {
+    if (!this.pauseReasons.delete(reason) || this.pauseReasons.size > 0)
+      return
+    this.onStageResume?.()
+    this.stage?.resume()
+  }
+
   private teardown() {
     this.abortController?.abort()
     this.abortController = undefined
     cancelAnimationFrame(this.resizeAnimationFrame)
     this.resizeAnimationFrame = 0
+    this.intersectionObserver?.disconnect()
+    this.intersectionObserver = undefined
+    this.onStageResume = undefined
     this.resizeObserver?.disconnect()
     this.resizeObserver = undefined
     for (const cleanup of this.stageCleanup.splice(0).reverse())
@@ -329,6 +364,8 @@ export class Live2DRuntime implements Live2DInstance {
       throw new Live2DError('invalid-props', 'Cannot start a disposed Live2D instance.')
 
     assertOptions(this.options)
+    // Every generation begins running; observers re-report hidden/offscreen.
+    this.pauseReasons.clear()
     const policy = this.options.resolution !== undefined
       ? undefined
       : resolveAutoQualityPolicy(
@@ -443,22 +480,37 @@ export class Live2DRuntime implements Live2DInstance {
         : new ResizeObserver(scheduleResize)
       this.resizeObserver?.observe(this.options.container)
 
+      this.onStageResume = () => {
+        elapsedMs = 0
+        frameCount = 0
+        longFrameCount = 0
+        scheduleResize()
+      }
+
       const onVisibilityChange = () => {
-        if (document.hidden) {
-          stage.pause()
-        }
-        else {
-          elapsedMs = 0
-          frameCount = 0
-          longFrameCount = 0
-          stage.resume()
-          scheduleResize()
-        }
+        if (document.hidden)
+          this.addPauseReason('hidden')
+        else
+          this.removePauseReason('hidden')
       }
       document.addEventListener('visibilitychange', onVisibilityChange)
       this.stageCleanup.push(() => {
         document.removeEventListener('visibilitychange', onVisibilityChange)
       })
+
+      this.intersectionObserver = (this.options.pauseWhenOffscreen ?? true)
+        && typeof IntersectionObserver !== 'undefined'
+        ? new IntersectionObserver((entries) => {
+            const entry = entries[entries.length - 1]
+            if (!entry)
+              return
+            if (entry.isIntersecting)
+              this.removePauseReason('offscreen')
+            else
+              this.addPauseReason('offscreen')
+          })
+        : undefined
+      this.intersectionObserver?.observe(this.options.container)
 
       this.updateState({
         loadingStage: 'model',
@@ -571,6 +623,10 @@ export class Live2DRuntime implements Live2DInstance {
     this.requireModel().setParameter(id, value)
   }
 
+  clearParameter(id: string) {
+    this.requireModel().clearParameter(id)
+  }
+
   setFit(fit: ModelFit) {
     this.fit = fit
     this.applyFit()
@@ -596,9 +652,17 @@ export class Live2DRuntime implements Live2DInstance {
       )
     }
     return this.addFeature(new ManagedFeature((model) => {
-      return model.onAfterMotionUpdate(() => {
+      const unsubscribe = model.onAfterMotionUpdate(() => {
+        // Write transiently: the value must last only until the next SDK
+        // update, or the last driver output would keep overriding motion
+        // curves after the driver is removed.
         model.setParameter(id, driver.getValue())
+        model.clearParameter(id)
       })
+      return () => {
+        unsubscribe()
+        model.clearParameter(id)
+      }
     }, error => this.report(asLive2DError(error, 'render-error'))))
   }
 
@@ -634,8 +698,13 @@ export class Live2DRuntime implements Live2DInstance {
             mouthOpen: speaking ? driver.getMouthOpen() : 0,
             speaking,
           })
-          if (value !== null)
+          if (value !== null) {
+            // Write transiently so the release/hold handoff actually returns
+            // ParamMouthOpenY to motion curves instead of pinning the last
+            // lip-sync value as a persistent override.
             model.setParameter(MOUTH_PARAMETER_ID, value)
+            model.clearParameter(MOUTH_PARAMETER_ID)
+          }
         }
         catch (error) {
           failed = true
@@ -644,6 +713,7 @@ export class Live2DRuntime implements Live2DInstance {
       })
       return () => {
         unsubscribe()
+        model.clearParameter(MOUTH_PARAMETER_ID)
         sourceConnection?.dispose()
       }
     }, reportLipSyncError)
@@ -651,11 +721,11 @@ export class Live2DRuntime implements Live2DInstance {
   }
 
   pause() {
-    this.stage?.pause()
+    this.addPauseReason('user')
   }
 
   resume() {
-    this.stage?.resume()
+    this.removePauseReason('user')
   }
 
   async retry() {

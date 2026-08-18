@@ -44,7 +44,9 @@ export interface ModelHandle {
   getIntrinsicSize: () => Size
   setTransform: (transform: ModelTransform) => void
   getParameter: (id: string) => number
+  /** Persists as a per-frame override until clearParameter() removes it. */
   setParameter: (id: string, value: number) => void
+  clearParameter: (id: string) => void
   focus: (x: number, y: number) => void
   motion: (group: string, index?: number) => Promise<void>
   expression: (id?: string) => Promise<void>

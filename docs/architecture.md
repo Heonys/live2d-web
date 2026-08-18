@@ -37,7 +37,9 @@ React /react binding ──→ headless Live2DRuntime
 runtime이 소유하는 것:
 
 - Core script 요청 dedupe와 오류 정규화
-- Stage 생성, ResizeObserver, visibility pause/resume
+- Stage 생성, ResizeObserver, visibility/뷰포트 pause/resume
+  (pause 사유를 user/hidden/offscreen 집합으로 관리하며, 집합이 빌 때만
+  재개한다. `pauseWhenOffscreen`은 기본 true)
 - 자동 resolution 선택과 한 방향 품질 강등
 - AbortSignal, 모델 retry와 stale load 폐기
 - fit 재계산, parameter driver와 립싱크 연결
@@ -109,6 +111,8 @@ WebGL frame cap은 refresh 간격의 작은 나머지만 보존한다. 초기 sh
 - 사용자 AudioNode/AudioContext 소유권을 가져오지 않는다.
 - 말이 끝나면 200ms crossfade, 500ms closed hold 뒤 파라미터 쓰기를
   모션에 돌려준다.
+- 립싱크·driver의 프레임 쓰기는 transient다(쓰고 즉시 clear). 영구
+  override는 사용자 `setParameter()`뿐이며 `clearParameter()`로 해제한다.
 - 실패는 `lipsync-error`로 기능만 중단한다.
 
 ## 오류와 정리
@@ -135,6 +139,15 @@ Framework 5-r.5 + Cubism 5.3 Core(`core/06`) + 공식 Hiyori 조합으로 다음
 
 Core 5.2(`core/05`)는 Framework 5-r.5와 호환되지 않아 moc 로드 중
 실패했다. 따라서 로컬 fetch script도 5.3 경로를 고정한다.
+
+로드 경로 최적화(2026-08-18): 텍스처 fetch/decode는 동기 셰이더 컴파일 시작
+전에 병렬로 킥오프해 컴파일 시간과 겹치고, GL 업로드만 셰이더 완료 후 순차로
+한다. blend 모드를 쓰지 않는 모델은 blend 셰이더 프로그램 237개 생성을
+생략한다(요청 시 증분 등록). ready 후 Idle 모션 그룹을 백그라운드에서
+프리페치해 로드 직후 무모션 구간을 없앤다. 렌더 루프에서는 정적 인덱스/UV
+버퍼 캐시, 프로그램 리바인드 중복 제거, 마스크 setup의 프레임당 동기
+FBO 조회 제거를 적용했다. vendor 수정 목록은 패키지 THIRD_PARTY_NOTICES.md에
+기록한다.
 
 Framework 5-r.5의 단일 소스는
 `packages/live2d-web/vendor/cubism-web-framework-5-r.5`이고 adapter는

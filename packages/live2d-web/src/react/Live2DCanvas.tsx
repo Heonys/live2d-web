@@ -14,6 +14,8 @@ interface BaseLive2DCanvasProps {
   backend?: Live2DBackend
   coreUrl?: string
   maxFps?: number
+  /** Pause rendering while the canvas is outside the viewport. Default true. */
+  pauseWhenOffscreen?: boolean
   className?: string
   style?: CSSProperties
   fallback?: (stage: LoadingStage) => ReactNode
@@ -61,6 +63,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     fallback,
     maxFps,
     onError,
+    pauseWhenOffscreen,
     style,
   } = props
   const quality = 'quality' in props ? props.quality : undefined
@@ -81,10 +84,11 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     container,
     coreUrl,
     maxFps,
+    pauseWhenOffscreen,
     quality: stableQuality,
     resolution,
     retryVersion,
-  }), [backend, container, coreUrl, maxFps, resolution, retryVersion, stableQuality])
+  }), [backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableQuality])
 
   useEffect(() => {
     if (!snapshot.error || snapshot.error === lastReportedErrorRef.current)

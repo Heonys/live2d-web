@@ -15,13 +15,16 @@ export declare class CubismRenderTarget_WebGL {
      * @param src コピー元のオフスクリーンサーフェス
      * @param dst コピー先のオフスクリーンサーフェス
      */
-    static copyBuffer(gl: WebGL2RenderingContext, src: CubismRenderTarget_WebGL, dst: CubismRenderTarget_WebGL): void;
+    static copyBuffer(gl: WebGL2RenderingContext, src: CubismRenderTarget_WebGL, dst: CubismRenderTarget_WebGL, restoreFbo?: WebGLFramebuffer, restoreFboIsKnown?: boolean): void;
     /**
      * 描画を開始する。
      *
      * @param restoreFbo EndDraw時に復元するFBOを指定する。nullを指定すると、beginDraw時に現在のFBOを記憶しておく。
+     * @param restoreFboIsKnown When true, restoreFbo is trusted as-is even if it
+     *        is null (the default framebuffer), skipping the synchronous
+     *        gl.getParameter pipeline stall.
      */
-    beginDraw(restoreFbo?: WebGLFramebuffer): void;
+    beginDraw(restoreFbo?: WebGLFramebuffer, restoreFboIsKnown?: boolean): void;
     /**
      * 描画を終了し、バックバッファのサーフェイスを復元する。
      */

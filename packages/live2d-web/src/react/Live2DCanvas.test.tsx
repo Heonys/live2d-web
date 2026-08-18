@@ -34,6 +34,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
     let disposed = false
     const afterMotion = new Set<(deltaMs: number) => void>()
     const model: ModelHandle = {
+      clearParameter: () => {},
       dispose: () => {
         if (disposed)
           return
@@ -202,6 +203,7 @@ describe('live2DCanvas lifecycle', () => {
     await waitFor(() => expect(observed).toBeDefined())
     expect(observed).toBe(loaded)
     expect(Object.keys(observed!)).toEqual([
+      'clearParameter',
       'expression',
       'focus',
       'getParameter',

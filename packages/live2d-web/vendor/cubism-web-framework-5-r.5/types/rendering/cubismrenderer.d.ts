@@ -171,6 +171,8 @@ export declare abstract class CubismRenderer {
     static staticRelease: any;
     protected _mvpMatrix4x4: CubismMatrix44;
     protected _modelColor: CubismTextureColor;
+    protected _modelColorScratch: CubismTextureColor;
+    protected _modelColorWithOpacityScratch: CubismTextureColor;
     protected _isCulling: boolean;
     protected _isPremultipliedAlpha: boolean;
     protected _anisotropy: any;

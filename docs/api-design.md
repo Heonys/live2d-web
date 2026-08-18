@@ -26,6 +26,7 @@ type CreateLive2DOptions = {
   coreUrl?: string
   fit?: ModelFit
   maxFps?: number
+  pauseWhenOffscreen?: boolean
   retries?: number
   signal?: AbortSignal
   onError?: (error: Live2DError) => void
@@ -42,6 +43,7 @@ interface Live2DInstance {
   focus(x: number, y: number): void
   getParameter(id: string): number
   setParameter(id: string, value: number): void
+  clearParameter(id: string): void
   setFit(fit: ModelFit): void
   addParameterDriver(id: string, driver: ParameterDriver): () => void
   addLipSync(options: RuntimeLipSyncOptions): () => void
@@ -51,6 +53,13 @@ interface Live2DInstance {
   dispose(): void
 }
 ```
+
+`setParameter()` is a persistent per-frame override that is re-applied after
+every SDK update until `clearParameter()` removes it. `pauseWhenOffscreen`
+defaults to `true`: an IntersectionObserver pauses rendering while the
+container is outside the viewport. Pause sources (user `pause()`, hidden tab,
+offscreen container) are tracked separately, and the stage resumes only when
+none remains, so a tab switch no longer overrides an explicit user pause.
 
 The promise resolves after Core, Stage and model setup. An initial failure
 rejects and disposes partial resources. Runtime errors after readiness update
@@ -89,7 +98,8 @@ import { LipSync, Live2DModel, Live2DCanvas } from 'live2d-web/react'
 ```
 
 `Live2DCanvasProps` contains the same backend/Core/quality controls plus
-`className`, `style`, loading/error fallbacks and `onError`.
+`pauseWhenOffscreen`, `className`, `style`, loading/error fallbacks and
+`onError`.
 
 `Live2DModelProps` provides `src`, `fit`, `retries`, `onLoad`, `onError` and
 children. Only one model is allowed per Canvas. `src` changes and StrictMode
@@ -105,6 +115,7 @@ interface Live2DModelController {
   focus(x: number, y: number): void
   getParameter(id: string): number
   setParameter(id: string, value: number): void
+  clearParameter(id: string): void
 }
 ```
 
@@ -139,6 +150,31 @@ analysis edge and node owned by this feature.
 
 Mouth values are clamped to 0–1. `ParamMouthOpenY`, a 200 ms smoothstep release
 and a 500 ms closed-mouth hold are fixed for this alpha.
+
+Lip-sync and parameter-driver writes are transient: each frame's value is
+written after the SDK update and cleared immediately, so it never persists as a
+manual override. When speech ends, the release/hold sequence finishes and
+motion curves regain the mouth parameter automatically.
+
+## Decisions on 2026-08-18
+
+- **Transient feature writes + `clearParameter()`**: lip sync previously wrote
+  through the persistent override path, which pinned `ParamMouthOpenY` at 0
+  after speech and made the release crossfade read its own previous output
+  instead of the motion value. Feature writes are now write-then-clear, and
+  `clearParameter()` is public API. Rejected alternative: reordering feature
+  callbacks before manual re-application, which would have inverted the
+  documented override priority. Revisit if a feature ever needs a persistent
+  override on purpose.
+- **`pauseWhenOffscreen` default true**: rendering while scrolled out of view
+  wastes GPU and battery in the primary chat-page use case. Opt out per
+  instance for capture or measurement scenarios. Pause reasons are a set
+  (user/hidden/offscreen); resume requires the set to be empty.
+- **Idle motion prefetch**: after the model is ready, the Idle motion group is
+  fetched in the background through the regular motion cache, removing the
+  visible motionless gap after load. Failures are silent; playback surfaces
+  real errors. Revisit the fixed group name when motion groups become
+  configurable.
 
 ## React hooks
 

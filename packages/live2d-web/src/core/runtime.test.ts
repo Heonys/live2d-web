@@ -33,6 +33,10 @@ function createRuntimeHarness(pending = false): RuntimeHarness {
     let disposed = false
     const parameters = new Map<string, number>()
     return {
+      clearParameter(id) {
+        parameters.delete(id)
+        events.push(`clearParameter:${id}`)
+      },
       dispose() {
         if (disposed)
           return
@@ -165,6 +169,56 @@ describe('createLive2D', () => {
     expect(harness.events).toContain('focus:10:20')
     expect(harness.events).toContain('parameter:ParamAngleX:12')
     expect(harness.events.filter(event => event.startsWith('transform:'))).toHaveLength(2)
+
+    instance.clearParameter('ParamAngleX')
+    expect(harness.events).toContain('clearParameter:ParamAngleX')
+    expect(instance.getParameter('ParamAngleX')).toBe(0)
+    instance.dispose()
+  })
+
+  it('returns ParamMouthOpenY to motion after the lip-sync handoff', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+    let speaking = true
+    const removeLipSync = instance.addLipSync({
+      driver: { getMouthOpen: () => 0.6, isSpeaking: () => speaking },
+    })
+    await vi.waitFor(() => expect(harness.afterMotionCallbacks.size).toBe(1))
+    const tick = (deltaMs: number) => {
+      for (const callback of harness.afterMotionCallbacks)
+        callback(deltaMs)
+    }
+    const mouthWrites = () =>
+      harness.events.filter(event => event.startsWith('parameter:ParamMouthOpenY:'))
+
+    tick(16)
+    expect(harness.events).toContain('parameter:ParamMouthOpenY:0.6')
+
+    // The release crossfade must blend toward the motion value (0 in this
+    // harness), not toward the previous lip-sync output. A persistent write
+    // would keep the value pinned at 0.6 here.
+    speaking = false
+    tick(100)
+    expect(harness.events).toContain('parameter:ParamMouthOpenY:0.3')
+
+    tick(100)
+    tick(250)
+    tick(250)
+    const writesAfterHandoff = mouthWrites().length
+    tick(16)
+    tick(16)
+    expect(mouthWrites()).toHaveLength(writesAfterHandoff)
+
+    // Every lip-sync write is transient, so motion regains the parameter.
+    expect(
+      harness.events.filter(event => event === 'clearParameter:ParamMouthOpenY').length,
+    ).toBeGreaterThanOrEqual(writesAfterHandoff)
+
+    removeLipSync()
     instance.dispose()
   })
 
@@ -195,6 +249,96 @@ describe('createLive2D', () => {
     expect(featureDispose).toBeGreaterThan(-1)
     expect(featureDispose).toBeLessThan(modelDispose)
     expect(modelDispose).toBeLessThan(stageDispose)
+  })
+
+  it('does not resume a user pause when the tab becomes visible again', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+
+    instance.pause()
+    expect(harness.events).toContain('stage:pause')
+
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(harness.events).not.toContain('stage:resume')
+
+    instance.resume()
+    expect(harness.events).toContain('stage:resume')
+    instance.dispose()
+  })
+
+  it('pauses while the container is outside the viewport', async () => {
+    let ioCallback: IntersectionObserverCallback | undefined
+    const observed: Element[] = []
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) {
+        ioCallback = callback
+      }
+
+      disconnect() {}
+      observe(target: Element) {
+        observed.push(target)
+      }
+
+      takeRecords() {
+        return []
+      }
+
+      unobserve() {}
+    })
+
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+    expect(observed).toContain(document.body)
+
+    ioCallback?.(
+      [{ isIntersecting: false } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+    expect(harness.events).toContain('stage:pause')
+
+    ioCallback?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+    expect(harness.events).toContain('stage:resume')
+    instance.dispose()
+  })
+
+  it('skips viewport pausing when pauseWhenOffscreen is false', async () => {
+    const observed: Element[] = []
+    vi.stubGlobal('IntersectionObserver', class {
+      disconnect() {}
+      observe(target: Element) {
+        observed.push(target)
+      }
+
+      takeRecords() {
+        return []
+      }
+
+      unobserve() {}
+    })
+
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      pauseWhenOffscreen: false,
+      src: '/hiyori.model3.json',
+    })
+    expect(observed).toHaveLength(0)
+    instance.dispose()
   })
 
   it('surfaces render errors and recreates the whole stage on retry', async () => {

@@ -115,7 +115,13 @@ export abstract class CubismRenderer {
    * @return RGBAのカラー情報
    */
   public getModelColor(): CubismTextureColor {
-    return JSON.parse(JSON.stringify(this._modelColor));
+    // Callers mutate the returned color, so hand out a reused scratch copy
+    // instead of a per-call JSON round trip on every drawable and frame.
+    this._modelColorScratch.r = this._modelColor.r;
+    this._modelColorScratch.g = this._modelColor.g;
+    this._modelColorScratch.b = this._modelColor.b;
+    this._modelColorScratch.a = this._modelColor.a;
+    return this._modelColorScratch;
   }
 
   /**
@@ -126,8 +132,13 @@ export abstract class CubismRenderer {
    * @return RGBAのカラー情報
    */
   getModelColorWithOpacity(opacity: number): CubismTextureColor {
-    const modelColorRGBA: CubismTextureColor = this.getModelColor();
-    modelColorRGBA.a *= opacity;
+    // Separate scratch from getModelColor() so both results can coexist
+    // within one frame.
+    const modelColorRGBA: CubismTextureColor = this._modelColorWithOpacityScratch;
+    modelColorRGBA.r = this._modelColor.r;
+    modelColorRGBA.g = this._modelColor.g;
+    modelColorRGBA.b = this._modelColor.b;
+    modelColorRGBA.a = this._modelColor.a * opacity;
     if (this.isPremultipliedAlpha()) {
       modelColorRGBA.r *= modelColorRGBA.a;
       modelColorRGBA.g *= modelColorRGBA.a;
@@ -244,6 +255,8 @@ export abstract class CubismRenderer {
     this._anisotropy = 0.0;
     this._model = null;
     this._modelColor = new CubismTextureColor();
+    this._modelColorScratch = new CubismTextureColor();
+    this._modelColorWithOpacityScratch = new CubismTextureColor();
     this._useHighPrecisionMask = false;
 
     // 単位行列に初期化
@@ -284,6 +297,8 @@ export abstract class CubismRenderer {
 
   protected _mvpMatrix4x4: CubismMatrix44; // Model-View-Projection 行列
   protected _modelColor: CubismTextureColor; // モデル自体のカラー（RGBA）
+  protected _modelColorScratch: CubismTextureColor; // Reused getModelColor() result; callers may mutate it
+  protected _modelColorWithOpacityScratch: CubismTextureColor; // Reused getModelColorWithOpacity() result
   protected _isCulling: boolean; // カリングが有効ならtrue
   protected _isPremultipliedAlpha: boolean; // 乗算済みαならtrue
   protected _anisotropy: any; // テクスチャの異方性フィルタリングのパラメータ

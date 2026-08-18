@@ -29,8 +29,10 @@ export declare class CubismClippingManager_WebGL extends CubismClippingManager<C
      * @param lastFbo フレームバッファ
      * @param lastViewport ビューポート
      * @param drawObjectType 描画オブジェクトのタイプ
+     * @param lastFboIsKnown When true, lastFbo is trusted even when null so
+     *        beginDraw() can skip its synchronous framebuffer query.
      */
-    setupClippingContext(model: CubismModel, renderer: CubismRenderer_WebGL, lastFbo: WebGLFramebuffer, lastViewport: number[], drawObjectType: DrawableObjectType): void;
+    setupClippingContext(model: CubismModel, renderer: CubismRenderer_WebGL, lastFbo: WebGLFramebuffer, lastViewport: number[], drawObjectType: DrawableObjectType, lastFboIsKnown?: boolean): void;
     /**
      * マスクの合計数をカウント
      *
@@ -185,6 +187,21 @@ export declare class CubismRenderer_WebGL extends CubismRenderer {
      * デストラクタ相当の処理
      */
     release(): void;
+    /**
+     * Drawable indices never change after the moc is parsed, so cache one
+     * STATIC_DRAW buffer per drawable instead of re-uploading every draw call.
+     */
+    bindDrawableIndexBuffer(index: number): void;
+    /**
+     * Drawable UVs never change after the moc is parsed, so cache one
+     * STATIC_DRAW buffer per drawable instead of re-uploading every draw call.
+     */
+    bindDrawableUvBuffer(index: number): void;
+    /**
+     * The render-target quad index data is a constant, so reuse one buffer
+     * instead of creating and deleting one on every offscreen submit.
+     */
+    bindRenderTargetIndexBuffer(): void;
     /**
      * Shaderの読み込みを行う
      * @param shaderPath シェーダのパス
@@ -360,12 +377,16 @@ export declare class CubismRenderer_WebGL extends CubismRenderer {
     _currentOffscreen: CubismOffscreenRenderTarget_WebGL | null;
     _modelRootFbo: WebGLFramebuffer;
     _renderStateFbo: WebGLFramebuffer;
+    _renderStateKnown: boolean;
     _renderStateViewport: number[];
     _bufferData: {
         vertex: WebGLBuffer;
         uv: WebGLBuffer;
         index: WebGLBuffer;
     };
+    _drawableIndexBuffers: Array<WebGLBuffer>;
+    _drawableUvBuffers: Array<WebGLBuffer>;
+    _renderTargetIndexBuffer: WebGLBuffer;
     _extension: any;
     gl: WebGLRenderingContext | WebGL2RenderingContext;
 }

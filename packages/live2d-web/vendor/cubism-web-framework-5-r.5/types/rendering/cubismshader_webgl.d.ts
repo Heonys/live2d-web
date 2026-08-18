@@ -33,6 +33,13 @@ export declare class CubismShader_WebGL {
      */
     release(): void;
     /**
+     * Redundancy-checked useProgram. Live2D binds the same few programs for
+     * every drawable each frame, so skip the driver call when unchanged. All
+     * Framework program binds must go through this method to keep the cache
+     * coherent.
+     */
+    setProgram(program: WebGLProgram): void;
+    /**
      * 描画用のシェーダプログラムの一連のセットアップを実行する
      *
      * @param renderer レンダラー
@@ -79,7 +86,7 @@ export declare class CubismShader_WebGL {
      * @param vertShaderSrc 頂点シェーダのソース
      * @param fragShaderSrc フラグメントシェーダのソース
      */
-    generateShaders(signal?: AbortSignal): Promise<void>;
+    generateShaders(signal?: AbortSignal, includeBlend?: boolean): Promise<void>;
     /**
      * シェーダープログラムを登録する
      */
@@ -157,6 +164,8 @@ export declare class CubismShader_WebGL {
     _fragShaderSrcBlend: string;
     _isShaderLoading: boolean;
     _isShaderLoaded: boolean;
+    _blendShadersRegistered: boolean;
+    _currentProgram: WebGLProgram;
     _shaderLoadPromise: Promise<void>;
     _defaultShaderPath: string;
     _shaderPath: string;

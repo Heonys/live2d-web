@@ -11,6 +11,7 @@ export interface RuntimeHostContextValue {
   container: HTMLElement | null
   coreUrl?: string
   maxFps?: number
+  pauseWhenOffscreen?: boolean
   quality?: 'auto' | AutoQualityPolicy
   resolution?: number
   retryVersion: number

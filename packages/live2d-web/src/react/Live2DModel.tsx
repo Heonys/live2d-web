@@ -101,6 +101,7 @@ export function Live2DModel({
       coreUrl: currentRuntimeHost.coreUrl,
       fit: fitRef.current,
       maxFps: currentRuntimeHost.maxFps,
+      pauseWhenOffscreen: currentRuntimeHost.pauseWhenOffscreen,
       quality: currentRuntimeHost.quality,
       resolution: currentRuntimeHost.resolution,
       retries,

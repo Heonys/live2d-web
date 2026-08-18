@@ -38,6 +38,7 @@ function createHarness(): Harness {
   const events: string[] = []
   let mouth = 0.4
   const model: ModelHandle = {
+    clearParameter: () => {},
     dispose: () => events.push('model:dispose'),
     expression: async () => {},
     focus: () => {},

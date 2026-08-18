@@ -138,10 +138,13 @@ export default function E2EHarness() {
         host.style.height = '320px'
         host.style.width = '240px'
         document.body.appendChild(host)
+        // The fixture host sits below the fold, so keep rendering while
+        // offscreen for this measurement.
         const instance = await createLive2D({
           container: host,
           coreUrl: CORE_URL,
           fit: 'full',
+          pauseWhenOffscreen: false,
           src: '/e2e-expression.model3.json',
         })
         await instance.expression('fixture')

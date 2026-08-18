@@ -121,31 +121,36 @@ export async function decodeImage(
   }
 }
 
-export async function createTexture(
-  gl: WebGL2RenderingContext,
+export function closeTextureSource(source: TexImageSource) {
+  if ('close' in source && typeof source.close === 'function')
+    source.close()
+}
+
+export async function fetchTextureSource(
   url: string,
   signal?: AbortSignal,
   diagnostics?: CubismBenchmarkStageDiagnostics,
-) {
+): Promise<TexImageSource> {
   const blob = await measureAsync(diagnostics, 'textureFetch', async () => {
     const response = await checkedResponse(url, 'texture', signal)
     return response.blob()
   })
-  const source = await measureAsync(
+  return measureAsync(
     diagnostics,
     'textureDecode',
     () => decodeImage(blob, url, signal),
   )
-  if (signal?.aborted) {
-    if ('close' in source && typeof source.close === 'function')
-      source.close()
-    throw signal.reason
-  }
+}
 
+export function uploadTexture(
+  gl: WebGL2RenderingContext,
+  source: TexImageSource,
+  url: string,
+  diagnostics?: CubismBenchmarkStageDiagnostics,
+) {
   const texture = gl.createTexture()
   if (!texture) {
-    if ('close' in source && typeof source.close === 'function')
-      source.close()
+    closeTextureSource(source)
     throw new Live2DError(
       'render-error',
       `WebGL failed to create a texture for ${url}.`,
@@ -186,7 +191,20 @@ export async function createTexture(
   }
   finally {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, previousPremultiply)
-    if ('close' in source && typeof source.close === 'function')
-      source.close()
+    closeTextureSource(source)
   }
+}
+
+export async function createTexture(
+  gl: WebGL2RenderingContext,
+  url: string,
+  signal?: AbortSignal,
+  diagnostics?: CubismBenchmarkStageDiagnostics,
+) {
+  const source = await fetchTextureSource(url, signal, diagnostics)
+  if (signal?.aborted) {
+    closeTextureSource(source)
+    throw signal.reason
+  }
+  return uploadTexture(gl, source, url, diagnostics)
 }

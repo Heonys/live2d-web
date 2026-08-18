@@ -156,6 +156,8 @@ export class CubismShader_WebGL {
     this._shaderSets = new Array<CubismShaderSet>();
     this._isShaderLoading = false;
     this._isShaderLoaded = false;
+    this._blendShadersRegistered = false;
+    this._currentProgram = null;
     this._shaderLoadPromise = null;
 
     // カラーブレンド用のマップ
@@ -233,6 +235,20 @@ export class CubismShader_WebGL {
   }
 
   /**
+   * Redundancy-checked useProgram. Live2D binds the same few programs for
+   * every drawable each frame, so skip the driver call when unchanged. All
+   * Framework program binds must go through this method to keep the cache
+   * coherent.
+   */
+  public setProgram(program: WebGLProgram): void {
+    if (this._currentProgram === program) {
+      return;
+    }
+    this._currentProgram = program;
+    this.gl.useProgram(program);
+  }
+
+  /**
    * 描画用のシェーダプログラムの一連のセットアップを実行する
    *
    * @param renderer レンダラー
@@ -249,7 +265,7 @@ export class CubismShader_WebGL {
     }
 
     if (this._shaderSets.length == 0) {
-      this.generateShaders();
+      this.generateShaders(undefined, model.isBlendModeEnabled());
     }
 
     if (this._isShaderLoaded == false) {
@@ -337,6 +353,14 @@ export class CubismShader_WebGL {
                 this._colorBlendMap.get(colorBlendMode) +
                   this._alphaBlendMap.get(alphaBlendMode)
               );
+              if (baseShaderSetIndex === undefined) {
+                // Blend programs are generated whenever isBlendModeEnabled()
+                // is true; fail loudly instead of dereferencing undefined if
+                // that invariant ever breaks.
+                throw new Error(
+                  'Blend shader programs are not registered for this context.'
+                );
+              }
               shaderSet = this._shaderSets[baseShaderSetIndex + offset];
               srcColor = this.gl.ONE;
               dstColor = this.gl.ZERO;
@@ -386,7 +410,7 @@ export class CubismShader_WebGL {
       }
     }
 
-    this.gl.useProgram(shaderSet.shaderProgram);
+    this.setProgram(shaderSet.shaderProgram);
 
     // 頂点配列の設定
     if (renderer._bufferData.vertex == null) {
@@ -408,12 +432,8 @@ export class CubismShader_WebGL {
     );
 
     // テクスチャ頂点の設定
-    if (renderer._bufferData.uv == null) {
-      renderer._bufferData.uv = this.gl.createBuffer();
-    }
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, renderer._bufferData.uv);
-    const uvArray: Float32Array = model.getDrawableVertexUvs(index);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, uvArray, this.gl.DYNAMIC_DRAW);
+    // Drawable UVs are immutable, so bind the cached STATIC_DRAW buffer.
+    renderer.bindDrawableUvBuffer(index);
     this.gl.enableVertexAttribArray(shaderSet.attributeTexCoordLocation);
     this.gl.vertexAttribPointer(
       shaderSet.attributeTexCoordLocation,
@@ -543,21 +563,9 @@ export class CubismShader_WebGL {
       }
     }
 
-    // IBOを作成し、データを転送
-    if (renderer._bufferData.index == null) {
-      renderer._bufferData.index = this.gl.createBuffer();
-    }
-    const indexArray: Uint16Array = model.getDrawableVertexIndices(index);
-
-    this.gl.bindBuffer(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      renderer._bufferData.index
-    );
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      indexArray,
-      this.gl.DYNAMIC_DRAW
-    );
+    // Drawable indices are immutable, so bind the cached STATIC_DRAW buffer
+    // instead of re-uploading the index data on every draw call.
+    renderer.bindDrawableIndexBuffer(index);
 
     this.gl.blendFuncSeparate(srcColor, dstColor, srcAlpha, dstAlpha);
   }
@@ -579,7 +587,7 @@ export class CubismShader_WebGL {
     }
 
     if (this._shaderSets.length == 0) {
-      this.generateShaders();
+      this.generateShaders(undefined, model.isBlendModeEnabled());
     }
 
     if (this._isShaderLoaded == false) {
@@ -666,6 +674,14 @@ export class CubismShader_WebGL {
               this._colorBlendMap.get(colorBlendMode) +
                 this._alphaBlendMap.get(alphaBlendMode)
             );
+            if (baseShaderSetIndex === undefined) {
+              // Blend programs are generated whenever isBlendModeEnabled() is
+              // true; fail loudly instead of dereferencing undefined if that
+              // invariant ever breaks.
+              throw new Error(
+                'Blend shader programs are not registered for this context.'
+              );
+            }
             shaderSet = this._shaderSets[baseShaderSetIndex + offset];
             srcColor = this.gl.ONE;
             dstColor = this.gl.ZERO;
@@ -677,7 +693,7 @@ export class CubismShader_WebGL {
       }
     }
 
-    this.gl.useProgram(shaderSet.shaderProgram);
+    this.setProgram(shaderSet.shaderProgram);
 
     // 頂点配列の設定
     CubismRenderTarget_WebGL.copyBuffer(
@@ -854,7 +870,7 @@ export class CubismShader_WebGL {
     }
 
     if (this._shaderSets.length == 0) {
-      this.generateShaders();
+      this.generateShaders(undefined, model.isBlendModeEnabled());
     }
 
     if (this._isShaderLoaded == false) {
@@ -864,7 +880,7 @@ export class CubismShader_WebGL {
 
     const shaderSet: CubismShaderSet =
       this._shaderSets[ShaderNames.ShaderNames_SetupMask];
-    this.gl.useProgram(shaderSet.shaderProgram);
+    this.setProgram(shaderSet.shaderProgram);
 
     // 頂点配列の設定
     if (renderer._bufferData.vertex == null) {
@@ -884,10 +900,8 @@ export class CubismShader_WebGL {
     );
 
     //テクスチャ設定
-    if (renderer._bufferData.uv == null) {
-      renderer._bufferData.uv = this.gl.createBuffer();
-    }
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, renderer._bufferData.uv);
+    // NOTE: An unused ARRAY_BUFFER bind used to sit here; texture setup does
+    // not touch vertex buffers, and the UV buffer is bound below.
     const textureNo: number = model.getDrawableTextureIndex(index);
     const textureId: WebGLTexture = renderer.getBindedTextures().get(textureNo);
     this.gl.activeTexture(this.gl.TEXTURE0);
@@ -895,12 +909,8 @@ export class CubismShader_WebGL {
     this.gl.uniform1i(shaderSet.samplerTexture0Location, 0);
 
     // テクスチャ頂点の設定
-    if (renderer._bufferData.uv == null) {
-      renderer._bufferData.uv = this.gl.createBuffer();
-    }
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, renderer._bufferData.uv);
-    const uvArray: Float32Array = model.getDrawableVertexUvs(index);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, uvArray, this.gl.DYNAMIC_DRAW);
+    // Drawable UVs are immutable, so bind the cached STATIC_DRAW buffer.
+    renderer.bindDrawableUvBuffer(index);
     this.gl.enableVertexAttribArray(shaderSet.attributeTexCoordLocation);
     this.gl.vertexAttribPointer(
       shaderSet.attributeTexCoordLocation,
@@ -949,21 +959,9 @@ export class CubismShader_WebGL {
     const srcAlpha: number = this.gl.ZERO;
     const dstAlpha: number = this.gl.ONE_MINUS_SRC_ALPHA;
 
-    // IBOを作成し、データを転送
-    if (renderer._bufferData.index == null) {
-      renderer._bufferData.index = this.gl.createBuffer();
-    }
-    const indexArray: Uint16Array = model.getDrawableVertexIndices(index);
-
-    this.gl.bindBuffer(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      renderer._bufferData.index
-    );
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      indexArray,
-      this.gl.DYNAMIC_DRAW
-    );
+    // Drawable indices are immutable, so bind the cached STATIC_DRAW buffer
+    // instead of re-uploading the index data on every draw call.
+    renderer.bindDrawableIndexBuffer(index);
 
     this.gl.blendFuncSeparate(srcColor, dstColor, srcAlpha, dstAlpha);
   }
@@ -977,7 +975,7 @@ export class CubismShader_WebGL {
     renderer: CubismRenderer_WebGL
   ): void {
     if (this._shaderSets.length == 0) {
-      this.generateShaders();
+      this.generateShaders(undefined, renderer.getModel().isBlendModeEnabled());
     }
 
     if (this._isShaderLoaded == false) {
@@ -1011,7 +1009,7 @@ export class CubismShader_WebGL {
 
     const shaderSet = this._shaderSets[10]; // ShaderNames_Copy = 10
 
-    this.gl.useProgram(shaderSet.shaderProgram);
+    this.setProgram(shaderSet.shaderProgram);
 
     this.gl.uniform4f(
       shaderSet.uniformBaseColorLocation,
@@ -1091,6 +1089,9 @@ export class CubismShader_WebGL {
       this.gl.deleteProgram(program);
     }
     this._shaderSets.length = 0;
+    this._blendShaderSetMap.clear();
+    this._blendShadersRegistered = false;
+    this._currentProgram = null;
   }
 
   /**
@@ -1099,12 +1100,23 @@ export class CubismShader_WebGL {
    * @param vertShaderSrc 頂点シェーダのソース
    * @param fragShaderSrc フラグメントシェーダのソース
    */
-  public generateShaders(signal?: AbortSignal): Promise<void> {
+  public generateShaders(
+    signal?: AbortSignal,
+    includeBlend: boolean = true
+  ): Promise<void> {
     if (this._isShaderLoaded) {
+      if (includeBlend && !this._blendShadersRegistered) {
+        // A blend-capable model joined a context whose shaders were generated
+        // without blend programs. Register them incrementally.
+        this.registerBlendShader();
+        this._blendShadersRegistered = true;
+      }
       return Promise.resolve();
     }
     if (this._isShaderLoading) {
-      return this._shaderLoadPromise;
+      return this._shaderLoadPromise.then(() =>
+        this.generateShaders(signal, includeBlend)
+      );
     }
     this._isShaderLoading = true;
     this._isShaderLoaded = false;
@@ -1118,7 +1130,12 @@ export class CubismShader_WebGL {
       .then(() => {
         // NOTE: ファイルの読み込みを待つ必要があるためこのようにする
         this.registerShader(); // 通常シェーダーの登録
-        this.registerBlendShader(); // ブレンドモードシェーダーの登録
+        // Models without blend modes never reach the blend program table, so
+        // skipping registerBlendShader() avoids its synchronous compile cost.
+        if (includeBlend) {
+          this.registerBlendShader(); // ブレンドモードシェーダーの登録
+        }
+        this._blendShadersRegistered = includeBlend;
         this._isShaderLoading = false;
         this._isShaderLoaded = true;
       })
@@ -1953,6 +1970,8 @@ export class CubismShader_WebGL {
   _fragShaderSrcBlend: string; // フラグメントシェーダーのソース
   _isShaderLoading: boolean; // シェーダーの読み込み中かどうか
   _isShaderLoaded: boolean; // シェーダーの読み込みが完了したかどうか
+  _blendShadersRegistered: boolean; // Whether registerBlendShader() has populated the blend program table
+  _currentProgram: WebGLProgram; // Last program passed to setProgram(), for redundancy elimination
   _shaderLoadPromise: Promise<void>; // シェーダー読み込み完了の共有Promise
   _defaultShaderPath: string; // デフォルトのシェーダーパス
   _shaderPath: string; // シェーダーパス

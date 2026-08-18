@@ -339,6 +339,9 @@ async function loadModel(
   })
 
   return {
+    // pixi-live2d-display writes are already transient: the next motion update
+    // overwrites them, so there is no persistent override entry to remove.
+    clearParameter() {},
     dispose,
     async expression(id) {
       if (!disposed)

@@ -35,7 +35,13 @@ import { CubismUpdateOrder } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
-import { createTexture, fetchArrayBuffer, resolveAssetUrl } from './assets'
+import {
+  closeTextureSource,
+  fetchArrayBuffer,
+  fetchTextureSource,
+  resolveAssetUrl,
+  uploadTexture,
+} from './assets'
 import { measureAsync, measureSync } from './diagnostics'
 import { parseShaderErrorDetails } from './error-details'
 import { acquireFramework } from './framework-manager'
@@ -44,6 +50,7 @@ import { getStageInternals } from './stage'
 
 const PRIORITY_IDLE = 1
 const PRIORITY_FORCE = 3
+const PREFETCH_DELAY_MS = 1_000
 
 function once(cleanup: () => void) {
   let active = true
@@ -81,6 +88,10 @@ class FrameworkModel extends CubismUserModel {
   private readonly manualParameters = new Map<string, number>()
   private readonly motionCache = new Map<string, Promise<CubismMotion>>()
   private readonly parameterIds = new Map<string, CubismIdHandle>()
+  // Keys of in-flight loads. Dispose settles their diagnostics counters
+  // synchronously; the late finally skips keys that were already settled.
+  private readonly pendingExpressionKeys = new Set<string>()
+  private readonly pendingMotionKeys = new Set<string>()
   private readonly scheduler = new CubismUpdateScheduler()
   private readonly textures: WebGLTexture[] = []
   private readonly viewport = [0, 0, 1, 1]
@@ -184,9 +195,46 @@ class FrameworkModel extends CubismUserModel {
         resize: (width, height) => this.resize(width, height),
         update: deltaMs => this.updateFrame(deltaMs),
       })
+      // Warm the Idle group in the background so the first idle playback does
+      // not stall on a network round trip after ready.
+      void this.prefetchIdleMotions()
     }
     finally {
       signal?.removeEventListener('abort', abortFromParent)
+    }
+  }
+
+  private async prefetchIdleMotions() {
+    // Delay so rapid mount/dispose cycles (StrictMode replays, benchmark
+    // remounts) never issue fetches that are aborted immediately and congest
+    // the asset server while the next generation is loading. The first idle
+    // playback is already covered by scheduleIdle().
+    await new Promise<void>((resolve) => {
+      let timeout: ReturnType<typeof setTimeout>
+      const onAbort = () => {
+        clearTimeout(timeout)
+        resolve()
+      }
+      timeout = setTimeout(() => {
+        this.assetController.signal.removeEventListener('abort', onAbort)
+        resolve()
+      }, PREFETCH_DELAY_MS)
+      this.assetController.signal.addEventListener('abort', onAbort, { once: true })
+    })
+    // The delay may have been cut short by dispose; the settings object is
+    // released at that point, so bail out before touching it.
+    if (this.disposed)
+      return
+    const count = this.setting.getMotionCount('Idle')
+    for (let index = 0; index < count; index++) {
+      if (this.disposed)
+        return
+      try {
+        await this.loadMotionAsset('Idle', index)
+      }
+      catch {
+        // Prefetch is best-effort; playback surfaces real failures.
+      }
     }
   }
 
@@ -305,6 +353,34 @@ class FrameworkModel extends CubismUserModel {
     const renderer = this.getRenderer()
     renderer.startUp(gl)
     renderer.setIsPremultipliedAlpha(true)
+
+    const textureUrls: string[] = []
+    for (let index = 0; index < this.setting.getTextureCount(); index++) {
+      const name = this.setting.getTextureFileName(index)
+      if (!name) {
+        throw new Live2DError(
+          'model-load-failed',
+          `model3.json declares an empty texture at index ${index}.`,
+          { details: modelAssetDetails('texture', this.modelUrl) },
+        )
+      }
+      textureUrls.push(resolveAssetUrl(name, this.modelUrl))
+    }
+    // Start every texture fetch/decode before the synchronous shader compile
+    // so network and image decoding overlap the main-thread compile time.
+    const sourcePromises = textureUrls.map(url => fetchTextureSource(
+      url,
+      this.assetController.signal,
+      this.diagnostics,
+    ))
+    for (const promise of sourcePromises)
+      promise.catch(() => {})
+    const closeAllSources = async () => {
+      await Promise.allSettled(sourcePromises.map(
+        async promise => closeTextureSource(await promise),
+      ))
+    }
+
     try {
       await measureAsync(
         this.diagnostics,
@@ -317,6 +393,7 @@ class FrameworkModel extends CubismUserModel {
       )
     }
     catch (error) {
+      await closeAllSources()
       if (error instanceof Live2DError)
         throw error
       throw new Live2DError(
@@ -326,24 +403,23 @@ class FrameworkModel extends CubismUserModel {
       )
     }
 
-    for (let index = 0; index < this.setting.getTextureCount(); index++) {
-      const name = this.setting.getTextureFileName(index)
-      if (!name) {
-        throw new Live2DError(
-          'model-load-failed',
-          `model3.json declares an empty texture at index ${index}.`,
-          { details: modelAssetDetails('texture', this.modelUrl) },
-        )
+    try {
+      for (let index = 0; index < sourcePromises.length; index++) {
+        const source = await sourcePromises[index]
+        if (this.assetController.signal.aborted) {
+          closeTextureSource(source)
+          throw this.assetController.signal.reason
+        }
+        const texture = uploadTexture(gl, source, textureUrls[index], this.diagnostics)
+        this.textures.push(texture)
+        this.diagnostics?.changeResource('texture', 1)
+        renderer.bindTexture(index, texture)
       }
-      const texture = await createTexture(
-        gl,
-        resolveAssetUrl(name, this.modelUrl),
-        this.assetController.signal,
-        this.diagnostics,
-      )
-      this.textures.push(texture)
-      this.diagnostics?.changeResource('texture', 1)
-      renderer.bindTexture(index, texture)
+    }
+    catch (error) {
+      // Decoded bitmaps that never reached uploadTexture must still close.
+      await closeAllSources()
+      throw error
     }
   }
 
@@ -422,6 +498,7 @@ class FrameworkModel extends CubismUserModel {
     if (cached)
       return cached
     const promise = (async () => {
+      this.pendingMotionKeys.add(key)
       this.diagnostics?.changeResource('pendingMotion', 1)
       try {
         const fileName = this.setting.getMotionFileName(group, index)
@@ -454,7 +531,8 @@ class FrameworkModel extends CubismUserModel {
         return motion
       }
       finally {
-        this.diagnostics?.changeResource('pendingMotion', -1)
+        if (this.pendingMotionKeys.delete(key))
+          this.diagnostics?.changeResource('pendingMotion', -1)
       }
     })()
     this.motionCache.set(key, promise)
@@ -508,6 +586,7 @@ class FrameworkModel extends CubismUserModel {
     if (cached)
       return cached
     const promise = (async () => {
+      this.pendingExpressionKeys.add(id)
       this.diagnostics?.changeResource('pendingExpression', 1)
       try {
         const expressionUrl = resolveAssetUrl(
@@ -531,7 +610,8 @@ class FrameworkModel extends CubismUserModel {
         return expression
       }
       finally {
-        this.diagnostics?.changeResource('pendingExpression', -1)
+        if (this.pendingExpressionKeys.delete(id))
+          this.diagnostics?.changeResource('pendingExpression', -1)
       }
     })()
     this.expressionCache.set(id, promise)
@@ -579,6 +659,9 @@ class FrameworkModel extends CubismUserModel {
 
   toHandle(): ModelHandle {
     return {
+      clearParameter: (id) => {
+        this.manualParameters.delete(id)
+      },
       dispose: () => this.disposeModel(),
       expression: async (id) => {
         const count = this.setting.getExpressionCount()
@@ -633,6 +716,14 @@ class FrameworkModel extends CubismUserModel {
       return
     this.disposed = true
     this.assetController.abort(new DOMException('Model disposed', 'AbortError'))
+    // The abort settles fetch rejections asynchronously, so reconcile the
+    // in-flight load counters now to keep dispose-time diagnostics exact.
+    for (let i = this.pendingMotionKeys.size; i > 0; i--)
+      this.diagnostics?.changeResource('pendingMotion', -1)
+    this.pendingMotionKeys.clear()
+    for (let i = this.pendingExpressionKeys.size; i > 0; i--)
+      this.diagnostics?.changeResource('pendingExpression', -1)
+    this.pendingExpressionKeys.clear()
     this.detachDriver?.()
     this.detachDriver = undefined
     this.afterMotionCallbacks.clear()

@@ -21,7 +21,9 @@ export class CubismRenderTarget_WebGL {
   public static copyBuffer(
     gl: WebGL2RenderingContext,
     src: CubismRenderTarget_WebGL,
-    dst: CubismRenderTarget_WebGL
+    dst: CubismRenderTarget_WebGL,
+    restoreFbo: WebGLFramebuffer = null,
+    restoreFboIsKnown = false
   ): void {
     if (src == null || dst == null) {
       return;
@@ -31,9 +33,11 @@ export class CubismRenderTarget_WebGL {
       throw new Error('WebGL2RenderingContext is required for buffer copy.');
     }
 
-    const previousFramebuffer = gl.getParameter(
-      gl.FRAMEBUFFER_BINDING
-    ) as WebGLFramebuffer;
+    // gl.getParameter is a synchronous pipeline stall; callers that track the
+    // bound framebuffer pass it in with restoreFboIsKnown to skip the query.
+    const previousFramebuffer = restoreFboIsKnown
+      ? restoreFbo
+      : (gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer);
 
     // 各オフスクリーンサーフェスのレンダーテクスチャをバインド
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src.getRenderTexture());
@@ -61,15 +65,21 @@ export class CubismRenderTarget_WebGL {
    * 描画を開始する。
    *
    * @param restoreFbo EndDraw時に復元するFBOを指定する。nullを指定すると、beginDraw時に現在のFBOを記憶しておく。
+   * @param restoreFboIsKnown When true, restoreFbo is trusted as-is even if it
+   *        is null (the default framebuffer), skipping the synchronous
+   *        gl.getParameter pipeline stall.
    */
-  public beginDraw(restoreFbo: WebGLFramebuffer = null): void {
+  public beginDraw(
+    restoreFbo: WebGLFramebuffer = null,
+    restoreFboIsKnown = false
+  ): void {
     if (this._renderTexture == null) {
       console.error('_renderTexture is null');
       return;
     }
 
     // バックバッファのサーフェイスを記憶しておく。
-    if (restoreFbo == null) {
+    if (restoreFbo == null && !restoreFboIsKnown) {
       this._oldFbo = this._gl.getParameter(this._gl.FRAMEBUFFER_BINDING);
     } else {
       this._oldFbo = restoreFbo;

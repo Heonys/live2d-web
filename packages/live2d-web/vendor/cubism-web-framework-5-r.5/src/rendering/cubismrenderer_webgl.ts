@@ -54,13 +54,16 @@ export class CubismClippingManager_WebGL extends CubismClippingManager<CubismCli
    * @param lastFbo フレームバッファ
    * @param lastViewport ビューポート
    * @param drawObjectType 描画オブジェクトのタイプ
+   * @param lastFboIsKnown When true, lastFbo is trusted even when null so
+   *        beginDraw() can skip its synchronous framebuffer query.
    */
   public setupClippingContext(
     model: CubismModel,
     renderer: CubismRenderer_WebGL,
     lastFbo: WebGLFramebuffer,
     lastViewport: number[],
-    drawObjectType: DrawableObjectType
+    drawObjectType: DrawableObjectType,
+    lastFboIsKnown = false
   ): void {
     // 全てのクリッピングを用意する
     // 同じクリップ（複数の場合はまとめて一つのクリップ）を使う場合は1度だけ設定する
@@ -114,7 +117,7 @@ export class CubismClippingManager_WebGL extends CubismClippingManager<CubismCli
     }
 
     // ---------- マスク描画処理 ----------
-    this._currentMaskBuffer.beginDraw(lastFbo);
+    this._currentMaskBuffer.beginDraw(lastFbo, lastFboIsKnown);
 
     renderer.preDraw(); // バッファをクリアする
 
@@ -170,7 +173,8 @@ export class CubismClippingManager_WebGL extends CubismClippingManager<CubismCli
       if (this._currentMaskBuffer != maskBuffer) {
         this._currentMaskBuffer.endDraw(); // 前のレンダーテクスチャの描画を終了
         this._currentMaskBuffer = maskBuffer;
-        this._currentMaskBuffer.beginDraw(lastFbo); // 新しいレンダーテクスチャの描画を開始
+        // 新しいレンダーテクスチャの描画を開始
+        this._currentMaskBuffer.beginDraw(lastFbo, lastFboIsKnown);
 
         renderer.preDraw(); // バッファをクリアする
       }
@@ -674,6 +678,9 @@ export class CubismRenderer_WebGL extends CubismRenderer {
       uv: (WebGLBuffer = null),
       index: (WebGLBuffer = null)
     };
+    this._drawableIndexBuffers = new Array<WebGLBuffer>();
+    this._drawableUvBuffers = new Array<WebGLBuffer>();
+    this._renderTargetIndexBuffer = null;
     this._modelRenderTargets = new Array<CubismOffscreenRenderTarget_WebGL>();
     this._drawableMasks = new Array<CubismRenderTarget_WebGL>();
     this._currentFbo = null;
@@ -706,6 +713,27 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     this.gl.deleteBuffer(this._bufferData.index);
     this._bufferData.index = null;
     this._bufferData = null;
+
+    for (let i = 0; i < this._drawableIndexBuffers.length; i++) {
+      if (this._drawableIndexBuffers[i] != null) {
+        this.gl.deleteBuffer(this._drawableIndexBuffers[i]);
+      }
+    }
+    this._drawableIndexBuffers.length = 0;
+    this._drawableIndexBuffers = null;
+
+    for (let i = 0; i < this._drawableUvBuffers.length; i++) {
+      if (this._drawableUvBuffers[i] != null) {
+        this.gl.deleteBuffer(this._drawableUvBuffers[i]);
+      }
+    }
+    this._drawableUvBuffers.length = 0;
+    this._drawableUvBuffers = null;
+
+    if (this._renderTargetIndexBuffer != null) {
+      this.gl.deleteBuffer(this._renderTargetIndexBuffer);
+      this._renderTargetIndexBuffer = null;
+    }
 
     this._textures = null;
 
@@ -761,6 +789,70 @@ export class CubismRenderer_WebGL extends CubismRenderer {
   }
 
   /**
+   * Drawable indices never change after the moc is parsed, so cache one
+   * STATIC_DRAW buffer per drawable instead of re-uploading every draw call.
+   */
+  public bindDrawableIndexBuffer(index: number): void {
+    let buffer = this._drawableIndexBuffers[index];
+    if (buffer == null) {
+      buffer = this.gl.createBuffer();
+      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffer);
+      this.gl.bufferData(
+        this.gl.ELEMENT_ARRAY_BUFFER,
+        this._model.getDrawableVertexIndices(index),
+        this.gl.STATIC_DRAW
+      );
+      this._drawableIndexBuffers[index] = buffer;
+    } else {
+      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffer);
+    }
+  }
+
+  /**
+   * Drawable UVs never change after the moc is parsed, so cache one
+   * STATIC_DRAW buffer per drawable instead of re-uploading every draw call.
+   */
+  public bindDrawableUvBuffer(index: number): void {
+    let buffer = this._drawableUvBuffers[index];
+    if (buffer == null) {
+      buffer = this.gl.createBuffer();
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+      this.gl.bufferData(
+        this.gl.ARRAY_BUFFER,
+        this._model.getDrawableVertexUvs(index),
+        this.gl.STATIC_DRAW
+      );
+      this._drawableUvBuffers[index] = buffer;
+    } else {
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+    }
+  }
+
+  /**
+   * The render-target quad index data is a constant, so reuse one buffer
+   * instead of creating and deleting one on every offscreen submit.
+   */
+  public bindRenderTargetIndexBuffer(): void {
+    if (this._renderTargetIndexBuffer == null) {
+      this._renderTargetIndexBuffer = this.gl.createBuffer();
+      this.gl.bindBuffer(
+        this.gl.ELEMENT_ARRAY_BUFFER,
+        this._renderTargetIndexBuffer
+      );
+      this.gl.bufferData(
+        this.gl.ELEMENT_ARRAY_BUFFER,
+        s_renderTargetIndexArray,
+        this.gl.STATIC_DRAW
+      );
+    } else {
+      this.gl.bindBuffer(
+        this.gl.ELEMENT_ARRAY_BUFFER,
+        this._renderTargetIndexBuffer
+      );
+    }
+  }
+
+  /**
    * Shaderの読み込みを行う
    * @param shaderPath シェーダのパス
    */
@@ -777,20 +869,19 @@ export class CubismRenderer_WebGL extends CubismRenderer {
       );
     }
 
-    if (
-      CubismShaderManager_WebGL.getInstance().getShader(this.gl)._shaderSets
-        .length == 0 ||
-      !CubismShaderManager_WebGL.getInstance().getShader(this.gl)
-        ._isShaderLoaded
-    ) {
-      const shader = CubismShaderManager_WebGL.getInstance().getShader(this.gl);
+    const shader = CubismShaderManager_WebGL.getInstance().getShader(this.gl);
+    if (shader._shaderSets.length == 0 || !shader._isShaderLoaded) {
       if (shaderPath != null) {
         shader.setShaderPath(shaderPath);
       }
       shader.setShaderSources(shaderSources);
-      return shader.generateShaders(signal);
     }
-    return Promise.resolve();
+    // Passing the model's blend usage lets the shader table skip the blend
+    // program compile for models that never select a blend program.
+    return shader.generateShaders(
+      signal,
+      this._model != null ? this._model.isBlendModeEnabled() : true
+    );
   }
 
   /**
@@ -841,7 +932,8 @@ export class CubismRenderer_WebGL extends CubismRenderer {
           this,
           lastFbo,
           lastViewport,
-          DrawableObjectType.DrawableObjectType_Drawable
+          DrawableObjectType.DrawableObjectType_Drawable,
+          this._renderStateKnown
         );
       }
     }
@@ -882,7 +974,8 @@ export class CubismRenderer_WebGL extends CubismRenderer {
           this,
           lastFbo,
           lastViewport,
-          DrawableObjectType.DrawableObjectType_Offscreen
+          DrawableObjectType.DrawableObjectType_Offscreen,
+          this._renderStateKnown
         );
       }
     }
@@ -1112,7 +1205,8 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     }
 
     // 後処理
-    this.gl.useProgram(null);
+    // NOTE: The program stays bound on purpose; CubismShader_WebGL.setProgram()
+    // caches it so the next draw skips a redundant useProgram call.
     this.setClippingContextBufferForDrawable(null);
     this.setClippingContextBufferForMask(null);
   }
@@ -1383,14 +1477,8 @@ export class CubismRenderer_WebGL extends CubismRenderer {
 
     // ポリゴンメッシュを描画する
     {
-      // インデックスバッファの作成とバインド
-      const indexBuffer = this.gl.createBuffer();
-      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      this.gl.bufferData(
-        this.gl.ELEMENT_ARRAY_BUFFER,
-        s_renderTargetIndexArray,
-        this.gl.STATIC_DRAW
-      );
+      // インデックスバッファのバインド（再利用）
+      this.bindRenderTargetIndexBuffer();
 
       // 描画
       this.gl.drawElements(
@@ -1399,12 +1487,10 @@ export class CubismRenderer_WebGL extends CubismRenderer {
         this.gl.UNSIGNED_SHORT,
         0
       );
-      this.gl.deleteBuffer(indexBuffer);
     }
 
     // 後処理
     offscreen.stopUsingRenderTexture();
-    this.gl.useProgram(null);
     this.setClippingContextBufferForMask(null);
     this.setClippingContextBufferForOffscreen(null);
   }
@@ -1471,14 +1557,8 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     if (
       CubismShaderManager_WebGL.getInstance().getShader(this.gl)._isShaderLoaded
     ) {
-      // インデックスバッファの作成とバインド
-      const indexBuffer = this.gl.createBuffer();
-      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-      this.gl.bufferData(
-        this.gl.ELEMENT_ARRAY_BUFFER,
-        s_renderTargetIndexArray,
-        this.gl.STATIC_DRAW
-      );
+      // インデックスバッファのバインド（再利用）
+      this.bindRenderTargetIndexBuffer();
 
       // 描画
       this.gl.drawElements(
@@ -1487,10 +1567,7 @@ export class CubismRenderer_WebGL extends CubismRenderer {
         this.gl.UNSIGNED_SHORT,
         0
       );
-      this.gl.deleteBuffer(indexBuffer);
     }
-
-    this.gl.useProgram(null);
   }
 
   /**
@@ -1520,6 +1597,9 @@ export class CubismRenderer_WebGL extends CubismRenderer {
    */
   public setRenderState(fbo: WebGLFramebuffer, viewport: number[]): void {
     this._renderStateFbo = fbo;
+    // The caller told us the bound framebuffer, so per-frame mask setup can
+    // skip the synchronous gl.getParameter(FRAMEBUFFER_BINDING) stall.
+    this._renderStateKnown = true;
     this._renderStateViewport[0] = viewport[0];
     this._renderStateViewport[1] = viewport[1];
     this._renderStateViewport[2] = viewport[2];
@@ -1762,6 +1842,7 @@ export class CubismRenderer_WebGL extends CubismRenderer {
   _modelRootFbo: WebGLFramebuffer; // モデルのルートフレームバッファ
 
   _renderStateFbo: WebGLFramebuffer = null; // setRenderStateで指定されたフレームバッファ
+  _renderStateKnown = false; // Whether setRenderState() has reported the bound framebuffer (null is then trusted as the default framebuffer)
   _renderStateViewport: number[] = [0, 0, 0, 0]; // setRenderStateで指定されたビューポート
 
   _bufferData: {
@@ -1769,6 +1850,9 @@ export class CubismRenderer_WebGL extends CubismRenderer {
     uv: WebGLBuffer;
     index: WebGLBuffer;
   }; // 頂点バッファデータ
+  _drawableIndexBuffers: Array<WebGLBuffer>; // Per-drawable static index buffers (indices never change after moc parse)
+  _drawableUvBuffers: Array<WebGLBuffer>; // Per-drawable static UV buffers (UVs never change after moc parse)
+  _renderTargetIndexBuffer: WebGLBuffer; // Reused quad index buffer for offscreen submits
   _extension: any; // 拡張機能
   gl: WebGLRenderingContext | WebGL2RenderingContext; // webglコンテキスト
 }

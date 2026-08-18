@@ -7,6 +7,7 @@ export interface Live2DModelController {
   focus: (x: number, y: number) => void
   getParameter: (id: string) => number
   setParameter: (id: string, value: number) => void
+  clearParameter: (id: string) => void
 }
 
 export function createLive2DModelController(
@@ -27,6 +28,7 @@ export function createLive2DModelController(
   }
   return {
     controller: Object.freeze({
+      clearParameter: (id: string) => requireActive().clearParameter(id),
       expression: async (id?: string) => requireActive().expression(id),
       focus: (x: number, y: number) => requireActive().focus(x, y),
       getParameter: (id: string) => requireActive().getParameter(id),
