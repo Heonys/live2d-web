@@ -16,6 +16,10 @@ export const OFFICIAL_CUBISM_CORE_URL
 
 const pendingLoads = new Map<string, Promise<void>>()
 
+// A script that never fires load or error would otherwise leave every caller
+// for this URL pending forever, including the ones that arrive later.
+const CORE_LOAD_TIMEOUT_MS = 30_000
+
 function resourceHttpStatus(url: string) {
   if (typeof performance === 'undefined' || !performance.getEntriesByName)
     return undefined
@@ -50,12 +54,96 @@ function assertBrowser(): void {
   }
 }
 
+function loadCoreScript(absoluteUrl: string) {
+  return new Promise<void>((resolve, reject) => {
+    // Never adopt a script the page already owns: load and error are one-shot,
+    // and an element that fired before we looked can never settle this promise.
+    const script = document.createElement('script')
+    const listeners = new AbortController()
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const settle = (error?: Live2DError) => {
+      if (timer !== undefined)
+        clearTimeout(timer)
+      timer = undefined
+      listeners.abort()
+      if (!error) {
+        resolve()
+        return
+      }
+      script.remove()
+      reject(error)
+    }
+
+    const onSettleEvent = (event: Event) => {
+      if (event.type === 'load' && window.Live2DCubismCore) {
+        settle()
+        return
+      }
+      settle(event.type === 'load'
+        ? new Live2DError(
+            'core-missing',
+            coreMissingMessage(),
+            { details: coreDetails(absoluteUrl) },
+          )
+        : new Live2DError(
+            'core-missing',
+            `Failed to load Live2D Cubism Core from ${absoluteUrl}.`,
+            {
+              cause: event,
+              details: coreDetails(absoluteUrl),
+            },
+          ))
+    }
+
+    script.addEventListener('load', onSettleEvent, { signal: listeners.signal })
+    script.addEventListener('error', onSettleEvent, { signal: listeners.signal })
+    timer = setTimeout(() => {
+      settle(new Live2DError(
+        'core-missing',
+        `Live2D Cubism Core did not load from ${absoluteUrl} within `
+        + `${CORE_LOAD_TIMEOUT_MS} ms.`,
+        { details: coreDetails(absoluteUrl) },
+      ))
+    }, CORE_LOAD_TIMEOUT_MS)
+
+    script.src = absoluteUrl
+    script.async = true
+    script.dataset.live2dWebCore = 'true'
+    document.head.appendChild(script)
+  })
+}
+
+// The shared load stays untouched so aborting one caller cannot cancel or
+// reject the script load that the other callers are still waiting on.
+function withAbort(load: Promise<void>, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason)
+    signal.addEventListener('abort', onAbort, { once: true })
+    load.then(resolve, reject).finally(() => {
+      signal.removeEventListener('abort', onAbort)
+    })
+  })
+}
+
+export interface EnsureCubismCoreOptions {
+  /** Stops waiting for the script; the shared load continues for other callers. */
+  signal?: AbortSignal
+}
+
 /**
  * Verifies the user-supplied Cubism Core global, optionally loading a user-hosted
  * script first. Concurrent calls for the same URL share one script load.
  */
-export async function ensureCubismCore(coreUrl?: string): Promise<void> {
+export async function ensureCubismCore(
+  coreUrl?: string,
+  options: EnsureCubismCoreOptions = {},
+): Promise<void> {
   assertBrowser()
+
+  const { signal } = options
+  if (signal?.aborted)
+    throw signal.reason
 
   if (window.Live2DCubismCore)
     return
@@ -72,48 +160,7 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
   let load = pendingLoads.get(absoluteUrl)
 
   if (!load) {
-    const createdLoad = new Promise<void>((resolve, reject) => {
-      const existing = Array.from(document.scripts).find(script => script.src === absoluteUrl)
-      const script = existing ?? document.createElement('script')
-      const ownedByLoader = !existing || script.dataset.live2dWebCore === 'true'
-
-      const listener: EventListenerObject = {
-        handleEvent(event) {
-          script.removeEventListener('load', listener)
-          script.removeEventListener('error', listener)
-          if (event.type === 'load' && window.Live2DCubismCore) {
-            resolve()
-            return
-          }
-          if (ownedByLoader)
-            script.remove()
-          reject(event.type === 'load'
-            ? new Live2DError(
-                'core-missing',
-                coreMissingMessage(),
-                { details: coreDetails(absoluteUrl) },
-              )
-            : new Live2DError(
-                'core-missing',
-                `Failed to load Live2D Cubism Core from ${absoluteUrl}.`,
-                {
-                  cause: event,
-                  details: coreDetails(absoluteUrl),
-                },
-              ))
-        },
-      }
-
-      script.addEventListener('load', listener, { once: true })
-      script.addEventListener('error', listener, { once: true })
-
-      if (!existing) {
-        script.src = absoluteUrl
-        script.async = true
-        script.dataset.live2dWebCore = 'true'
-        document.head.appendChild(script)
-      }
-    })
+    const createdLoad = loadCoreScript(absoluteUrl)
     load = createdLoad.finally(() => {
       if (pendingLoads.get(absoluteUrl) === load)
         pendingLoads.delete(absoluteUrl)
@@ -121,7 +168,9 @@ export async function ensureCubismCore(coreUrl?: string): Promise<void> {
     pendingLoads.set(absoluteUrl, load)
   }
 
-  await load
+  await (signal ? withAbort(load, signal) : load)
+  if (signal?.aborted)
+    throw signal.reason
   if (!window.Live2DCubismCore) {
     throw new Live2DError(
       'core-missing',

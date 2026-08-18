@@ -8,7 +8,7 @@ import type {
 } from './contract'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Live2DError } from './errors'
-import { createLive2D } from './runtime'
+import { createLive2D, Live2DRuntime } from './runtime'
 
 interface RuntimeHarness {
   afterMotionCallbacks: Set<(deltaMs: number) => void>
@@ -253,6 +253,101 @@ describe('createLive2D', () => {
     expect(featureDispose).toBeGreaterThan(-1)
     expect(featureDispose).toBeLessThan(modelDispose)
     expect(modelDispose).toBeLessThan(stageDispose)
+  })
+
+  it('settles start() when the instance is disposed while Core is loading', async () => {
+    delete window.Live2DCubismCore
+    const harness = createRuntimeHarness()
+    const runtime = new Live2DRuntime({
+      backend: harness.backend,
+      container: document.body,
+      coreUrl: '/assets/core-runtime.js',
+      src: '/hiyori.model3.json',
+    })
+
+    const started = runtime.start()
+    runtime.dispose()
+
+    await expect(started).resolves.toBeUndefined()
+    expect(harness.events).not.toContain('stage:create')
+    document
+      .querySelectorAll('script[data-live2d-web-core]')
+      .forEach(script => script.remove())
+  })
+
+  it('applies a pause requested before the stage exists', async () => {
+    const harness = createRuntimeHarness()
+    const runtime = new Live2DRuntime({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+
+    const started = runtime.start()
+    runtime.pause()
+    await started
+
+    expect(harness.events.indexOf('stage:pause'))
+      .toBeGreaterThan(harness.events.indexOf('stage:create'))
+    expect(harness.events).not.toContain('stage:resume')
+
+    runtime.resume()
+    expect(harness.events).toContain('stage:resume')
+    runtime.dispose()
+  })
+
+  it('keeps a user pause across retry', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+
+    instance.pause()
+    await instance.retry()
+
+    expect(harness.events.lastIndexOf('stage:pause'))
+      .toBeGreaterThan(harness.events.lastIndexOf('stage:create'))
+    instance.dispose()
+  })
+
+  it('still pauses offscreen after a pause requested before the stage exists', async () => {
+    let ioCallback: IntersectionObserverCallback | undefined
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) {
+        ioCallback = callback
+      }
+
+      disconnect() {}
+      observe() {}
+      takeRecords() {
+        return []
+      }
+
+      unobserve() {}
+    })
+
+    const harness = createRuntimeHarness()
+    const runtime = new Live2DRuntime({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+    const started = runtime.start()
+    runtime.pause()
+    await started
+    ioCallback?.(
+      [{ isIntersecting: false } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+
+    // The stage is paused for two reasons now, so dropping the user one must
+    // not resume a container that is still outside the viewport.
+    runtime.resume()
+    expect(harness.events).toContain('stage:pause')
+    expect(harness.events).not.toContain('stage:resume')
+    runtime.dispose()
   })
 
   it('does not resume a user pause when the tab becomes visible again', async () => {

@@ -98,12 +98,20 @@ class FrameworkModel extends CubismUserModel {
   private readonly manualParameters = new Map<string, number>()
   private readonly motionResolvers: {
     handle: CubismMotionQueueEntryHandle
+    reject: (error: Live2DError) => void
     resolve: () => void
   }[] = []
 
   private mvpMatrix: CubismMatrix44 | undefined
   private readonly motionCache = new Map<string, Promise<CubismMotion>>()
   private readonly parameterIds = new Map<string, CubismIdHandle>()
+  // Held so dispose() can release GL state without asking the stage, which
+  // throws once the stage itself is gone.
+  private renderContext: WebGL2RenderingContext | undefined
+  // Set once the stage reports a render error. The frame loop never restarts
+  // after that, so motions can no longer finish on their own.
+  private renderError: Live2DError | undefined
+  private stopErrorWatch: (() => void) | undefined
   // Keys of in-flight loads. Dispose settles their diagnostics counters
   // synchronously; the late finally skips keys that were already settled.
   private readonly pendingExpressionKeys = new Set<string>()
@@ -212,6 +220,7 @@ class FrameworkModel extends CubismUserModel {
         resize: (width, height) => this.resize(width, height),
         update: deltaMs => this.updateFrame(deltaMs),
       })
+      this.stopErrorWatch = this.stage.onError(error => this.failMotions(error))
       // Warm the Idle group in the background so the first idle playback does
       // not stall on a network round trip after ready.
       void this.prefetchIdleMotions()
@@ -366,6 +375,7 @@ class FrameworkModel extends CubismUserModel {
 
   private async setupRenderer() {
     const { canvas, gl } = getStageInternals(this.stage)
+    this.renderContext = gl
     this.createRenderer(canvas.width, canvas.height)
     const renderer = this.getRenderer()
     renderer.startUp(gl)
@@ -567,6 +577,13 @@ class FrameworkModel extends CubismUserModel {
     )
   }
 
+  private failMotions(error: Live2DError) {
+    this.renderError ??= error
+    // Splice before settling: a rejection handler may start another motion.
+    for (const pending of this.motionResolvers.splice(0))
+      pending.reject(this.renderError)
+  }
+
   private settleFinishedMotions() {
     for (let index = this.motionResolvers.length - 1; index >= 0; index--) {
       const pending = this.motionResolvers[index]
@@ -580,6 +597,8 @@ class FrameworkModel extends CubismUserModel {
   private async playMotion(group: string, index: number | undefined, priority: number) {
     if (this.disposed)
       return
+    if (this.renderError)
+      throw this.renderError
     const count = this.setting.getMotionCount(group)
     if (count === 0) {
       throw new Live2DError(
@@ -617,8 +636,12 @@ class FrameworkModel extends CubismUserModel {
       return
     // Resolve when playback actually ends (settled by the frame loop), so
     // callers can sequence follow-up actions with a plain await.
-    await new Promise<void>((resolve) => {
-      this.motionResolvers.push({ handle, resolve })
+    await new Promise<void>((resolve, reject) => {
+      if (this.renderError) {
+        reject(this.renderError)
+        return
+      }
+      this.motionResolvers.push({ handle, reject, resolve })
     })
   }
 
@@ -856,30 +879,43 @@ class FrameworkModel extends CubismUserModel {
       pending.resolve()
     this.detachDriver?.()
     this.detachDriver = undefined
+    this.stopErrorWatch?.()
+    this.stopErrorWatch = undefined
     this.afterMotionCallbacks.clear()
     this.scheduler.release()
     if (this.look)
       CubismLook.delete(this.look)
     this.look = undefined
-    const { gl } = getStageInternals(this.stage)
-    for (const texture of this.textures)
-      gl.deleteTexture(texture)
-    if (this.textures.length > 0) {
+    // Never ask the stage for the context here: dispose must stay total even
+    // when the stage was torn down first, as it is when a load is aborted.
+    const gl = this.renderContext
+    this.renderContext = undefined
+    try {
+      if (gl) {
+        for (const texture of this.textures)
+          gl.deleteTexture(texture)
+      }
       for (let index = 0; index < this.textures.length; index++)
         this.diagnostics?.changeResource('texture', -1)
+      this.textures.length = 0
+      this.motionCache.clear()
+      this.expressionCache.clear()
+      this.manualParameters.clear()
+      this.setting.release()
+      super.release()
+      for (const motion of this.loadedMotions)
+        ACubismMotion.delete(motion)
+      this.loadedMotions.clear()
+      if (gl) {
+        // Map-keyed registries, so this drops the compiled programs and the
+        // dead context itself even after the context is lost.
+        CubismWebGLOffscreenManager.getInstance().removeContext(gl)
+        CubismShaderManager_WebGL.getInstance().releaseContext(gl)
+      }
     }
-    this.textures.length = 0
-    this.motionCache.clear()
-    this.expressionCache.clear()
-    this.manualParameters.clear()
-    this.setting.release()
-    super.release()
-    for (const motion of this.loadedMotions)
-      ACubismMotion.delete(motion)
-    this.loadedMotions.clear()
-    CubismWebGLOffscreenManager.getInstance().removeContext(gl)
-    CubismShaderManager_WebGL.getInstance().releaseContext(gl)
-    this.releaseFramework()
+    finally {
+      this.releaseFramework()
+    }
   }
 }
 

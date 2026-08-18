@@ -61,6 +61,73 @@ describe('ensureCubismCore', () => {
     await expect(retry).resolves.toBeUndefined()
   })
 
+  it('ignores a script element the page loaded before us', async () => {
+    // A tag the app wrote itself may already have fired load or error, so its
+    // one-shot events can never settle a promise we attach listeners to.
+    const foreign = document.createElement('script')
+    foreign.src = '/assets/core-c.js'
+    document.head.appendChild(foreign)
+    foreign.dispatchEvent(new Event('error'))
+
+    try {
+      const promise = ensureCubismCore('/assets/core-c.js')
+      const scripts = document.querySelectorAll<HTMLScriptElement>(
+        'script[data-live2d-web-core]',
+      )
+      expect(scripts).toHaveLength(1)
+
+      window.Live2DCubismCore = {}
+      scripts[0]?.dispatchEvent(new Event('load'))
+      await expect(promise).resolves.toBeUndefined()
+    }
+    finally {
+      foreign.remove()
+    }
+  })
+
+  it('lets one caller abort without poisoning the shared load', async () => {
+    const controller = new AbortController()
+    const aborted = ensureCubismCore('/assets/core-d.js', { signal: controller.signal })
+    const shared = ensureCubismCore('/assets/core-d.js')
+    const scripts = document.querySelectorAll<HTMLScriptElement>(
+      'script[data-live2d-web-core]',
+    )
+    expect(scripts).toHaveLength(1)
+
+    controller.abort()
+    await expect(aborted).rejects.toMatchObject({ name: 'AbortError' })
+
+    window.Live2DCubismCore = {}
+    scripts[0]?.dispatchEvent(new Event('load'))
+    await expect(shared).resolves.toBeUndefined()
+  })
+
+  it('rejects with core-missing when the script never settles', async () => {
+    vi.useFakeTimers()
+    try {
+      const promise = ensureCubismCore('/assets/core-e.js')
+      // Attach the rejection handler before the timer fires, or the rejection
+      // is unhandled for as long as the timer advance drains microtasks.
+      const rejection = expect(promise).rejects.toMatchObject({
+        code: 'core-missing',
+        details: {
+          assetType: 'core',
+          url: 'http://localhost:3000/assets/core-e.js',
+        },
+      })
+      const script = document.querySelector<HTMLScriptElement>(
+        'script[data-live2d-web-core]',
+      )!
+
+      await vi.advanceTimersByTimeAsync(30_000)
+      await rejection
+      expect(script.isConnected).toBe(false)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('uses resource timing status when the browser exposes a failed script response', async () => {
     vi.stubGlobal('performance', {
       ...performance,

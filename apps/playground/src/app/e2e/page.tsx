@@ -31,6 +31,7 @@ declare global {
         }
         message: string
       } | undefined>
+      motionDuringContextLoss: () => Promise<{ pending: string, started: string }>
       multiple: (count: number) => Promise<{ after: number, during: number }>
       parameter: (id: string) => number
       retry: () => Promise<void>
@@ -186,6 +187,30 @@ export default function E2EHarness() {
             details: failure.details,
             message: failure.message ?? String(error),
           }
+        }
+      },
+      async motionDuringContextLoss() {
+        const settle = (promise: Promise<void> | undefined) => Promise.race([
+          (promise ?? Promise.resolve())
+            .then(() => 'resolved')
+            .catch((error: { code?: string }) => error.code ?? 'unknown'),
+          new Promise<string>((resolve) => {
+            setTimeout(resolve, 2_000, 'hung')
+          }),
+        ])
+
+        const pending = settle(character?.motion('Tap@Body', 0))
+        await nextFrame()
+        const canvas = container.querySelector('canvas')
+        const extension = canvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')
+        if (extension)
+          extension.loseContext()
+        else
+          canvas?.dispatchEvent(new Event('webglcontextlost', { cancelable: true }))
+
+        return {
+          pending: await pending,
+          started: await settle(character?.motion('Tap@Body', 0)),
         }
       },
       async multiple(count) {

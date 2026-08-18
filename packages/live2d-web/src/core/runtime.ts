@@ -426,8 +426,10 @@ export class Live2DRuntime implements Live2DInstance {
       throw new Live2DError('invalid-props', 'Cannot start a disposed Live2D instance.')
 
     assertOptions(this.options)
-    // Every generation begins running; observers re-report hidden/offscreen.
-    this.pauseReasons.clear()
+    // Observers are recreated per generation and re-report their own state, but
+    // a user pause has no other source of truth, so it survives retry().
+    this.pauseReasons.delete('hidden')
+    this.pauseReasons.delete('offscreen')
     const policy = this.options.resolution !== undefined
       ? undefined
       : resolveAutoQualityPolicy(
@@ -445,7 +447,7 @@ export class Live2DRuntime implements Live2DInstance {
 
     try {
       this.updateState({ error: undefined, loadingStage: 'core', status: 'loading' })
-      await ensureCubismCore(this.options.coreUrl)
+      await ensureCubismCore(this.options.coreUrl, { signal: controller.signal })
       if (controller.signal.aborted)
         throw controller.signal.reason
 
@@ -480,6 +482,9 @@ export class Live2DRuntime implements Live2DInstance {
         width,
       })
       this.stage = stage
+      // pause() before this point could only record its reason, not apply it.
+      if (this.pauseReasons.size > 0)
+        stage.pause()
       this.stageCleanup.push(stage.onError((error) => {
         this.report(asLive2DError(error, 'render-error'))
       }))
@@ -562,6 +567,8 @@ export class Live2DRuntime implements Live2DInstance {
           this.removePauseReason('hidden')
       }
       document.addEventListener('visibilitychange', onVisibilityChange)
+      // visibilitychange only fires on transitions, so seed the current value.
+      onVisibilityChange()
       this.stageCleanup.push(() => {
         document.removeEventListener('visibilitychange', onVisibilityChange)
       })

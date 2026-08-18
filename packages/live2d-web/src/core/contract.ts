@@ -52,7 +52,11 @@ export interface ModelHandle {
   /** Hit-area names containing the stage-local point, in declaration order. */
   hitTest: (x: number, y: number) => string[]
   getModelInfo: () => ModelInfo
-  /** Resolves when playback finishes (including interruption), not when it starts. */
+  /**
+   * Resolves when playback finishes (including interruption), not when it
+   * starts. Resolves on dispose, and rejects if the stage reports a render
+   * error, because the frame loop never restarts after one.
+   */
   motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
   isMotionPlaying: () => boolean
   expression: (id?: string) => Promise<void>

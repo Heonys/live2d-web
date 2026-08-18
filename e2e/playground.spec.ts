@@ -246,6 +246,19 @@ test('surfaces WebGL context loss and recreates the stage', async ({ page, brows
   await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
 })
 
+test('settles pending and later motions when the context is lost', async ({ page }) => {
+  await page.goto('/e2e')
+  await expect(page.locator('#e2e-status')).toHaveText('ready')
+
+  // The frame loop never restarts after a render error, so a motion that waits
+  // for playback to finish has to be rejected rather than left pending.
+  const settlements = await page.evaluate(
+    () => (window as any).__live2dWebE2E.motionDuringContextLoss(),
+  )
+  expect(settlements.pending).toBe('render-error')
+  expect(settlements.started).toBe('render-error')
+})
+
 test('covers the integrated Framework adapter lifecycle and lazy assets', async ({ browserName, page }) => {
   const unexpectedErrors: string[] = []
   page.on('console', (message) => {
