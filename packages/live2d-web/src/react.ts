@@ -4,7 +4,10 @@ export type {
   Live2DBackend,
   LoadModelOptions,
   ModelHandle,
+  ModelInfo,
   ModelTransform,
+  MotionOptions,
+  MotionPriority,
   Point,
   Size,
   StageHandle,
@@ -32,7 +35,21 @@ export type {
   QualityInput,
   ResolvedAutoQualityPolicy,
 } from './core/quality'
-export type { LipSyncProfile } from './features/lipsync/source'
+// The React surface names these in its own signatures (useLive2D, the model
+// controller), so a /react-only consumer has to be able to name them too.
+export type {
+  CreateLive2DOptions,
+  LipSyncDriver,
+  Live2DInstance,
+  Live2DRuntimeState,
+  ParameterDriver,
+  RuntimeLoadingStage,
+  RuntimeRenderState,
+} from './core/runtime'
+export type {
+  LipSyncProfile,
+  LipSyncProfileInput,
+} from './features/lipsync/source'
 export type { Live2DModelController } from './react/controller'
 export {
   useLive2D,
@@ -43,7 +60,7 @@ export {
 } from './react/hooks'
 export type { UseLive2DOptions, UseLive2DResult } from './react/hooks'
 export { LipSync } from './react/LipSync'
-export type { LipSyncDriver, LipSyncProps } from './react/LipSync'
+export type { LipSyncProps } from './react/LipSync'
 export { Live2DCanvas } from './react/Live2DCanvas'
 export type {
   Live2DCanvasProps,

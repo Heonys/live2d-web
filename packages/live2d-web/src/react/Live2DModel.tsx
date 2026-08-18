@@ -6,7 +6,7 @@ import type { Live2DError } from '../core/errors'
 import type { ModelFit } from '../core/fit'
 import type { CreateLive2DOptions } from '../core/runtime'
 import type { Live2DModelController } from './controller'
-import { useContext, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
 import { LifecycleScope } from '../core/lifecycle'
 import { Live2DRuntime } from '../core/runtime'
@@ -84,11 +84,21 @@ export function Live2DModel({
   const onTapRef = useRef(onTap)
   const fitRef = useRef(fit)
   const runtimeRef = useRef<Live2DRuntime | null>(null)
+  const lastErrorRef = useRef<Live2DError | null>(null)
   onLoadRef.current = onLoad
   onErrorRef.current = onError
   onTapRef.current = onTap
   fitRef.current = fit
   const hasOnTap = onTap != null
+
+  // The runtime reports a failed start and rejects start() with the same
+  // error object, so identity is enough to keep this callback single-fire.
+  const reportError = useCallback((error: Live2DError) => {
+    if (lastErrorRef.current === error)
+      return
+    lastErrorRef.current = error
+    onErrorRef.current?.(error)
+  }, [])
 
   useEffect(() => {
     if (currentStageStore.claimModel(owner))
@@ -99,8 +109,8 @@ export function Live2DModel({
       'live2d-web v0.1 supports exactly one <Live2DModel> per <Live2DCanvas>.',
     )
     currentStageStore.fail(error)
-    onErrorRef.current?.(error)
-  }, [currentStageStore, owner])
+    reportError(error)
+  }, [currentStageStore, owner, reportError])
 
   useEffect(() => {
     const container = currentRuntimeHost.container
@@ -117,6 +127,9 @@ export function Live2DModel({
       fit: fitRef.current,
       idleMotion,
       maxFps: currentRuntimeHost.maxFps,
+      // Without this the model never hears about context loss, render errors
+      // or lip-sync failures, which the runtime reports after ready.
+      onError: reportError,
       pauseWhenOffscreen: currentRuntimeHost.pauseWhenOffscreen,
       quality: currentRuntimeHost.quality,
       resolution: currentRuntimeHost.resolution,
@@ -173,7 +186,7 @@ export function Live2DModel({
           return
         const normalized = modelError(error)
         currentStageStore.fail(normalized)
-        onErrorRef.current?.(normalized)
+        reportError(normalized)
       })
 
     return () => {
@@ -186,6 +199,7 @@ export function Live2DModel({
     lifecycle,
     modelStore,
     owner,
+    reportError,
     retries,
     src,
   ])
@@ -202,7 +216,20 @@ export function Live2DModel({
       runtime.pause()
       return () => runtime.resume()
     }
-  }, [currentRuntimeHost, paused, src])
+    // Deps mirror the runtime-creation effect above: anything that builds a new
+    // runtime has to re-apply the pause to it.
+  }, [
+    currentRuntimeHost,
+    currentStageStore,
+    idleMotion,
+    lifecycle,
+    modelStore,
+    owner,
+    paused,
+    reportError,
+    retries,
+    src,
+  ])
 
   // Pointer wiring lives in React (not CreateLive2DOptions) so toggling these
   // props never recreates the runtime or reloads the model.
@@ -215,17 +242,29 @@ export function Live2DModel({
       if (runtime?.getState().status === 'ready')
         runtime.focusAt(event.clientX, event.clientY)
     }
+    // Matches the vanilla followPointer wiring: the gaze returns to the centre
+    // once the pointer leaves, instead of freezing at its last position.
+    const onPointerLeave = () => {
+      const runtime = runtimeRef.current
+      if (runtime?.getState().status !== 'ready')
+        return
+      const rect = container.getBoundingClientRect()
+      runtime.focus(rect.width / 2, rect.height / 2)
+    }
     const onClick = (event: MouseEvent) => {
       const runtime = runtimeRef.current
       if (runtime && onTapRef.current)
         onTapRef.current(runtime.hitTest(event.clientX, event.clientY), event)
     }
-    if (followPointer)
+    if (followPointer) {
       container.addEventListener('pointermove', onPointerMove)
+      container.addEventListener('pointerleave', onPointerLeave)
+    }
     if (hasOnTap)
       container.addEventListener('click', onClick)
     return () => {
       container.removeEventListener('pointermove', onPointerMove)
+      container.removeEventListener('pointerleave', onPointerLeave)
       container.removeEventListener('click', onClick)
     }
   }, [currentRuntimeHost.container, followPointer, hasOnTap])

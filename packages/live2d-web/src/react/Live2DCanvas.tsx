@@ -10,7 +10,12 @@ import { RuntimeHostContext, StageContext } from './context'
 import { StageStore } from './store'
 
 interface BaseLive2DCanvasProps {
-  /** Omit to use the official Framework-based cubism-webgl adapter. */
+  /**
+   * Omit to use the official Framework-based cubism-webgl adapter. A changed
+   * backend reloads the model, so keep the value stable: use the exported
+   * `cubismWebGL` instance, or hoist `createCubismWebGLBackend()` out of render
+   * (module scope or `useMemo`) instead of calling it inline.
+   */
   backend?: Live2DBackend
   coreUrl?: string
   maxFps?: number
@@ -53,6 +58,33 @@ function useStableQuality(quality: 'auto' | AutoQualityPolicy | undefined) {
   ])
 }
 
+// A backend built inline is a new object on every render, and each one rebuilds
+// the stage and reloads the model. Nothing can detect that from the value, so
+// warn once instead of guessing.
+function useUnstableBackendWarning(
+  backend: Live2DBackend | undefined,
+  coreUrl: string | undefined,
+) {
+  const previousRef = useRef<{
+    backend: Live2DBackend | undefined
+    coreUrl: string | undefined
+  }>({ backend, coreUrl })
+  const warnedRef = useRef(false)
+  if (
+    !warnedRef.current
+    && previousRef.current.backend !== backend
+    && previousRef.current.coreUrl === coreUrl
+  ) {
+    warnedRef.current = true
+    console.warn(
+      '[live2d-web] The <Live2DCanvas backend> prop changed identity, which '
+      + 'reloads the model. Pass a stable value: the exported cubismWebGL '
+      + 'instance, or a createCubismWebGLBackend() call hoisted out of render.',
+    )
+  }
+  previousRef.current = { backend, coreUrl }
+}
+
 export function Live2DCanvas(props: Live2DCanvasProps) {
   const {
     backend,
@@ -79,6 +111,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     store.getSnapshot,
   )
   const lastReportedErrorRef = useRef<Live2DError | undefined>(undefined)
+  useUnstableBackendWarning(backend, coreUrl)
   const runtimeHost = useMemo(() => ({
     backend,
     container,

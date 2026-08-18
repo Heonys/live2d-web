@@ -93,9 +93,12 @@ export class StageStore {
     this.disposeModelResource(owner)
     this.modelOwner = null
     if (this.snapshot.status !== 'error') {
+      // Back to the pre-model state: nothing renders now, so reporting 'ready'
+      // would hide the fallback and leave a stale render snapshot behind.
       this.update({
-        loadingStage: undefined,
-        status: 'ready',
+        loadingStage: 'core',
+        render: undefined,
+        status: 'loading',
       })
     }
   }

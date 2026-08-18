@@ -296,6 +296,34 @@ describe('<LipSync>', () => {
     expect(node.port.close).toHaveBeenCalledOnce()
   })
 
+  it('keeps the worklet when an inline profile URL is rebuilt', async () => {
+    const harness = createHarness()
+    const source = createAudioSource()
+    wlipsync.createNode.mockResolvedValue(createAnalysisNode())
+    wlipsync.parseBinaryProfile.mockReturnValue({ profile: 'parsed' })
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      arrayBuffer: async () => new ArrayBuffer(8),
+      ok: true,
+      status: 200,
+    } as unknown as Response)))
+    const tree = () => (
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel src="/model.model3.json">
+          <LipSync active profile={new URL('https://cdn.test/profile.bin')} source={source} />
+        </Live2DModel>
+      </Live2DCanvas>
+    )
+    const view = render(tree())
+    await waitFor(() => expect(source.connect).toHaveBeenCalledOnce())
+
+    view.rerender(tree())
+    view.rerender(tree())
+    await waitFor(() => expect(harness.afterMotion.size).toBe(1))
+
+    expect(wlipsync.createNode).toHaveBeenCalledOnce()
+    expect(source.disconnect).not.toHaveBeenCalled()
+  })
+
   it('disposes a stale source generation after profile replacement', async () => {
     const harness = createHarness()
     const firstSource = createAudioSource()

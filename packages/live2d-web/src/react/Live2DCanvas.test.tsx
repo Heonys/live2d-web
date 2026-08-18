@@ -43,7 +43,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
         events.push('model:dispose')
       },
       expression: async () => {},
-      focus: () => {},
+      focus: (x, y) => events.push(`focus:${Math.round(x)}:${Math.round(y)}`),
       getIntrinsicSize: () => ({ height: 1000, width: 500 }),
       getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
       getParameter: () => 0,
@@ -187,6 +187,98 @@ describe('live2DCanvas lifecycle', () => {
     expect(finalDriver).toBeGreaterThan(-1)
     expect(finalDriver).toBeLessThan(finalModel)
     expect(finalModel).toBeLessThan(finalStage)
+  })
+
+  it('pauses a model that mounts with paused already set', async () => {
+    const harness = createFakeHarness()
+    render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel paused src="/hiyori.model3.json" />
+        <Status />
+      </Live2DCanvas>,
+    )
+
+    await waitFor(() => expect(screen.getByText('ready')).toBeTruthy())
+    expect(harness.events).toContain('stage:pause')
+    expect(harness.events).not.toContain('stage:resume')
+  })
+
+  it('reports render errors raised after ready to the model onError', async () => {
+    const harness = createFakeHarness()
+    const codes: string[] = []
+    render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel
+          src="/hiyori.model3.json"
+          onError={error => codes.push(error.code)}
+        />
+        <Status />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(screen.getByText('ready')).toBeTruthy())
+
+    const { Live2DError } = await import('../core/errors')
+    act(() => {
+      for (const callback of harness.renderErrors)
+        callback(new Live2DError('render-error', 'lost'))
+    })
+    expect(codes).toEqual(['render-error'])
+  })
+
+  it('keeps a rebuilt runtime paused while paused stays set', async () => {
+    const harness = createFakeHarness()
+    const view = render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel paused idleMotion="Idle" src="/hiyori.model3.json" />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(harness.stages).toHaveLength(1))
+    const pausesBefore = harness.events.filter(event => event === 'stage:pause').length
+
+    view.rerender(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel paused idleMotion="Tap" src="/hiyori.model3.json" />
+      </Live2DCanvas>,
+    )
+
+    await waitFor(() => expect(harness.stages).toHaveLength(2))
+    expect(harness.events.filter(event => event === 'stage:pause').length)
+      .toBeGreaterThan(pausesBefore)
+  })
+
+  it('recenters the gaze when the pointer leaves the canvas', async () => {
+    const harness = createFakeHarness()
+    render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel followPointer src="/hiyori.model3.json" />
+        <Status />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(screen.getByText('ready')).toBeTruthy())
+
+    const host = document.querySelector('[data-live2d-canvas]')!
+    fireEvent.pointerMove(host, { clientX: 200, clientY: 200 })
+    fireEvent.pointerLeave(host)
+
+    expect(harness.events).toContain('focus:640:360')
+  })
+
+  it('returns the canvas to loading when the only model unmounts', async () => {
+    const harness = createFakeHarness()
+    const view = render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel src="/hiyori.model3.json" />
+        <Status />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(screen.getByText('ready')).toBeTruthy())
+
+    view.rerender(
+      <Live2DCanvas backend={harness.backend}>
+        <Status />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(screen.getByText('loading')).toBeTruthy())
   })
 
   it('shares a lifecycle-safe model controller between the hook and onLoad', async () => {

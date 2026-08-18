@@ -52,4 +52,7 @@ export {
   MOUTH_PARAMETER_ID,
   MOUTH_RELEASE_MS,
 } from './features/lipsync/mouthController'
-export type { LipSyncProfile } from './features/lipsync/source'
+export type {
+  LipSyncProfile,
+  LipSyncProfileInput,
+} from './features/lipsync/source'

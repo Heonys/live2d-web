@@ -1,6 +1,7 @@
 'use client'
 
 import type { Live2DError } from '../core/errors'
+import type { LipSyncDriver } from '../core/runtime'
 import type {
   LipSyncProfile,
   LipSyncProfileInput,
@@ -8,11 +9,6 @@ import type {
 import { useContext, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
 import { ModelContext } from './context'
-
-export interface LipSyncDriver {
-  getMouthOpen: () => number
-  isSpeaking: () => boolean
-}
 
 interface LipSyncErrorProps {
   onError?: (error: Live2DError) => void
@@ -146,7 +142,11 @@ export function LipSync(props: LipSyncProps) {
   onErrorRef.current = props.onError
 
   const source = mode === 'source' ? props.source : null
-  const profile = mode === 'source' ? props.profile : null
+  // An inline new URL(...) changes identity on every render, which would tear
+  // down and rebuild the AudioWorklet node. Its href is the same profile.
+  const profile = mode === 'source'
+    ? props.profile instanceof URL ? props.profile.href : props.profile
+    : null
 
   useEffect(() => {
     if (!runtime)
