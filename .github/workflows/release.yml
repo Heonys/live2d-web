@@ -1,0 +1,48 @@
+name: Release
+
+# Publishes the version in packages/live2d-web/package.json when its tag is
+# pushed, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for npm provenance: the attestation is signed with this token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+
+      # The tag decides nothing on its own: npm publishes whatever version the
+      # manifest carries. Fail loudly rather than release a mismatched version.
+      - name: Check the tag matches the package version
+        run: |
+          version=$(node -p "require('./packages/live2d-web/package.json').version")
+          if [ "refs/tags/v$version" != "$GITHUB_REF" ]; then
+            echo "Tag $GITHUB_REF does not match package version $version." >&2
+            exit 1
+          fi
+
+      # The published artifact is the product, so the gates run against the
+      # exact commit being released.
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm verify:package
+
+      # pnpm packs (it resolves the catalog: protocol that npm cannot read),
+      # npm publishes (pnpm has no provenance support).
+      - run: pnpm --filter live2d-web pack --pack-destination .
+      - run: npm publish ./live2d-web-*.tgz --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
