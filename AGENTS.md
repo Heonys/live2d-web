@@ -4,7 +4,8 @@ Live2D Cubism 모델을 바닐라 JavaScript와 React에서 다루는 **오픈�
 브라우저 runtime**. 현재 headless controller, React binding, 자동 품질,
 source/driver 립싱크, pixi-v6 비교 어댑터와 Hiyori Playground가 구현됐고
 npm 공개 전이다. 공식 Framework 5-r.5 WebGL2 adapter가 기본 backend로
-통합됐다. package version은 공개 전까지 `0.1.0-alpha.0`을 유지한다. 계약은
+통합됐다. package version은 `0.1.0`이며 `v0.1.0` 태그 푸시가 발행을 실행한다.
+릴리스 워크플로가 태그와 package version의 일치를 검사한다. 계약은
 `docs/`가 단일 기준이다. 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 포인터다.
 
 ## Tech Stack

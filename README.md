@@ -12,8 +12,8 @@ same runtime can be used directly from JavaScript or through React.
 
 Live demo: coming with the first public release.
 
-**Status: `0.1.0-alpha.0` is implemented and validated locally, but has not
-been published to npm.** The default backend uses the official Cubism Web
+**Status: `0.1.0` is implemented and validated locally, but has not been
+published to npm yet.** The default backend uses the official Cubism Web
 Framework 5-r.5 renderer directly on WebGL2. PixiJS v6 remains available only
 as an explicit compatibility and performance-comparison backend. Public
 repository and npm release are separate release gates.

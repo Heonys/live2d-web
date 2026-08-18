@@ -1,7 +1,7 @@
 # API Reference
 
-Status: implemented locally on 2026-08-15. The package is ESM-only and remains
-`0.1.0-alpha.0` until publication. The root entry has no React dependency;
+Status: implemented locally on 2026-08-15. The package is ESM-only and is
+versioned `0.1.0`, unpublished. The root entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
 ## Vanilla API
