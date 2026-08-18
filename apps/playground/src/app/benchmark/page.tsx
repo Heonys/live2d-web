@@ -100,6 +100,9 @@ function BenchmarkContent() {
             coreUrl: CORE_URL,
             fit: 'full',
             maxFps: 60,
+            // Multi-stage grids scroll below the fold; measurement must not
+            // pause offscreen stages.
+            pauseWhenOffscreen: false,
             resolution,
             retries: 0,
             src: selectedModel.model3,

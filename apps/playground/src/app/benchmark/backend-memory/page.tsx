@@ -90,6 +90,7 @@ function BackendMemoryContent() {
               : '/assets/js/cubism/5.2/live2dcubismcore.min.js',
             fit: 'full',
             maxFps: 60,
+            pauseWhenOffscreen: false,
             resolution: 1,
             retries: 0,
             src: manifest.model3,
