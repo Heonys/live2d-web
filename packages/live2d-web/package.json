@@ -2,7 +2,7 @@
   "name": "live2d-web",
   "type": "module",
   "version": "0.1.0",
-  "description": "A vanilla-first Live2D runtime with optional React and renderer backends",
+  "description": "Unofficial Live2D Cubism runtime for vanilla JavaScript and React. Brings its own WebGL2 renderer, no Pixi required.",
   "author": "Jiheon Kim (https://github.com/Heonys)",
   "license": "SEE LICENSE IN LICENSES.md",
   "homepage": "https://github.com/Heonys/live2d-web#readme",
