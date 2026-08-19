@@ -265,16 +265,20 @@ HTTP 4xx는 재시도 없이 즉시 실패하고, 일시적인 실패는 기본 
 
 ## 백엔드
 
-`backend`를 생략하면 기본인 Framework/WebGL2 백엔드가 로드됩니다. Pixi v6
-백엔드는 A/B 비교와 `pixi-live2d-display` 마이그레이션 용도이며, Pixi
-패키지들은 optional peer라 사용하지 않으면 설치되지 않습니다.
+`backend`를 생략하면 기본인 Framework/WebGL2 백엔드가 로드됩니다. 패키지가
+포함하는 백엔드는 이것 하나이며, 셰이더를 직접 호스팅하려면 명시적으로
+넘기면 됩니다.
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
-import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 
 const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 ```
+
+Pixi v6 백엔드는 위 벤치마크의 비교 대상으로 저장소에만 있고 발행하지
+않습니다. 거의 쓰이지 않을 경로 때문에 모든 설치의 의존성 그래프에 Pixi가
+들어가기 때문입니다. `Backend` 인터페이스는 공개되어 있으므로 패키지
+바깥에서 직접 구현할 수 있습니다.
 
 ## 문제 해결
 

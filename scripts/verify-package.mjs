@@ -12,7 +12,6 @@ const packageDirectory = path.join(root, 'packages/live2d-web')
 const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
-const pixiAdapter = readFileSync(path.join(dist, 'backends/pixi-v6.mjs'), 'utf8')
 const cubismAdapter = readFileSync(path.join(dist, 'backends/cubism-webgl.mjs'), 'utf8')
 const reactDeclaration = readFileSync(path.join(dist, 'react.d.mts'), 'utf8')
 
@@ -61,8 +60,6 @@ if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
   failures.push('root runtime does not dynamically import the default cubism-webgl adapter')
-if (!pixiAdapter.includes('import("pixi-live2d-display/cubism4")'))
-  failures.push('pixi-live2d-display must remain a browser-time dynamic import')
 if (!cubismBundle.includes('CubismFramework') || !cubismBundle.includes('Live2DCubismCore'))
   failures.push('cubism-webgl adapter does not contain the bundled Framework runtime')
 if (cubismBundle.includes('@pixi/') || cubismBundle.includes('pixi-live2d-display'))
@@ -144,5 +141,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/pixi/cubism boundaries verified')
+  console.log('[package] vanilla/react/cubism boundaries verified')
 }

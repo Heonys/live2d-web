@@ -267,17 +267,21 @@ Everything lives in `live2d-web/react`; React is an optional peer dependency
 
 ## Backends
 
-Omitting `backend` loads the default Framework-on-WebGL2 backend. The
-Pixi v6 backend exists for A/B comparison and for migrating from
-`pixi-live2d-display`; its Pixi packages are optional peers and are not
-installed unless used.
+Omitting `backend` loads the default Framework-on-WebGL2 backend, which is
+the only backend the package ships. Pass one explicitly to host the shaders
+yourself.
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
-import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 
 const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 ```
+
+A Pixi v6 backend lives in the repository as the counterpart for the
+benchmarks above, but it is not published: it would pull Pixi into the
+dependency graph of every install for a path almost nobody takes. The
+`Backend` interface is public, so a Pixi backend can be written against it
+outside this package.
 
 ## Troubleshooting
 

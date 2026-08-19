@@ -101,11 +101,11 @@ import {
   createCubismWebGLBackend,
   cubismWebGL,
 } from 'live2d-web/backends/cubism-webgl'
-import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 ```
 
 `createCubismWebGLBackend({ shaderBaseUrl })` is only needed to serve shaders
-from a custom URL. `pixiV6` requires the optional Pixi peer dependencies.
+from a custom URL. `pixiV6` is not published as of 0.2.0; it resolves from
+source inside this workspace for the benchmarks only.
 
 `addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
 Registered features survive `retry()` and attach to the new model generation.

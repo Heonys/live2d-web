@@ -273,16 +273,19 @@ HTTP 4xx はリトライせず即座に失敗し、一時的な失敗はデフ�
 ## バックエンド
 
 `backend` を省略するとデフォルトの Framework/WebGL2 バックエンドが使われ
-ます。Pixi v6 バックエンドはA/B比較と `pixi-live2d-display` からの移行の
-ためのもので、Pixi のパッケージ群は optional peer のため使用しない限り
-インストールされません。
+ます。パッケージが同梱するバックエンドはこれだけで、シェーダーを自分で
+ホストする場合は明示的に渡します。
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
-import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 
 const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 ```
+
+Pixi v6 バックエンドは上のベンチマークの比較対象としてリポジトリにのみ
+あり、公開はしていません。ほとんど使われない経路のために、すべての
+インストールの依存グラフに Pixi が入ってしまうためです。`Backend`
+インターフェースは公開されているので、パッケージの外で実装できます。
 
 ## トラブルシューティング
 

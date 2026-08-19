@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0 - 2026-08-19
+
+### Removed
+
+- **Breaking**: the `live2d-web/backends/pixi-v6` entry point is no longer
+  published, and the Pixi packages it needed are no longer declared as
+  optional peer dependencies. Declaring them put `pixi-live2d-display` and
+  its transitive `gh-pages` dependency into the graph that supply-chain
+  scanners read, so every install carried an advisory for a backend almost
+  nobody loads. Applications that used it should either stay on 0.1.0 or
+  write a backend against the public `Backend` interface, which is
+  unchanged. The backend itself remains in the repository as the
+  counterpart for the published benchmarks.
+
+The default `cubism-webgl` backend, the vanilla runtime and the React
+binding are untouched. `react` is now the only peer dependency.
+
 ## 0.1.0 - 2026-08-19
 
 Initial release.

@@ -34,7 +34,8 @@
   `THIRD_PARTY_NOTICES.md`에 고지한다.
 - root 번들은 React 없이 자체 runtime만 포함하며 wLipSync는 source 모드에서
   동적으로 로드하는 외부 dependency다.
-- PIXI와 pixi-live2d-display는 백엔드 전용 optional peer다.
+- PIXI와 pixi-live2d-display는 0.2.0부터 발행 패키지의 의존성이 아니다.
+  저장소의 벤치마크 전용 devDependency로만 남는다.
 
 ## Live2D 자산과 SDK
 

@@ -103,8 +103,6 @@ cap the frame rate. Hidden tabs and offscreen canvases pause automatically.
 - `live2d-web/react`: components and hooks (React 18.2/19, optional peer)
 - `live2d-web/backends/cubism-webgl`: default WebGL2 backend (Framework
   runtime and shaders included, Cubism Core not included)
-- `live2d-web/backends/pixi-v6`: compatibility backend for
-  `pixi-live2d-display@0.4` users (all Pixi peers optional)
 
 Full guide, React reference tables, troubleshooting and licensing:
 [github.com/Heonys/live2d-web](https://github.com/Heonys/live2d-web#readme).

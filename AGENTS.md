@@ -11,7 +11,8 @@ source/driver 립싱크, pixi-v6 비교 백엔드와 Hiyori Playground가 구현
 ## Tech Stack
 
 - pnpm workspace(catalog 버전 관리) — **npm 퍼블리시는 `live2d-web` 하나** +
-  `.`, `/react`, `/backends/cubism-webgl`, `/backends/pixi-v6` 서브패스
+  `.`, `/react`, `/backends/cubism-webgl` 서브패스. pixi-v6는 workspace
+  안에서만 소스로 resolve되고 발행하지 않는다(0.2.0에서 제외)
 - 퍼블리시 라이브러리 — tsdown 빌드(ESM + d.ts). 개발 중엔 소스-export + Next `transpilePackages`, 퍼블리시 시 `publishConfig.exports`가 dist로 전환
 - 바닐라 root: React 없는 `createLive2D()`와 backend-neutral 계약
 - React binding: `/react`, React optional peer
@@ -80,7 +81,7 @@ pnpm up             # taze 일괄 업데이트 + prune + dedupe
 1. **Cubism Core는 패키지에 동봉하지 않는다.** 사용자가 `coreUrl` 또는 선행
    `<script>`로 공급한다. `ensureCubismCore()`는 부재·로드 실패를
    `core-missing`으로 명확히 표면화하고 동일 URL의 동시 로드를 합친다.
-2. **어댑터별 하부 버전 고정.** pixi-v6 어댑터는 `pixi-live2d-display@0.4` + PIXI v6 전용(v7/v8 미지원). 업그레이드가 아니라 새 어댑터로 대응한다.
+2. **pixi-v6는 저장소 전용이다.** 0.2.0부터 발행하지 않는다(`tsdown.config.ts` entry와 `publishConfig.exports`에 없음). 벤치마크 비교 대상으로만 남으며 `pixi-live2d-display@0.4` + PIXI v6 전용(v7/v8 미지원)이다. dev `exports`에는 남아 있어 playground가 소스로 import한다. 다시 발행하려면 세 곳(entry, publishConfig.exports, peerDependencies)을 함께 되돌려야 한다.
 3. **모듈러 PIXI v6는 수동 등록 필수.** `extensions.add(TickerPlugin, BatchRenderer)` 없으면 `renderer.plugins.batch`가 undefined로 터진다. `createStage()` 시점 idempotency 가드와 함께 어댑터 책임.
 4. **dispose 순서: 기능(시선 → 립싱크) → model → stage.** 역순이면 WebGL 에러. 이 순서를 코어가 보장하는 것이 제품 약속이다.
 5. **립싱크는 RMS가 아니라 wlipsync**(모음 분류). 반드시 메인 export만 — 워클렛·WASM이 data:URL 인라인이라 addModule 불필요. `wlipsync/wlipsync.js` 서브패스 금지.

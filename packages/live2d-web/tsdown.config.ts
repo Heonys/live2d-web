@@ -11,11 +11,13 @@ export default defineConfig({
       'vendor/cubism-web-framework-5-r.5/src',
     ),
   },
+  // The Pixi v6 backend is deliberately absent: it stays in the repository as
+  // the A/B benchmark counterpart, but shipping it would put Pixi packages
+  // into the published dependency graph for a path almost nobody takes.
   entry: {
     'index': 'src/index.ts',
     'react': 'src/react.ts',
     'backends/cubism-webgl': 'src/backends/cubism-webgl/index.ts',
-    'backends/pixi-v6': 'src/backends/pixi-v6/index.ts',
   },
   format: 'esm',
   dts: true,
