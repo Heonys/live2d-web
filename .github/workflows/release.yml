@@ -10,7 +10,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # write: the GitHub release at the end of the job is created with the
+      # workflow token.
+      contents: write
       # Required for npm provenance: the attestation is signed with this token.
       id-token: write
     steps:
@@ -46,3 +48,14 @@ jobs:
       - run: npm publish ./live2d-web-*.tgz --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # The npm publish is the release; the GitHub release page mirrors it with
+      # the version's CHANGELOG section as the notes.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk '/^## /{n++} n==1' CHANGELOG.md | tail -n +2 > release-notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md

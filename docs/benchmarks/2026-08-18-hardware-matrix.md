@@ -7,6 +7,7 @@
 - CPU: Apple M2 Pro
 - 메모리: 16.0 GiB
 - 브라우저: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Safari/537.36
+  (Chrome for Testing의 기본 UA 문자열로, 실제 OS는 아래 macOS다)
 - WebGL renderer: ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)
 - Core: 5.3 (core/06)
 - Framework: 5-r.5

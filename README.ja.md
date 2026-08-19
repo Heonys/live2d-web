@@ -16,16 +16,16 @@
 
 ## 特徴
 
-- レンダリングフレームワークに依存しません。WebGL2で直接描画し、
-  キャラクター1体のプロダクションビルドは gzip 約58KBです。
-- シェーダーの遅延コンパイルとダウンロードの並行化により、実機GPUでの初回
-  表示までの時間はPixiベース比で4〜6倍短くなっています。
-  [定常時のフレーム性能は同等です](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)。
-- vanilla APIとReactバインディングは同じコントローラーを共有します。
-  フレーム単位の値が React state を通ることはありません。
-- 公式 Cubism Web Framework 5-r.5 と Cubism 5.3 Core を基盤とし、Cubism 4・5
-  のモデルに対応します。更新が止まった `pixi-live2d-display` の代替として
+- 軽量です。レンダリングフレームワークなしでWebGL2に直接描画し、
+  キャラクター1体で gzip 約58KBです。
+- キャラクターの表示が速く、実機GPUで初回表示までの時間が4〜6倍短く
+  なっています（[測定](docs/benchmarks/2026-08-18-hardware-matrix.md)）。
+  [フレーム性能は pixi-live2d-display と
+  同等です](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)。
+- Reactにそのまま対応し、vanillaと同じ機能をコンポーネントとフックで
   使えます。
+- 最新の Cubism 5.3 が基準で、Cubism 4・5 のモデルに対応します。更新が
+  止まった `pixi-live2d-display` の代わりに使えます。
 
 ## はじめに
 
@@ -96,8 +96,8 @@ character.clearExpression()
 ```
 
 `motion()` は再生が終わった時点で resolve するため、`await` だけで連続
-演出を組めます。別のモーションに割り込まれた場合は、その時点で resolve
-します。
+演出を組めます。別のモーションに割り込まれた場合はその時点で resolve し、
+WebGLコンテキスト喪失のような描画エラーの後は reject します。
 
 アイドル再生はモデルの `Idle` グループが自動で行います。`idleMotion` で別の
 グループを指定でき、`false` で無効になります。優先度は
@@ -227,7 +227,7 @@ const character = await createLive2D({
 })
 
 const unsubscribe = character.subscribe(() => {
-  console.log(character.getState().status) // 'loading' | 'ready' | 'error'
+  console.log(character.getState().status) // 'loading' | 'ready' | 'error' | 'disposed'
 })
 
 character.pause() // モーダル表示中など

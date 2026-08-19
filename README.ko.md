@@ -15,16 +15,16 @@ Live2D Inc.와 무관한 비공식 라이브러리입니다. 이 라이브러리
 
 ## 특징
 
-- PixiJS 같은 렌더링 프레임워크에 의존하지 않습니다. WebGL2로 직접 렌더링하며,
-  캐릭터 하나 기준 프로덕션 빌드가 gzip 약 58KB입니다.
-- 셰이더 지연 컴파일과 다운로드 병렬화로, 실제 GPU에서 첫 화면까지의 시간이
-  Pixi 기반 대비 4~6배 짧습니다.
-  [프레임 성능은 동등합니다](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- vanilla와 React가 같은 컨트롤러를 공유합니다. 프레임 단위 값은 React state를
-  거치지 않습니다.
-- 공식 Cubism Web Framework 5-r.5와 Cubism 5.3 Core 기반으로 Cubism 4·5
-  모델을 지원합니다. 업데이트가 중단된 `pixi-live2d-display`를 대체할 수
-  있습니다.
+- 가볍습니다. PixiJS 같은 렌더링 프레임워크 없이 WebGL2로 직접 그리고,
+  캐릭터 하나 기준 gzip 약 58KB입니다.
+- 캐릭터가 빨리 뜹니다. 실제 GPU에서 첫 화면까지의 시간이 4~6배
+  줄었고([측정](docs/benchmarks/2026-08-18-hardware-matrix.md)),
+  [프레임 성능은 pixi-live2d-display와
+  동등합니다](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
+- React를 그대로 지원합니다. vanilla API와 같은 기능을 컴포넌트와 훅으로
+  쓸 수 있습니다.
+- 최신 Cubism 5.3 기준이라 Cubism 4·5 모델을 모두 지원합니다. 업데이트가
+  중단된 `pixi-live2d-display` 대신 쓸 수 있습니다.
 
 ## 시작하기
 
@@ -93,7 +93,8 @@ character.clearExpression()
 ```
 
 `motion()`은 재생이 끝나는 시점에 resolve되므로 `await`만으로 순차 연출이
-가능합니다. 다른 모션이 끼어들면 그 시점에 resolve됩니다.
+가능합니다. 다른 모션이 끼어들면 그 시점에 resolve되고, WebGL 컨텍스트 손실
+같은 렌더 에러 뒤에는 reject됩니다.
 
 기본 움직임은 모델의 `Idle` 그룹이 자동 재생합니다. `idleMotion`으로 다른
 그룹을 지정하거나 `false`로 끌 수 있습니다. 우선순위는
@@ -220,7 +221,7 @@ const character = await createLive2D({
 })
 
 const unsubscribe = character.subscribe(() => {
-  console.log(character.getState().status) // 'loading' | 'ready' | 'error'
+  console.log(character.getState().status) // 'loading' | 'ready' | 'error' | 'disposed'
 })
 
 character.pause() // 모달이 열려 있는 동안 등

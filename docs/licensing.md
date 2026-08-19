@@ -36,14 +36,14 @@
   `THIRD_PARTY_NOTICES.md`에 고지한다.
 - root 번들은 React 없이 자체 runtime만 포함하며 wLipSync는 source 모드에서
   동적으로 로드하는 외부 dependency다.
-- PIXI와 pixi-live2d-display는 adapter 전용 optional peer다.
+- PIXI와 pixi-live2d-display는 백엔드 전용 optional peer다.
 
 ## Live2D 자산과 SDK
 
 - Cubism Core와 Hiyori를 비롯한 샘플 모델은 git이나 npm 패키지에 포함하지
   않는다.
-- Cubism Framework 5-r.5와 WebGL 셰이더는 현재 정식 adapter의 vendor
-  소스와 adapter 전용 dist에 포함한다. 원본 헤더, 공식 라이선스,
+- Cubism Framework 5-r.5와 WebGL 셰이더는 현재 정식 백엔드의 vendor
+  소스와 백엔드 전용 dist에 포함한다. 원본 헤더, 공식 라이선스,
   프로젝트 수정 목록을 함께 유지한다.
 - 개발자는 공식 SDK와 각 샘플의 현재 약관에 동의한 뒤 로컬 ignored
   경로에 준비한다.
@@ -63,26 +63,24 @@
 - [Hiyori 공식 샘플 페이지](https://www.live2d.com/en/learn/sample/momose-hiyori/)
 - [Free Material License Agreement](https://www.live2d.com/eula/live2d-free-material-license-agreement_en.html)
 
-## 장기 cubism-webgl 백엔드
+## cubism-webgl 백엔드의 Framework 포함
 
-범용 라이브러리에 공식 Framework 코드를 포함하는 형태는 일반 콘텐츠
-출시와 다를 수 있다. Framework `5-r.5`는 WebGL 셰이더 파일도 런타임에
-요구하므로 Framework 코드와 셰이더를 npm에 함께 포함할 수 있는지도
-Live2D에 서면 확인한다.
+범용 라이브러리에 공식 Framework 코드와 WebGL 셰이더를 포함하는 형태는
+일반 콘텐츠 출시와 달라서, 공개 전에 이 포함 형태를 설명하고 Live2D에 서면
+확인을 받았다. 결과는 문서 상단의 "Live2D 확인 결과 (2026-08-18)"에
+기록되어 있다: 이 라이브러리 자체에는 계약이 필요 없고, GitHub과 npm에
+무료 오픈소스로 공개하는 것도 문제없다.
 
-- 현재 저장소는 비공개로 유지하고 npm publish는 하지 않는다.
-- 공개 저장소 전환 또는 npm 배포 전에 현재 포함 형태를 보여주며 Live2D에
-  서면 확인하고, 답변 범위에 맞춰 포함 방식과 표기를 조정한다.
-- 허용되지 않으면 공개 배포물에서 Framework·셰이더와 cubism-webgl export를
-  제거하고 pixi-v6만 남긴다.
-- Cubism Core와 모델은 결과와 무관하게 계속 비동봉한다.
-
-구체적인 문의 내역과 공개 게이트는 내부 운영 문서에 기록한다.
+- Framework 5-r.5 소스와 셰이더는 cubism-webgl 백엔드의 vendor 소스와
+  백엔드 전용 dist에만 포함하고, 원본 라이선스와 수정 목록을 함께 유지한다.
+- Cubism Core와 모델은 계속 비동봉한다.
+- 이 확인은 회신 시점에 설명한 사양을 전제로 하므로, 포함 형태가 크게
+  바뀌면 다시 확인한다.
 
 ## 립싱크
 
 wlipsync 패키지 코드는 MIT지만 MFCC profile은 별도 데이터다. source
-모드는 출처를 확인할 수 없는 AIZUCHI profile을 복사하지 않고 사용자가
+모드는 출처를 확인할 수 없는 기존 profile을 복사하지 않고 사용자가
 profile을 명시적으로 제공하게 한다. Playground에는 저장소가 직접 생성한
 synthetic smoke-test fixture만 있으며 npm 패키지에는 포함하지 않는다.
 

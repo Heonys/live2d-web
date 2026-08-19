@@ -2,50 +2,45 @@
 
 ## 0.1.0 — Unreleased
 
-### Changed
-
-- Renamed the unpublished React API from `Live2DStage` to `Live2DCanvas`,
-  including its props, state hook and DOM data attribute. No compatibility
-  aliases are provided before the first release.
-- `Live2DModel.onLoad` and `useLive2DModel()` now return the same restricted
-  `Live2DModelController` instead of exposing backend lifecycle methods.
-- Benchmark raw results use schema v2 while the report reader remains
-  compatible with schema v1.
+Initial release.
 
 ### Added
 
-- Read-only `Live2DError.details` for asset type, backend, final URL and HTTP
-  status diagnostics.
-- A Playground model Inspector for relative and CORS-enabled HTTP(S)
-  `model3.json` URLs.
-- Backend JS heap A/B and hardware-gated benchmark commands.
-- `live2d-web/react` re-exports the types its own signatures reference, and the
-  root entry exports `LipSyncProfileInput`.
-
-### Fixed
-
-- Prevented a long main-thread stall during initial asset setup from leaving
-  frame-budget debt that temporarily rendered above `maxFps`.
-- Released partially created Stage resources when React model loading fails.
-- `ensureCubismCore()` no longer adopts a `<script>` the page already loaded,
-  which could leave every caller for that URL pending forever. It also accepts
-  an `AbortSignal` and gives up after 30 seconds.
-- A `pause()` issued before the stage exists is now applied once it is created,
-  and a user pause survives `retry()`. Previously a runtime that started paused
-  rendered at full rate and lost `pauseWhenOffscreen` as well.
-- Disposing a model whose load was still in flight no longer throws before
-  releasing it, which leaked the moc3 allocation and a Framework reference.
-- `motion()` promises reject on a render error instead of never settling, since
-  the frame loop that resolves them never restarts.
-- `<Live2DModel onError>` now receives the errors the runtime reports after
-  ready, `followPointer` recentres the gaze on pointer leave, an inline
-  lip-sync profile URL no longer rebuilds the AudioWorklet on every render, and
-  a rebuilt runtime keeps its `paused` state.
-- The pixi-v6 adapter follows the backend contract: stage-local CSS pixels for
-  `focus`/`hitTest`, per-motion promise settlement, and persistent
-  `setParameter` overrides.
+- `createLive2D()`: a React-free runtime that owns model loading, lifecycle,
+  fitting, retries and cleanup for Cubism 4/5 `model3.json` models on WebGL2,
+  with the official Cubism Web Framework 5-r.5 renderer as the default
+  backend.
+- Motions and expressions: `motion()` resolves when playback finishes and
+  rejects after a render error, `expression()`/`clearExpression()`,
+  `getModelInfo()` for the model's motion groups, expressions and hit areas.
+- Interaction: `followPointer`, `focus()`/`focusAt()`, `hitTest()` with
+  viewport client coordinates.
+- Lip sync in three modes: a WebAudio node analysed by wLipSync (loaded on
+  demand), a caller-provided driver, or plain values through the React
+  `<LipSync>` component. No calibration profile is bundled.
+- Parameter control: persistent `setParameter()`/`clearParameter()` overrides
+  and per-frame `addParameterDriver()` callbacks, applied after the SDK's own
+  motion update.
+- Automatic render quality (capped backing buffer that steps down on long
+  frames), `maxFps`, and automatic pausing for hidden tabs and offscreen
+  canvases.
+- React bindings at `live2d-web/react`: `<Live2DCanvas>`, `<Live2DModel>`,
+  `<LipSync>` and five hooks sharing one headless controller with the vanilla
+  API; React 18.2 and 19 as an optional peer.
+- A Pixi v6 compatibility backend at `live2d-web/backends/pixi-v6` for A/B
+  comparison and migration from `pixi-live2d-display@0.4`; all Pixi packages
+  are optional peers.
+- Errors with stable codes and asset details, fast failure on HTTP 4xx,
+  configurable retries for transient failures, `retry()` after WebGL context
+  loss, and `AbortSignal` support.
 
 ### Not included
 
 - AI, TTS, camera tracking, Worker rendering and multi-model Canvas support
   remain outside the v0.1 scope.
+
+### Notes for pre-release readers
+
+- The React API was renamed from `Live2DStage` to `Live2DCanvas`, and the
+  backend subpaths from `adapters/` to `backends/`, before the first release.
+  No compatibility aliases exist for either.

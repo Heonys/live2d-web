@@ -1,7 +1,7 @@
 # API Reference
 
-Status: implemented locally on 2026-08-15. The package is ESM-only and is
-versioned `0.1.0`, unpublished. The root entry has no React dependency;
+Status: 2026-08-18. The package is ESM-only, versioned `0.1.0`. The root
+entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
 ## Vanilla API
@@ -72,25 +72,29 @@ interface ModelInfo {
 ```
 
 `motion()` resolves when playback finishes (or is interrupted), so sequencing
-is a plain `await`. `focusAt`/`hitTest` take viewport client coordinates;
-`focus` takes stage-local CSS pixels.
+is a plain `await`. It resolves on dispose, and rejects with the stage error if
+a render error (such as WebGL context loss) stops the frame loop; motions
+started after that error reject immediately. `focusAt`/`hitTest` take viewport
+client coordinates; `focus` takes stage-local CSS pixels.
 
 `setParameter()` is a persistent per-frame override that is re-applied after
 every SDK update until `clearParameter()` removes it. `pauseWhenOffscreen`
 defaults to `true`: an IntersectionObserver pauses rendering while the
 container is outside the viewport. Pause sources (user `pause()`, hidden tab,
 offscreen container) are tracked separately, and the stage resumes only when
-none remains, so a tab switch no longer overrides an explicit user pause.
+none remains, so a tab switch no longer overrides an explicit user pause. A
+user pause survives `retry()`; hidden/offscreen reasons are re-derived by the
+new generation's observers.
 
 The promise resolves after Core, Stage and model setup. An initial failure
 rejects and disposes partial resources. Runtime errors after readiness update
 the subscribed state and call `onError`. `retry()` recreates the whole Stage.
 
 Omitting `backend` loads Cubism Core first and then dynamically imports the
-default `cubism-webgl` adapter. WebGL2 absence reports `webgl-unsupported`; the
+default `cubism-webgl` backend. WebGL2 absence reports `webgl-unsupported`; the
 runtime never falls back to Pixi or WebGL1.
 
-Explicit selection is available from the adapter subpaths:
+Explicit selection is available from the backend subpaths:
 
 ```ts
 import {
@@ -105,6 +109,21 @@ from a custom URL. `pixiV6` requires the optional Pixi peer dependencies.
 
 `addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
 Registered features survive `retry()` and attach to the new model generation.
+
+### ensureCubismCore
+
+```ts
+ensureCubismCore(coreUrl?: string, options?: { signal?: AbortSignal }): Promise<void>
+```
+
+Exported from both entries. Loads the Cubism Core script when the global is
+not present, deduplicating concurrent calls per URL. It always creates its own
+`<script>` element (a page-owned tag with the same URL is ignored, because its
+one-shot load/error events may already have fired), gives up with
+`core-missing` after 30 seconds, and rejects with the signal's reason on
+abort; aborting one caller never cancels the shared load for others.
+`createLive2D()` calls this internally, so direct use is only needed to
+preload Core ahead of time.
 
 ## React components
 
@@ -179,7 +198,7 @@ node owned by this feature. `parameterId` retargets models that do not use
 `ParamMouthOpenY`.
 
 Mouth values are clamped to 0–1. `ParamMouthOpenY`, a 200 ms smoothstep release
-and a 500 ms closed-mouth hold are fixed for this alpha.
+and a 500 ms closed-mouth hold are fixed in v0.1.
 
 Lip-sync and parameter-driver writes are transient: each frame's value is
 written after the SDK update and cleared immediately, so it never persists as a

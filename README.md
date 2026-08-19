@@ -15,16 +15,16 @@ app built with it may need its own
 
 ## Features
 
-- No rendering framework dependency. The runtime renders through WebGL2
-  directly; a production build with one character is about 58KB gzipped.
-- Lazy shader compilation and overlapped downloads cut time-to-first-frame by
-  4 to 6 times against the Pixi-based baseline on GPU hardware, at
-  [equal steady-state frame rates](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- The vanilla API and the React bindings share one controller. Per-frame
-  values never pass through React state.
-- Built on the official Cubism Web Framework 5-r.5 and Cubism 5.3 Core, so
-  Cubism 4 and 5 models both load. A replacement for the unmaintained
-  `pixi-live2d-display`.
+- Lightweight. No rendering framework underneath; the runtime draws through
+  WebGL2 directly, at about 58KB gzipped for one character.
+- Characters appear fast: 4 to 6 times quicker to the first frame on GPU
+  hardware ([measurements](docs/benchmarks/2026-08-18-hardware-matrix.md)),
+  with [frame rates equal to
+  pixi-live2d-display](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
+- React works out of the box, with components and hooks over the same API as
+  vanilla JavaScript.
+- Built for the current Cubism 5.3, so Cubism 4 and 5 models both load. A
+  replacement for the unmaintained `pixi-live2d-display`.
 
 ## Getting started
 
@@ -94,7 +94,8 @@ character.clearExpression()
 ```
 
 `motion()` resolves when playback finishes, so sequencing works with plain
-`await`. If another motion interrupts, the promise resolves at that point.
+`await`. If another motion interrupts, the promise resolves at that point;
+after a render error such as WebGL context loss it rejects instead.
 
 Idle playback runs automatically from the model's `Idle` group; use
 `idleMotion` to pick a different group, or `false` to turn it off. Priorities
@@ -221,7 +222,7 @@ const character = await createLive2D({
 })
 
 const unsubscribe = character.subscribe(() => {
-  console.log(character.getState().status) // 'loading' | 'ready' | 'error'
+  console.log(character.getState().status) // 'loading' | 'ready' | 'error' | 'disposed'
 })
 
 character.pause() // e.g. while a modal is open

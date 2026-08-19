@@ -24,6 +24,8 @@ backend다.
 ## 확정된 결정
 
 - 제품·npm 패키지, 로컬 디렉터리와 GitHub 저장소 이름은 `live2d-web`이다.
+- 버전은 `0.1.0`이며, `v*` 태그 푸시가 릴리스 워크플로를 실행해 npm에
+  발행한다. 변경 이력은 [CHANGELOG](../CHANGELOG.md)에 기록한다.
 - npm 패키지는 하나이며 `.`, `/react`, `/backends/cubism-webgl`,
   `/backends/pixi-v6`로 경계를 나눈다.
 - 루트는 React와 `"use client"`가 없는 바닐라 API다. React는 optional

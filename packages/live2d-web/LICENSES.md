@@ -1,6 +1,6 @@
 # Package licenses
 
-The original `live2d-web` runtime, React bindings, adapters and build tooling
+The original `live2d-web` runtime, React bindings, backends and build tooling
 are available under the MIT License in [LICENSE](LICENSE).
 
 The bundled Cubism Web Framework 5-r.5 code and WebGL shaders are copyright

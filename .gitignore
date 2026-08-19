@@ -9,3 +9,5 @@ test-results/
 benchmark-results/
 *.tsbuildinfo
 private/*
+.netlify
+*.tgz
