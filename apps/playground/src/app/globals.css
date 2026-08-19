@@ -331,37 +331,33 @@ label output {
   justify-items: center;
 }
 
-/* Stands where the character will be, so its arrival is not a jump. */
-.stage-loading-plate {
-  width: 220px;
-  height: 300px;
-  border-radius: 18px;
-  background: #272433;
-  animation: stage-loading-breathe 1.8s ease-in-out infinite;
+.stage-loading-spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid #2f2b3d;
+  border-top-color: #7d7793;
+  border-radius: 50%;
+  animation: stage-loading-spin 0.9s linear infinite;
 }
 
 .stage-loading-label {
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   color: #a5a1b2;
   font-size: 0.82rem;
 }
 
-/* Compositor-only, and 55% of #272433 over #191720 lands on #211e2a, the chip
-   level. The plate breathes between two neighbouring rungs of the ladder. */
-@keyframes stage-loading-breathe {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.55;
+/* Transform-only, so the loop costs no paint work while the main thread is
+   busy compiling shaders and parsing the model. */
+@keyframes stage-loading-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage-loading-plate {
+  .stage-loading-spinner {
     animation: none;
+    border-top-color: #2f2b3d;
   }
 }
 
@@ -464,10 +460,5 @@ label output {
 
   .stage-shell {
     height: 68vh;
-  }
-
-  .stage-loading-plate {
-    width: 170px;
-    height: 230px;
   }
 }

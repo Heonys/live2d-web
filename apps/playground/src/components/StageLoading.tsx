@@ -6,7 +6,7 @@
 export function StageLoading() {
   return (
     <div className="stage-loading" role="status">
-      <div className="stage-loading-plate" aria-hidden="true" />
+      <div className="stage-loading-spinner" aria-hidden="true" />
       <p className="stage-loading-label">Loading the model</p>
     </div>
   )
