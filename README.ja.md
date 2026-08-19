@@ -2,43 +2,36 @@
 
 [English](README.md) | [한국어](README.ko.md) | **日本語**
 
-> ウェブでLive2Dキャラクターを動かすためのライブラリです。モデルを読み込んで、
-> モーション再生、視線追従、リップシンクまで扱えます。PixiJSなしで動き、
-> Reactは使っても使わなくても構いません。
+> Live2Dキャラクターをウェブ画面に表示するためのランタイムです。PixiJSに
+> 依存せず、vanilla JavaScriptとReactのどちらからも同じAPIでモーション、
+> 視線追従、リップシンクを扱えます。
 
 株式会社Live2Dとは無関係の非公式ライブラリです。本ライブラリで制作した
 アプリケーションをリリースする場合、別途
 [Cubism SDK のライセンス](https://www.live2d.com/ja/sdk/license/)が必要となる
 ことがあります。詳細は[ライセンスドキュメント](docs/licensing.md)にあります。
 
-**[ライブデモ](https://live2d-web-demo.netlify.app/)**: モーションを再生し、
-キャラクターをタップし、マイクでリップシンクを試せます。
-[インスペクター](https://live2d-web-demo.netlify.app/inspect)では自分の
-`model3.json` も読み込めます。
+**[ライブデモ](https://live2d-web-demo.netlify.app/)** ·
+[モデルインスペクター](https://live2d-web-demo.netlify.app/inspect)
 
-**状態: `0.1.0`、npm には未公開です。** デフォルトバックエンドは公式 Cubism
-Web Framework 5-r.5 のレンダラーを WebGL2 上でそのまま使用します。
+## 特徴
+
+- レンダリングフレームワークに依存しません。WebGL2で直接描画し、
+  キャラクター1体のプロダクションビルドは gzip 約58KBです。
+- シェーダーの遅延コンパイルとダウンロードの並行化により、実機GPUでの初回
+  表示までの時間はPixiベース比で4〜6倍短くなっています。
+  [定常時のフレーム性能は同等です](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)。
+- vanilla APIとReactバインディングは同じコントローラーを共有します。
+  フレーム単位の値が React state を通ることはありません。
+- 公式 Cubism Web Framework 5-r.5 と Cubism 5.3 Core を基盤とし、Cubism 4・5
+  のモデルに対応します。更新が止まった `pixi-live2d-display` の代替として
+  使えます。
+
+## はじめに
 
 ```bash
 npm install live2d-web
 ```
-
-## このライブラリの特徴
-
-- 下に PixiJS がいません。ランタイムが WebGL2 と直接やり取りするので、
-  キャラクター1体が gzip で58KBほどに収まります。
-- 起動が速いです。シェーダーは必要になるまでコンパイルせず、ダウンロードを
-  コンパイルと並行させることで、実機GPUでは初回表示までの時間がPixiベース比で
-  4〜6倍縮まりました。
-  [定常時のフレーム性能は同等です](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)。
-- Reactサポートはラッパーではありません。コンポーネントとフックが vanilla API
-  と同じコントローラーを動かし、フレーム単位の値が React state を通ることは
-  ありません。
-- Cubism 5.3 Core と公式 Framework 5-r.5 を前提に作られていて、Cubism 4・5 の
-  モデルをどちらも読み込めます。更新が止まった `pixi-live2d-display` の
-  乗り換え先として使えます。
-
-## 必要なもの
 
 パッケージに含まれないファイルが2つ必要です。
 
@@ -51,8 +44,6 @@ npm install live2d-web
    モーション、物理ファイルを相対パスで参照するため、ディレクトリごと静的
    ファイルとして配信し（例: `public/models/hiyori/`)、`model3.json` のURLを
    `src` に渡します。
-
-## クイックスタート
 
 Vanilla:
 
@@ -84,12 +75,13 @@ export function Character() {
 }
 ```
 
-promise はキャラクターが画面に表示されてから resolve します。コンテナにCSS
-サイズを与えれば、キャンバスがそれを満たします。レイアウトの約束はこれだけです。
+promise はキャラクターが画面に表示されてから resolve します。コンテナに
+CSSサイズを与えると、キャンバスがそれを満たします。
 
 ## モーションと表情
 
-まず、モデルに何が入っているかを聞いてみてください。
+モーショングループ、表情、ヒットエリアの一覧は `getModelInfo()` で取得
+します。
 
 ```ts
 const info = character.getModelInfo()
@@ -103,22 +95,20 @@ await character.expression('smile')
 character.clearExpression()
 ```
 
-モーションの promise は再生が本当に終わったときに resolve します。開始時では
-ありません。なので連続演出は `await` して次を再生するだけです。途中で別の
-モーションに割り込まれた場合はその時点で resolve するため、待ち続けることは
-ありません。
+`motion()` は再生が終わった時点で resolve するため、`await` だけで連続
+演出を組めます。別のモーションに割り込まれた場合は、その時点で resolve
+します。
 
-アイドル再生はモデルの `Idle` グループが勝手に担当します。別のグループを
-使いたければ `idleMotion` で指定し、`false` を渡せば止まります。優先度は
+アイドル再生はモデルの `Idle` グループが自動で行います。`idleMotion` で別の
+グループを指定でき、`false` で無効になります。優先度は
 `'idle' | 'normal' | 'force'` の3段階で、デフォルトの `'force'` は再生中の
-モーションを中断して入ります。存在しないグループ名や表情名を渡すと、使える
-名前の一覧を含むエラーが返ってきます。
+モーションを中断します。存在しないグループ名や表情名を渡すと、有効な名前の
+一覧を含むエラーで reject されます。
 
 ## 視線追従とタップ
 
-`followPointer: true` ひとつで、キャラクターはキャンバス上のポインターを目で
-追い、ポインターが離れると視線が中央に戻ります。タップ処理はヒットテスト
-1回で済みます。
+`followPointer: true` を指定すると、キャラクターはキャンバス上のポインター
+を目で追い、ポインターが離れると視線が中央に戻ります。
 
 ```ts
 container.addEventListener('click', async (event) => {
@@ -128,10 +118,10 @@ container.addEventListener('click', async (event) => {
 })
 ```
 
-視線を手動で動かすメソッドは2つあります。`focusAt()` はビューポート座標を、
+視線を直接制御するメソッドは2つあります。`focusAt()` はビューポート座標、
 `focus()` はコンテナ基準のCSSピクセルを受け取ります。
 
-Reactなら prop 2つで同じことができます。これらの prop は変更してもモデルを
+Reactでは prop 2つで同じ配線になります。これらの prop は変更してもモデルを
 再読み込みしません。
 
 ```tsx
@@ -147,12 +137,11 @@ Reactなら prop 2つで同じことができます。これらの prop は変�
 
 ## リップシンク
 
-口を動かす方法は3つあります。音声がどこにあるかで選んでください。どれもSDKの
-モーション更新の後に値を書き込むので、モーションカーブに上書きされる心配は
-ありません。
+リップシンクは3つの方式に対応しています。いずれもSDKのモーション更新の後に
+値を書き込むため、モーションカーブに上書きされません。
 
-WebAudioノード（TTS出力やマイク）があるなら、wLipSyncに母音分析を任せます。
-アナライザーは必要になったときに動的にロードされます。
+WebAudioノード（TTS出力やマイク）をwLipSyncの母音分析につなぐ方式。
+アナライザーは必要時に動的にロードされます。
 
 ```ts
 const stopLipSync = character.addLipSync({
@@ -162,8 +151,7 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-口の開き具合を自分で計算したいなら、0〜1の値を返すロジックをそのまま渡せば
-動きます。
+口の開き具合（0〜1）を自分で計算して渡す方式。
 
 ```ts
 character.addLipSync({
@@ -174,23 +162,22 @@ character.addLipSync({
 })
 ```
 
-Reactでは値を直接渡すこともできます。値がすでに state にあるなら、これが
-いちばん簡単です。
+React専用として、値を直接渡す方式。
 
 ```tsx
 <LipSync mouthOpen={mouth} speaking={mouth > 0} />
 ```
 
-対象パラメータのデフォルトは `ParamMouthOpenY` で、`parameterId` で変更でき
-ます。ライブラリが呼び出し側の `AudioContext` を閉じたり止めたりすることは
-なく、キャリブレーションプロファイルも入っていません。
+対象パラメータのデフォルトは `ParamMouthOpenY` で、`parameterId` で変更
+できます。ライブラリが呼び出し側の `AudioContext` を閉じたり中断したりする
+ことはなく、キャリブレーションプロファイルも同梱しません。
 
 ## パラメータの直接制御
 
-モーションが何と言おうと、特定のパラメータをある値に固定したいことがあります。
-それが `setParameter()` です。`clearParameter()` で解除するまで、毎フレーム
-モーションカーブに勝ちます。毎フレーム計算し直す値なら、代わりにドライバーを
-登録してください。SDKの更新が終わるたびにライブラリが値を読み取ります。
+`setParameter()` は持続的なオーバーライドです。`clearParameter()` を呼ぶ
+まで、毎フレーム、モーションカーブより優先されます。毎フレーム計算し直す値は
+ドライバーとして登録します。SDKの更新が終わるたびにライブラリが値を読み
+取ります。
 
 ```ts
 character.setParameter('ParamMouthOpenY', 0.6) // 口を開けたままにする
@@ -205,18 +192,17 @@ React側の対応物は `useLive2DParameter(id, value)`（オーバーライド�
 アンマウント時に自動解除）と `useParameterDriver(id, getter)`（フレーム単位の
 ドライバー）です。
 
-## フィッティングと描画品質
+## 構図と描画品質
 
 `fit` はモデルファイルに手を入れずに構図を決めます。`'upper-body'`（デフォルト）、
 `'full'`、または `{ scale, offsetX, offsetY }` を直接指定でき、実行中は
 `setFit()` で変更します。
 
-描画品質は基本的に放っておいて大丈夫です。バッキングバッファは
-`devicePixelRatio` に追従しつつ上限があり（モバイル1.5MP、デスクトップ4MP）、
-フレームが長引くと解像度を一段ずつ下げます。ほとんどのアプリはこのままで
-十分です。固定したい場合は `resolution` を直接指定し、フレーム上限は `maxFps`
-で設定します。非表示のタブと画面外にスクロールされたキャンバスは自動で
-止まります。
+描画品質はデフォルトで自動です。バッキングバッファは `devicePixelRatio` に
+追従しつつ上限があり（モバイル1.5MP、デスクトップ4MP）、フレームが長引くと
+解像度を一段ずつ下げます。固定する場合は `resolution` を指定し、フレーム上限
+は `maxFps` で設定します。非表示のタブと画面外にスクロールされたキャンバスは
+自動で停止します。
 
 ```ts
 const character = await createLive2D({
@@ -227,7 +213,7 @@ const character = await createLive2D({
 })
 ```
 
-## 状態・エラー・後片付け
+## ライフサイクルとエラー処理
 
 `getState()` は `{ status, loadingStage, error, render }` を返し、
 `subscribe()` は状態が変わるたびに通知します。エラーには安定した `code`
@@ -249,12 +235,12 @@ character.resume()
 character.dispose() // モデル・キャンバス・GLコンテキストを解放。2回呼んでも安全
 ```
 
-知っておくと役立つ挙動をいくつか。HTTP 4xx はリトライせず即座に失敗し、
-一時的な失敗はデフォルトで2回リトライします。WebGLコンテキスト喪失のような
-描画エラーの後は `retry()` がステージ全体を作り直します。読み込みの中断は
-標準の `AbortSignal` を `signal` に渡すだけです。
+HTTP 4xx はリトライせず即座に失敗し、一時的な失敗はデフォルトで2回
+リトライします（`retries`）。WebGLコンテキスト喪失のような描画エラーの後は
+`retry()` がステージを作り直します。読み込みの中断は `AbortSignal` を
+`signal` に渡します。
 
-## React早見表
+## React APIまとめ
 
 すべて `live2d-web/react` にあります。React は optional peer（18.2と19を
 サポート）で、ルートのインポートに React コードは一切含まれません。
@@ -284,12 +270,12 @@ character.dispose() // モデル・キャンバス・GLコンテキストを解�
 `<LipSync>` は3つのモードのうち、ちょうど1つだけを受け取ります: `driver`、
 `source`/`active`/`profile`、または `mouthOpen`/`speaking`。
 
-## バックエンドの切り替え
+## バックエンド
 
-`backend` を省略すればデフォルトの Framework/WebGL2 バックエンドが使われます。
-もうひとつ Pixi v6 バックエンドがあり、こちらはA/B比較と
-`pixi-live2d-display` からの移行のために残してあるものです。Pixi の
-パッケージ群は optional peer なので、実際に使うまでインストールされません。
+`backend` を省略するとデフォルトの Framework/WebGL2 バックエンドが使われ
+ます。Pixi v6 バックエンドはA/B比較と `pixi-live2d-display` からの移行の
+ためのもので、Pixi のパッケージ群は optional peer のため使用しない限り
+インストールされません。
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
@@ -300,18 +286,18 @@ const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 
 ## トラブルシューティング
 
-- 何も表示されないのに状態は ready のとき: コンテナにCSSサイズがなく、
-  キャンバスが 1x1 に潰れています。コンテナに幅と高さを与えてください。この
-  ときコンソールにも警告が出ます。
-- モデルが404のとき: モデルのディレクトリが静的ファイルとして配信されているか
-  確認してください。すべてのアセットは model3.json のURL基準の相対パスで
-  ロードされ、HTTP 4xx はリトライせず即座に失敗します。
-- キャラクターを複数出したら重いとき: キャンバスごとにWebGLコンテキストと
-  描画ループが1つずつ生まれ、ブラウザのコンテキスト上限は8〜16程度です。
-  キャンバスの数を減らすのが解決策です。
-- モバイルでドラッグするとページがスクロールするとき: キャンバスには
-  `touch-action: none` が設定されますが、スクロールする祖先要素にも同じ設定が
-  必要な場合があります。
+- 何も表示されないのに状態は ready の場合: コンテナにCSSサイズがなく、
+  キャンバスが 1x1 に潰れています。コンテナに幅と高さを与えてください。
+  コンソールに警告が出力されます。
+- モデルが404の場合: モデルのディレクトリが静的ファイルとして配信されている
+  か確認してください。すべてのアセットは model3.json のURL基準の相対パスで
+  ロードされます。
+- キャラクター複数で重い場合: キャンバスごとにWebGLコンテキストと描画ループ
+  が生まれ、ブラウザのコンテキスト上限は8〜16程度です。キャンバスの数を
+  減らしてください。
+- モバイルでドラッグするとページがスクロールする場合: キャンバスには
+  `touch-action: none` が設定されますが、スクロールする祖先要素にも同じ設定
+  が必要なことがあります。
 
 ## 開発
 

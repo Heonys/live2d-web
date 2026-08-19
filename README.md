@@ -10,34 +10,29 @@ app built with it may need its own
 [Cubism SDK license](https://www.live2d.com/en/sdk/license/); details in
 [licensing notes](docs/licensing.md).
 
-**[Live demo](https://live2d-web-demo.netlify.app/)**: play motions, tap the
-character, drive lip sync from your microphone, or load your own `model3.json`
-in the [inspector](https://live2d-web-demo.netlify.app/inspect).
+**[Live demo](https://live2d-web-demo.netlify.app/)** ·
+[Model inspector](https://live2d-web-demo.netlify.app/inspect)
 
-**Status: `0.1.0`, not yet published to npm.** The default backend runs the
-official Cubism Web Framework 5-r.5 renderer directly on WebGL2.
+## Features
+
+- No rendering framework dependency. The runtime renders through WebGL2
+  directly; a production build with one character is about 58KB gzipped.
+- Lazy shader compilation and overlapped downloads cut time-to-first-frame by
+  4 to 6 times against the Pixi-based baseline on GPU hardware, at
+  [equal steady-state frame rates](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
+- The vanilla API and the React bindings share one controller. Per-frame
+  values never pass through React state.
+- Built on the official Cubism Web Framework 5-r.5 and Cubism 5.3 Core, so
+  Cubism 4 and 5 models both load. A replacement for the unmaintained
+  `pixi-live2d-display`.
+
+## Getting started
 
 ```bash
 npm install live2d-web
 ```
 
-## Why this library
-
-- There's no PixiJS underneath. The runtime talks to WebGL2 itself, which is
-  how one character fits in about 58KB gzipped.
-- Startup is fast. Shaders compile lazily and downloads overlap the compile
-  work; on GPU hardware that cut time-to-first-frame by 4 to 6 times against
-  the Pixi-based baseline, at
-  [equal steady-state frame rates](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- React support isn't a wrapper. The components and hooks drive the same
-  controller as the vanilla API, and per-frame values never touch React state.
-- It's built for Cubism 5.3 Core and the official Framework 5-r.5, loads
-  Cubism 4 and 5 models alike, and makes a realistic replacement for the
-  unmaintained `pixi-live2d-display`.
-
-## What you need
-
-Two files, neither bundled with the package:
+Two files are required that the package does not bundle:
 
 1. **Cubism Core** (`live2dcubismcore.min.js`), Live2D's closed-source engine.
    Download the official Web SDK from https://www.live2d.com/sdk/download/web/,
@@ -48,8 +43,6 @@ Two files, neither bundled with the package:
    motions and physics by relative path, so serve the whole directory as static
    files (for example under `public/models/hiyori/`) and pass the
    `model3.json` URL as `src`.
-
-## Quick start
 
 Vanilla:
 
@@ -81,12 +74,12 @@ export function Character() {
 }
 ```
 
-The promise resolves once the character is on screen. Give the container a CSS
-size and the canvas fills it; that's the whole layout contract.
+The promise resolves once the character is on screen. Give the container a
+CSS size and the canvas fills it.
 
 ## Motions and expressions
 
-Start by asking the model what it ships:
+`getModelInfo()` lists the model's motion groups, expressions and hit areas.
 
 ```ts
 const info = character.getModelInfo()
@@ -100,21 +93,19 @@ await character.expression('smile')
 character.clearExpression()
 ```
 
-A motion's promise resolves when playback is actually done, not when it
-starts. So sequencing is just `await` one, then start the next. If something
-interrupts the motion, the promise resolves at that moment instead of hanging.
+`motion()` resolves when playback finishes, so sequencing works with plain
+`await`. If another motion interrupts, the promise resolves at that point.
 
-Idle playback runs on its own from the model's `Idle` group; use `idleMotion`
-to pick a different group, or `false` to turn it off. Priorities are
-`'idle' | 'normal' | 'force'`, and the default `'force'` interrupts whatever
-is playing. Ask for a group or expression the model doesn't have and the error
-lists the valid names, which saves a round trip to the model file.
+Idle playback runs automatically from the model's `Idle` group; use
+`idleMotion` to pick a different group, or `false` to turn it off. Priorities
+are `'idle' | 'normal' | 'force'`, and the default `'force'` interrupts the
+current motion. Unknown group or expression names reject with an error listing
+the valid names.
 
 ## Pointer tracking and taps
 
-Set `followPointer: true` and the character watches the pointer while it's
-over the canvas, then looks back to the centre when it leaves. Tap handling is
-a hit test away:
+With `followPointer: true` the character watches the pointer while it is
+over the canvas and returns its gaze to the centre when it leaves.
 
 ```ts
 container.addEventListener('click', async (event) => {
@@ -124,10 +115,10 @@ container.addEventListener('click', async (event) => {
 })
 ```
 
-For manual gaze control there are two methods: `focusAt()` takes viewport
-client coordinates, `focus()` takes container-local CSS pixels.
+Two methods control the gaze directly: `focusAt()` takes viewport client
+coordinates, `focus()` takes container-local CSS pixels.
 
-The React wiring is two props. Toggling them never reloads the model:
+In React the same wiring is two props. Toggling them never reloads the model:
 
 ```tsx
 <Live2DModel
@@ -142,12 +133,11 @@ The React wiring is two props. Toggling them never reloads the model:
 
 ## Lip sync
 
-There are three ways to drive the mouth, because the right one depends on
-where your audio lives. All of them write after the SDK's own motion update,
-so a motion curve can't overwrite the value.
+Lip sync supports three modes. All of them write after the SDK's motion
+update, so motion curves cannot overwrite the value.
 
-If you have a WebAudio node (TTS output, a microphone), let wLipSync analyse
-the vowels; the analyser is loaded on demand:
+From a WebAudio node (TTS output, a microphone), analysed by wLipSync; the
+analyser is loaded on demand:
 
 ```ts
 const stopLipSync = character.addLipSync({
@@ -157,8 +147,7 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-If you'd rather compute mouth openness yourself, hand over any logic that
-yields a value between 0 and 1:
+From your own logic, as a mouth-openness value between 0 and 1:
 
 ```ts
 character.addLipSync({
@@ -169,8 +158,7 @@ character.addLipSync({
 })
 ```
 
-And in React, plain values work too, which is the simplest option when the
-number already lives in state:
+From plain values, React only:
 
 ```tsx
 <LipSync mouthOpen={mouth} speaking={mouth > 0} />
@@ -182,10 +170,9 @@ no calibration profile is bundled.
 
 ## Direct parameter control
 
-Sometimes you want a parameter held at a value no matter what the current
-motion says. That's `setParameter()`: it wins over motion curves every frame
-until `clearParameter()` releases it. For values you recompute per frame,
-register a driver instead and the library polls it after each SDK update.
+`setParameter()` is a persistent override: it wins over motion curves every
+frame until `clearParameter()` releases it. For values recomputed per frame,
+register a driver instead; the library polls it after each SDK update.
 
 ```ts
 character.setParameter('ParamMouthOpenY', 0.6) // hold the mouth open
@@ -196,22 +183,20 @@ const stop = character.addParameterDriver('ParamAngleX', {
 })
 ```
 
-The React equivalents are `useLive2DParameter(id, value)` for the override
-(it cleans up after itself on unmount) and `useParameterDriver(id, getter)`
-for the per-frame driver.
+In React, `useLive2DParameter(id, value)` is the override (cleaned up on
+unmount) and `useParameterDriver(id, getter)` is the per-frame driver.
 
-## Fitting, quality and performance
+## Framing and render quality
 
 `fit` frames the model without touching the model file: `'upper-body'`
 (default), `'full'`, or a custom `{ scale, offsetX, offsetY }`. Change it at
 runtime with `setFit()`.
 
-Rendering quality takes care of itself by default. The backing buffer follows
+Rendering quality is automatic by default. The backing buffer follows
 `devicePixelRatio` up to a cap (1.5MP on mobile, 4MP on desktop) and steps
-down when frames run long; for most apps that's the right trade and you never
-think about it again. If you'd rather pin it, pass a fixed `resolution`, and
-use `maxFps` to cap the frame rate. Hidden tabs pause automatically, as do
-canvases scrolled out of view.
+down when frames run long. Pass a fixed `resolution` to pin it, and `maxFps`
+to cap the frame rate. Hidden tabs and canvases scrolled out of view pause
+automatically.
 
 ```ts
 const character = await createLive2D({
@@ -222,11 +207,11 @@ const character = await createLive2D({
 })
 ```
 
-## State, errors and cleanup
+## Lifecycle and error handling
 
 `getState()` returns `{ status, loadingStage, error, render }`, and
-`subscribe()` notifies on every change. Each error carries a stable `code`
-(`'core-missing'`, `'model-load-failed'`, `'render-error'`, ...) plus details
+`subscribe()` notifies on every change. Errors carry a stable `code`
+(`'core-missing'`, `'model-load-failed'`, `'render-error'`, ...) and details
 about the asset involved.
 
 ```ts
@@ -244,12 +229,12 @@ character.resume()
 character.dispose() // releases model, canvas and GL context; safe to call twice
 ```
 
-A few behaviours worth knowing: HTTP 4xx fails immediately, while transient
-failures retry twice by default. After a render error such as WebGL context
-loss, `retry()` rebuilds the whole stage. And loading can be aborted with a
-standard `AbortSignal` passed as `signal`.
+HTTP 4xx fails immediately; transient failures retry twice by default
+(`retries`). After a render error such as WebGL context loss, `retry()`
+rebuilds the stage. Loading can be aborted with an `AbortSignal` passed as
+`signal`.
 
-## React at a glance
+## React API summary
 
 Everything lives in `live2d-web/react`; React is an optional peer dependency
 (18.2 and 19 supported), and the root import stays React-free.
@@ -279,12 +264,12 @@ Everything lives in `live2d-web/react`; React is an optional peer dependency
 `<LipSync>` accepts exactly one of its three modes: `driver`,
 `source`/`active`/`profile`, or `mouthOpen`/`speaking`.
 
-## Swapping backends
+## Backends
 
-Leave `backend` out and you get the default Framework-on-WebGL2 backend.
-There's also a Pixi v6 backend, kept for A/B comparison and for migrating from
-`pixi-live2d-display`; its Pixi packages are optional peers, so nothing
-Pixi-related is installed unless you actually use it.
+Omitting `backend` loads the default Framework-on-WebGL2 backend. The
+Pixi v6 backend exists for A/B comparison and for migrating from
+`pixi-live2d-display`; its Pixi packages are optional peers and are not
+installed unless used.
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
@@ -295,15 +280,14 @@ const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 
 ## Troubleshooting
 
-- Nothing visible but the status says ready: the container has no CSS size, so
-  the canvas collapsed to 1x1. Give the container a width and height. The
-  runtime prints a console warning when this happens.
-- The model 404s: the model directory has to be served as static files, and
-  every sibling asset loads relative to the model3.json URL. HTTP 4xx fails
-  fast without retries.
+- Nothing visible but the status is ready: the container has no CSS size, so
+  the canvas collapsed to 1x1. Give the container a width and height. A
+  console warning is printed in this case.
+- The model 404s: the model directory must be served as static files; every
+  sibling asset loads relative to the model3.json URL.
 - Several characters feel slow: each canvas owns a WebGL context and a render
-  loop, and browsers cap contexts at around 8-16. Fewer canvases is the fix.
-- The page scrolls while dragging the character on mobile: the canvas sets
+  loop, and browsers cap contexts at around 8-16. Reduce the canvas count.
+- The page scrolls while dragging on mobile: the canvas sets
   `touch-action: none`, but a scrolling ancestor may need it too.
 
 ## Development
@@ -318,10 +302,11 @@ pnpm dev
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
 ```
 
-Downloaded assets stay in gitignored development paths and are never packaged.
-The playground serves a React demo at `/`, the vanilla API at `/vanilla`, a
-model inspector at `/inspect` and a WebGL/Pixi comparison at `/compare`.
-Benchmark suites are documented in the [benchmark guide](docs/benchmarking.md).
+Downloaded assets stay in gitignored development paths and are never
+packaged. The playground serves a React demo at `/`, the vanilla API at
+`/vanilla`, a model inspector at `/inspect` and a WebGL/Pixi comparison at
+`/compare`. Benchmarks are documented in the
+[benchmark guide](docs/benchmarking.md).
 
 ## Documentation
 

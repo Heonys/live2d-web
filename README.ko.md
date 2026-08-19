@@ -2,52 +2,46 @@
 
 [English](README.md) | **한국어** | [日本語](README.ja.md)
 
-> 웹에서 Live2D 캐릭터를 움직이는 라이브러리입니다. 모델을 불러와 모션 재생,
-> 시선 추적, 립싱크까지 처리합니다. PixiJS 없이 동작하고, React는 써도 되고
-> 안 써도 됩니다.
+> 웹을 위한 Live2D 런타임. 모델 로딩, 모션, 시선 추적, 립싱크를 vanilla
+> JavaScript와 React에서 같은 API로 제공합니다. PixiJS에 의존하지 않습니다.
 
-Live2D Inc.와 무관한 비공식 라이브러리입니다. 이걸로 만든 앱을 배포할 때는
-별도의 [Cubism SDK 라이선스](https://www.live2d.com/en/sdk/license/)가 필요할
-수 있습니다. 자세한 내용은 [라이선스 문서](docs/licensing.md)에 있습니다.
+Live2D Inc.와 무관한 비공식 라이브러리입니다. 이 라이브러리로 만든 앱을
+배포할 때는 별도의
+[Cubism SDK 라이선스](https://www.live2d.com/en/sdk/license/)가 필요할 수
+있습니다. [라이선스 문서](docs/licensing.md)를 참고하세요.
 
-**[라이브 데모](https://live2d-web-demo.netlify.app/)**: 모션을 재생하고,
-캐릭터를 클릭하고, 마이크로 립싱크를 걸어볼 수 있습니다.
-[인스펙터](https://live2d-web-demo.netlify.app/inspect)에서는 직접 만든
-`model3.json`도 불러올 수 있습니다.
+**[라이브 데모](https://live2d-web-demo.netlify.app/)** ·
+[모델 인스펙터](https://live2d-web-demo.netlify.app/inspect)
 
-**상태: `0.1.0`, 아직 npm에 올라가지 않았습니다.** 기본 백엔드는 공식 Cubism
-Web Framework 5-r.5 렌더러를 WebGL2 위에서 그대로 사용합니다.
+## 특징
+
+- PixiJS 같은 렌더링 프레임워크에 의존하지 않습니다. WebGL2로 직접 렌더링하며,
+  캐릭터 하나 기준 프로덕션 빌드가 gzip 약 58KB입니다.
+- 셰이더 지연 컴파일과 다운로드 병렬화로, 실제 GPU에서 첫 화면까지의 시간이
+  Pixi 기반 대비 4~6배 짧습니다.
+  [프레임 성능은 동등합니다](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
+- vanilla와 React가 같은 컨트롤러를 공유합니다. 프레임 단위 값은 React state를
+  거치지 않습니다.
+- 공식 Cubism Web Framework 5-r.5와 Cubism 5.3 Core 기반으로 Cubism 4·5
+  모델을 지원합니다. 업데이트가 중단된 `pixi-live2d-display`를 대체할 수
+  있습니다.
+
+## 시작하기
 
 ```bash
 npm install live2d-web
 ```
 
-## 왜 이 라이브러리인가
-
-- 밑에 PixiJS가 없습니다. 런타임이 WebGL2와 직접 통신하기 때문에 캐릭터 하나가
-  gzip 기준 58KB 정도에 들어갑니다.
-- 시작이 빠릅니다. 셰이더를 필요할 때만 컴파일하고 다운로드를 컴파일과 겹쳐서,
-  실제 GPU에서 첫 화면까지의 시간이 Pixi 기반 대비 4~6배 줄었습니다.
-  [평상시 프레임 성능은 동등합니다](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- React 지원이 래퍼가 아닙니다. 컴포넌트와 훅이 vanilla API와 같은 컨트롤러를
-  움직이고, 프레임 단위 값은 React state를 거치지 않습니다.
-- Cubism 5.3 Core와 공식 Framework 5-r.5 기준으로 만들어져 Cubism 4·5 모델을
-  모두 불러옵니다. 업데이트가 멈춘 `pixi-live2d-display`를 대신할 수 있습니다.
-
-## 준비물
-
-패키지에 들어 있지 않은 파일 두 가지가 필요합니다.
+패키지에 포함되지 않는 파일 두 가지가 필요합니다.
 
 1. **Cubism Core** (`live2dcubismcore.min.js`). Live2D의 클로즈드 소스
    엔진입니다. https://www.live2d.com/sdk/download/web/ 에서 공식 Web SDK를
-   받아 파일을 직접 서빙하고 그 URL을 `coreUrl`로 넘기세요. 빠르게 시험해 볼
-   때는 Live2D가 호스팅하는 사본을 가리키는 `OFFICIAL_CUBISM_CORE_URL` 상수를
-   쓸 수 있고, 프로덕션에서는 직접 호스팅을 권장합니다.
+   받아 직접 서빙하고 그 URL을 `coreUrl`로 넘깁니다. 테스트 용도로는 Live2D가
+   호스팅하는 사본을 가리키는 `OFFICIAL_CUBISM_CORE_URL` 상수를 쓸 수 있고,
+   프로덕션에서는 직접 호스팅을 권장합니다.
 2. **모델 디렉터리.** `model3.json`이 `.moc3`, 텍스처, 모션, 물리 파일을 상대
-   경로로 참조하므로, 디렉터리 전체를 정적 파일로 서빙하고(예:
-   `public/models/hiyori/`) `model3.json`의 URL을 `src`로 넘기면 됩니다.
-
-## 빠른 시작
+   경로로 참조하므로 디렉터리 전체를 정적 파일로 서빙합니다(예:
+   `public/models/hiyori/`). `model3.json`의 URL을 `src`로 넘깁니다.
 
 Vanilla:
 
@@ -79,12 +73,12 @@ export function Character() {
 }
 ```
 
-promise는 캐릭터가 화면에 나타난 뒤에 resolve됩니다. 컨테이너에 CSS 크기만
-주면 캔버스가 알아서 채웁니다. 레이아웃 규칙은 이게 전부입니다.
+promise는 캐릭터가 화면에 표시된 뒤 resolve됩니다. 컨테이너에 CSS 크기를 주면
+캔버스가 채웁니다.
 
 ## 모션과 표정
 
-모델에 뭐가 들어 있는지부터 물어보세요.
+모션 그룹, 표정, 히트 영역 목록은 `getModelInfo()`로 조회합니다.
 
 ```ts
 const info = character.getModelInfo()
@@ -98,20 +92,19 @@ await character.expression('smile')
 character.clearExpression()
 ```
 
-모션의 promise는 재생이 실제로 끝났을 때 resolve됩니다. 시작 시점이 아니라요.
-덕분에 순차 연출은 `await` 하나 걸고 다음 모션을 시작하면 끝입니다. 도중에
-다른 모션이 끼어들면 그 시점에 resolve되므로 영영 기다리는 일은 없습니다.
+`motion()`은 재생이 끝나는 시점에 resolve되므로 `await`만으로 순차 연출이
+가능합니다. 다른 모션이 끼어들면 그 시점에 resolve됩니다.
 
-기본 움직임은 모델의 `Idle` 그룹이 알아서 재생합니다. 다른 그룹을 쓰고 싶으면
-`idleMotion`으로 지정하고, `false`를 주면 꺼집니다. 우선순위는
-`'idle' | 'normal' | 'force'` 세 단계이고 기본값 `'force'`는 재생 중인 모션을
-끊고 들어갑니다. 없는 그룹이나 표정 이름을 넘기면 쓸 수 있는 이름 목록이 담긴
-에러가 돌아옵니다.
+기본 움직임은 모델의 `Idle` 그룹이 자동 재생합니다. `idleMotion`으로 다른
+그룹을 지정하거나 `false`로 끌 수 있습니다. 우선순위는
+`'idle' | 'normal' | 'force'`이며 기본값 `'force'`는 재생 중인 모션을
+중단합니다. 없는 그룹이나 표정 이름을 넘기면 사용 가능한 이름 목록이 담긴
+에러로 reject됩니다.
 
 ## 시선 추적과 탭
 
-`followPointer: true` 하나면 캐릭터가 캔버스 위의 포인터를 따라 보고, 포인터가
-나가면 시선이 가운데로 돌아옵니다. 탭 처리는 히트 테스트 한 번이면 됩니다.
+`followPointer: true`를 주면 캐릭터가 캔버스 위의 포인터를 따라 보고,
+포인터가 벗어나면 시선이 중앙으로 돌아옵니다.
 
 ```ts
 container.addEventListener('click', async (event) => {
@@ -121,10 +114,10 @@ container.addEventListener('click', async (event) => {
 })
 ```
 
-시선을 직접 움직일 때는 메서드가 둘 있습니다. `focusAt()`은 뷰포트 좌표를,
+시선을 직접 제어하는 메서드는 두 가지입니다. `focusAt()`은 뷰포트 좌표,
 `focus()`는 컨테이너 기준 CSS 픽셀을 받습니다.
 
-React에서는 prop 두 개로 같은 일을 합니다. 이 prop들은 바뀌어도 모델을 다시
+React에서는 prop 두 개로 처리합니다. 이 prop들은 바뀌어도 모델을 다시
 불러오지 않습니다.
 
 ```tsx
@@ -140,11 +133,10 @@ React에서는 prop 두 개로 같은 일을 합니다. 이 prop들은 바뀌어
 
 ## 립싱크
 
-입을 움직이는 방법은 세 가지입니다. 오디오가 어디에 있느냐에 따라 고르면
-됩니다. 어느 쪽이든 SDK의 모션 업데이트가 끝난 뒤에 값을 쓰기 때문에 모션
-커브에 덮어써질 걱정은 없습니다.
+립싱크는 세 가지 방식을 지원합니다. 어느 방식이든 SDK의 모션 업데이트 이후에
+값을 쓰므로 모션 커브에 덮어써지지 않습니다.
 
-WebAudio 노드(TTS 출력, 마이크)가 있다면 wLipSync에 모음 분석을 맡기세요.
+WebAudio 노드(TTS 출력, 마이크)를 wLipSync 모음 분석으로 연결하는 방식.
 분석기는 필요할 때 동적으로 로드됩니다.
 
 ```ts
@@ -155,8 +147,7 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-입 열림 값을 직접 계산하고 싶다면 0~1 사이 값을 내는 로직을 그대로 넘기면
-됩니다.
+입 열림 값(0~1)을 직접 계산해 넘기는 방식.
 
 ```ts
 character.addLipSync({
@@ -167,23 +158,21 @@ character.addLipSync({
 })
 ```
 
-React에서는 값을 바로 넘길 수도 있습니다. 값이 이미 state에 있다면 이게 제일
-간단합니다.
+React 전용으로, 값을 그대로 넘기는 방식.
 
 ```tsx
 <LipSync mouthOpen={mouth} speaking={mouth > 0} />
 ```
 
-대상 파라미터는 기본이 `ParamMouthOpenY`이고 `parameterId`로 바꿉니다.
-라이브러리가 호출자의 `AudioContext`를 닫거나 멈추는 일은 없고, 캘리브레이션
-프로파일도 들어 있지 않습니다.
+대상 파라미터는 기본 `ParamMouthOpenY`이고 `parameterId`로 변경합니다.
+라이브러리는 호출자의 `AudioContext`를 닫거나 중단하지 않으며, 캘리브레이션
+프로파일을 포함하지 않습니다.
 
 ## 파라미터 직접 제어
 
-모션이 뭐라고 하든 특정 파라미터를 원하는 값에 고정하고 싶을 때가 있습니다.
-그게 `setParameter()`입니다. `clearParameter()`로 풀기 전까지 매 프레임 모션
-커브를 이깁니다. 매 프레임 새로 계산하는 값이라면 드라이버를 등록하세요. SDK
-업데이트가 끝날 때마다 라이브러리가 값을 읽어 갑니다.
+`setParameter()`는 지속 오버라이드입니다. `clearParameter()`를 호출할 때까지
+매 프레임 모션 커브보다 우선합니다. 매 프레임 계산하는 값은 드라이버로
+등록합니다. SDK 업데이트가 끝날 때마다 라이브러리가 값을 읽습니다.
 
 ```ts
 character.setParameter('ParamMouthOpenY', 0.6) // 입을 계속 벌려 둠
@@ -194,20 +183,19 @@ const stop = character.addParameterDriver('ParamAngleX', {
 })
 ```
 
-React 쪽 짝은 `useLive2DParameter(id, value)`(오버라이드, 언마운트 시 알아서
-해제)와 `useParameterDriver(id, getter)`(프레임 단위 드라이버)입니다.
+React에서는 `useLive2DParameter(id, value)`가 오버라이드(언마운트 시 자동
+해제), `useParameterDriver(id, getter)`가 드라이버에 해당합니다.
 
-## 화면 맞춤과 렌더 품질
+## 화면 구도와 렌더링 품질
 
-`fit`은 모델 파일을 건드리지 않고 화면 구도를 잡습니다. `'upper-body'`(기본),
-`'full'`, 또는 `{ scale, offsetX, offsetY }`를 직접 줄 수 있고, 실행 중에는
-`setFit()`으로 바꿉니다.
+`fit`은 모델 파일을 수정하지 않고 화면 구도를 정합니다. `'upper-body'`(기본),
+`'full'`, 또는 `{ scale, offsetX, offsetY }`를 지정할 수 있고, 실행 중에는
+`setFit()`으로 변경합니다.
 
-렌더 품질은 기본적으로 알아서 돌아갑니다. 백킹 버퍼가 `devicePixelRatio`를
-따라가되 상한이 있고(모바일 1.5MP, 데스크톱 4MP), 프레임이 길어지면 해상도를
-한 단계씩 내립니다. 대부분의 앱은 이대로 두면 됩니다. 고정하고 싶다면
-`resolution`을 직접 주고, 프레임 상한은 `maxFps`로 겁니다. 숨겨진 탭과 화면
-밖으로 스크롤된 캔버스는 자동으로 멈춥니다.
+렌더링 품질은 기본이 자동입니다. 백킹 버퍼가 `devicePixelRatio`를 따라가되
+상한이 있고(모바일 1.5MP, 데스크톱 4MP), 프레임이 길어지면 해상도를 한 단계씩
+내립니다. 고정하려면 `resolution`을 지정하고, 프레임 상한은 `maxFps`로
+겁니다. 숨겨진 탭과 화면 밖으로 스크롤된 캔버스는 자동으로 멈춥니다.
 
 ```ts
 const character = await createLive2D({
@@ -218,12 +206,12 @@ const character = await createLive2D({
 })
 ```
 
-## 상태, 에러, 정리
+## 생명주기와 에러 처리
 
-`getState()`는 `{ status, loadingStage, error, render }`를 돌려주고,
-`subscribe()`는 상태가 바뀔 때마다 알려줍니다. 에러마다 안정된 `code`
-(`'core-missing'`, `'model-load-failed'`, `'render-error'` 등)와 문제가 된
-에셋 정보가 붙어 있습니다.
+`getState()`는 `{ status, loadingStage, error, render }`를 반환하고,
+`subscribe()`는 상태가 바뀔 때마다 알립니다. 에러에는 안정된 `code`
+(`'core-missing'`, `'model-load-failed'`, `'render-error'` 등)와 에셋 정보가
+포함됩니다.
 
 ```ts
 const character = await createLive2D({
@@ -240,15 +228,14 @@ character.resume()
 character.dispose() // 모델·캔버스·GL 컨텍스트 해제. 두 번 불러도 안전합니다
 ```
 
-알아두면 좋은 동작 몇 가지. HTTP 4xx는 재시도 없이 바로 실패하고, 일시적인
-실패는 기본 2회 재시도합니다. WebGL 컨텍스트 손실 같은 렌더 에러 뒤에는
-`retry()`가 스테이지 전체를 다시 만듭니다. 로딩 중단은 표준 `AbortSignal`을
-`signal`로 넘기면 됩니다.
+HTTP 4xx는 재시도 없이 즉시 실패하고, 일시적인 실패는 기본 2회
+재시도합니다(`retries`). WebGL 컨텍스트 손실 같은 렌더 에러 후에는 `retry()`가
+스테이지를 다시 만듭니다. 로딩 중단은 `AbortSignal`을 `signal`로 넘깁니다.
 
-## React 한눈에 보기
+## React API 요약
 
 전부 `live2d-web/react`에 있습니다. React는 optional peer(18.2와 19 지원)이고,
-루트 임포트에는 React 코드가 전혀 없습니다.
+루트 임포트에는 React 코드가 없습니다.
 
 | `<Live2DCanvas>` prop                  | 역할                                                 |
 | -------------------------------------- | ---------------------------------------------------- |
@@ -272,15 +259,14 @@ character.dispose() // 모델·캔버스·GL 컨텍스트 해제. 두 번 불러
 | `useParameterDriver(id, getter)` | 프레임 단위 파라미터 드라이버                                            |
 | `useLive2D(options)`             | vanilla 인스턴스를 React 생명주기 안에서 (StrictMode 안전)               |
 
-`<LipSync>`는 세 모드 중 정확히 하나만 받습니다: `driver`,
+`<LipSync>`는 세 모드 중 하나만 받습니다: `driver`,
 `source`/`active`/`profile`, 또는 `mouthOpen`/`speaking`.
 
-## 백엔드 교체
+## 백엔드
 
 `backend`를 생략하면 기본인 Framework/WebGL2 백엔드가 로드됩니다. Pixi v6
-백엔드도 하나 더 있는데, A/B 비교와 `pixi-live2d-display`에서 넘어오는 용도로
-남겨둔 것입니다. Pixi 패키지들은 optional peer라 실제로 쓰기 전에는 설치되지
-않습니다.
+백엔드는 A/B 비교와 `pixi-live2d-display` 마이그레이션 용도이며, Pixi
+패키지들은 optional peer라 사용하지 않으면 설치되지 않습니다.
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
@@ -291,18 +277,16 @@ const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 
 ## 문제 해결
 
-- 아무것도 안 보이는데 상태는 ready라면: 컨테이너에 CSS 크기가 없어서 캔버스가
-  1x1로 접힌 겁니다. 컨테이너에 너비와 높이를 주세요. 이 경우 콘솔에 경고도
-  찍힙니다.
-- 모델이 404라면: 모델 디렉터리가 정적 파일로 서빙되고 있는지 확인하세요. 모든
-  에셋은 model3.json URL 기준 상대 경로로 로드되고, HTTP 4xx는 재시도 없이
-  바로 실패합니다.
-- 캐릭터를 여러 개 띄웠더니 느리다면: 캔버스마다 WebGL 컨텍스트와 렌더 루프가
-  하나씩 생기고, 브라우저의 컨텍스트 상한은 8~16개 수준입니다. 캔버스 수를
-  줄이는 게 답입니다.
-- 모바일에서 캐릭터를 드래그하면 페이지가 스크롤된다면: 캔버스에는
-  `touch-action: none`이 설정되지만, 스크롤되는 상위 요소에도 같은 설정이
-  필요할 수 있습니다.
+- 아무것도 안 보이는데 상태는 ready인 경우: 컨테이너에 CSS 크기가 없어
+  캔버스가 1x1로 접힌 것입니다. 컨테이너에 너비와 높이를 주세요. 콘솔에
+  경고가 출력됩니다.
+- 모델이 404인 경우: 모델 디렉터리가 정적 파일로 서빙되는지 확인하세요. 모든
+  에셋은 model3.json URL 기준 상대 경로로 로드됩니다.
+- 캐릭터 여러 개가 느린 경우: 캔버스마다 WebGL 컨텍스트와 렌더 루프가 생기고,
+  브라우저의 컨텍스트 상한은 8~16개 수준입니다. 캔버스 수를 줄이세요.
+- 모바일에서 드래그 시 페이지가 스크롤되는 경우: 캔버스에는
+  `touch-action: none`이 설정되지만, 스크롤되는 상위 요소에도 필요할 수
+  있습니다.
 
 ## 개발
 
@@ -316,7 +300,7 @@ pnpm dev
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
 ```
 
-내려받은 에셋은 gitignore된 개발 경로에만 저장되고 패키지에는 절대 들어가지
+내려받은 에셋은 gitignore된 개발 경로에만 저장되며 패키지에 포함되지
 않습니다. Playground는 `/`에 React 데모, `/vanilla`에 vanilla API,
 `/inspect`에 모델 인스펙터, `/compare`에 WebGL/Pixi 비교 화면을 제공합니다.
 벤치마크는 [벤치마크 가이드](docs/benchmarking.md)에 정리되어 있습니다.
