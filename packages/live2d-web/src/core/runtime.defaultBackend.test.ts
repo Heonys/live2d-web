@@ -8,7 +8,7 @@ const adapterState = vi.hoisted(() => ({
   evaluatedAfterCore: false,
 }))
 
-vi.mock('../adapters/cubism-webgl', () => {
+vi.mock('../backends/cubism-webgl', () => {
   adapterState.evaluatedAfterCore = Boolean(window.Live2DCubismCore)
   const model: ModelHandle = {
     clearExpression: () => {},

@@ -5,7 +5,7 @@ import { createLive2D } from 'live2d-web'
 import {
   createCubismWebGLBackend,
   cubismWebGL,
-} from 'live2d-web/adapters/cubism-webgl'
+} from 'live2d-web/backends/cubism-webgl'
 import { useEffect } from 'react'
 
 const CORE_URL = '/assets/js/cubism/5.3/live2dcubismcore.min.js'

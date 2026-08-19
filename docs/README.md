@@ -24,8 +24,8 @@ backend다.
 ## 확정된 결정
 
 - 제품·npm 패키지, 로컬 디렉터리와 GitHub 저장소 이름은 `live2d-web`이다.
-- npm 패키지는 하나이며 `.`, `/react`, `/adapters/cubism-webgl`,
-  `/adapters/pixi-v6`로 경계를 나눈다.
+- npm 패키지는 하나이며 `.`, `/react`, `/backends/cubism-webgl`,
+  `/backends/pixi-v6`로 경계를 나눈다.
 - 루트는 React와 `"use client"`가 없는 바닐라 API다. React는 optional
   peer이며 `/react`에만 존재한다.
 - 바닐라와 React가 같은 headless controller를 사용한다.

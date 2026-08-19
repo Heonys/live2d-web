@@ -69,7 +69,7 @@ function BackendMemoryContent() {
     const loadBackend = async (): Promise<Live2DBackend | undefined> => {
       if (backendName === 'cubism-webgl')
         return undefined
-      return (await import('live2d-web/adapters/pixi-v6')).pixiV6
+      return (await import('live2d-web/backends/pixi-v6')).pixiV6
     }
     const mount = async () => {
       const currentGeneration = ++generation

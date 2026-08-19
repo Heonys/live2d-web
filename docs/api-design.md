@@ -96,8 +96,8 @@ Explicit selection is available from the adapter subpaths:
 import {
   createCubismWebGLBackend,
   cubismWebGL,
-} from 'live2d-web/adapters/cubism-webgl'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+} from 'live2d-web/backends/cubism-webgl'
+import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 ```
 
 `createCubismWebGLBackend({ shaderBaseUrl })` is only needed to serve shaders

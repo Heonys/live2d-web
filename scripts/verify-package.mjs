@@ -12,8 +12,8 @@ const packageDirectory = path.join(root, 'packages/live2d-web')
 const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
-const pixiAdapter = readFileSync(path.join(dist, 'adapters/pixi-v6.mjs'), 'utf8')
-const cubismAdapter = readFileSync(path.join(dist, 'adapters/cubism-webgl.mjs'), 'utf8')
+const pixiAdapter = readFileSync(path.join(dist, 'backends/pixi-v6.mjs'), 'utf8')
+const cubismAdapter = readFileSync(path.join(dist, 'backends/cubism-webgl.mjs'), 'utf8')
 const reactDeclaration = readFileSync(path.join(dist, 'react.d.mts'), 'utf8')
 
 function collectGraph(entryFile, includeDynamic) {
@@ -40,7 +40,7 @@ function collectGraph(entryFile, includeDynamic) {
 }
 
 const rootBundle = collectGraph('index.mjs', false)
-const cubismBundle = collectGraph('adapters/cubism-webgl.mjs', true)
+const cubismBundle = collectGraph('backends/cubism-webgl.mjs', true)
 
 const failures = []
 if (entry.includes('"use client"') || entry.includes('\'use client\''))
@@ -59,7 +59,7 @@ if (rootBundle.includes('CubismFramework') || rootBundle.includes('csmGetVersion
   failures.push('root bundle appears to contain Cubism runtime code')
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
-if (!rootBundle.includes('import("./adapters/cubism-webgl.mjs")'))
+if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
   failures.push('root runtime does not dynamically import the default cubism-webgl adapter')
 if (!pixiAdapter.includes('import("pixi-live2d-display/cubism4")'))
   failures.push('pixi-live2d-display must remain a browser-time dynamic import')
@@ -78,7 +78,7 @@ const bundledAssets = readdirSync(dist, { recursive: true })
 if (bundledAssets.length)
   failures.push(`package dist contains forbidden profile/runtime assets: ${bundledAssets.join(', ')}`)
 
-const shaderDirectory = path.join(dist, 'adapters/cubism-webgl-shaders')
+const shaderDirectory = path.join(dist, 'backends/cubism-webgl-shaders')
 const shaders = readdirSync(shaderDirectory)
   .filter(file => /\.(?:frag|vert)$/i.test(file))
 if (shaders.length !== 13)
@@ -118,7 +118,7 @@ for (const requiredFile of [
     failures.push(`npm tarball is missing ${requiredFile}`)
 }
 const tarballShaders = tarballFiles.filter(file =>
-  file.startsWith('dist/adapters/cubism-webgl-shaders/')
+  file.startsWith('dist/backends/cubism-webgl-shaders/')
   && /\.(?:frag|vert)$/.test(file),
 )
 if (tarballShaders.length !== 13)
@@ -132,7 +132,7 @@ catch (error) {
 }
 
 try {
-  await import(pathToFileURL(path.join(dist, 'adapters/cubism-webgl.mjs')).href)
+  await import(pathToFileURL(path.join(dist, 'backends/cubism-webgl.mjs')).href)
 }
 catch (error) {
   failures.push(`cubism-webgl adapter is not SSR-evaluation safe: ${String(error)}`)

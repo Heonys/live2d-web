@@ -11,7 +11,7 @@ npm 공개 전이다. 공식 Framework 5-r.5 WebGL2 adapter가 기본 backend로
 ## Tech Stack
 
 - pnpm workspace(catalog 버전 관리) — **npm 퍼블리시는 `live2d-web` 하나** +
-  `.`, `/react`, `/adapters/cubism-webgl`, `/adapters/pixi-v6` 서브패스
+  `.`, `/react`, `/backends/cubism-webgl`, `/backends/pixi-v6` 서브패스
 - 퍼블리시 라이브러리 — tsdown 빌드(ESM + d.ts). 개발 중엔 소스-export + Next `transpilePackages`, 퍼블리시 시 `publishConfig.exports`가 dist로 전환
 - 바닐라 root: React 없는 `createLive2D()`와 backend-neutral 계약
 - React binding: `/react`, React optional peer
@@ -52,8 +52,8 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 - `packages/live2d-web/src/core/` — 계약·Core 로더·품질·프레이밍
 - `packages/live2d-web/src/features/lipsync/` — 순수 mouth controller와 wLipSync source 연결
 - `packages/live2d-web/src/react/LipSync.tsx` — source/driver React 생명주기
-- `packages/live2d-web/src/adapters/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
-- `packages/live2d-web/src/adapters/cubism-webgl/` — 기본 Framework/WebGL2 어댑터
+- `packages/live2d-web/src/backends/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
+- `packages/live2d-web/src/backends/cubism-webgl/` — 기본 Framework/WebGL2 어댑터
 - `apps/playground/src/app/page.tsx` — React Hiyori 데모
 - `apps/playground/src/app/vanilla/page.tsx` — `createLive2D()` Hiyori 데모
 - `apps/vanilla-consumer/` — React 없는 import/build/browser 실행 검증

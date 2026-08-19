@@ -3,8 +3,8 @@
 import type { Live2DBackend } from 'live2d-web'
 
 import type { AssetManifest } from '../../lib/assetManifest'
-import { cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+import { cubismWebGL } from 'live2d-web/backends/cubism-webgl'
+import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 import {
   Live2DCanvas,
   Live2DModel,

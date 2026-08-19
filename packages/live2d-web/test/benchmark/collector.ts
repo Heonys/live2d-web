@@ -4,7 +4,7 @@ import type {
   CubismFramePhase,
   CubismLoadPhase,
   CubismOwnedResource,
-} from '../../src/adapters/cubism-webgl/diagnostics'
+} from '../../src/backends/cubism-webgl/diagnostics'
 
 export interface BenchmarkStageSnapshot {
   firstDrawMs: number | null

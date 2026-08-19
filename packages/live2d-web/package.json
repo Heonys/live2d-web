@@ -35,8 +35,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./react": "./src/react.ts",
-    "./adapters/cubism-webgl": "./src/adapters/cubism-webgl/index.ts",
-    "./adapters/pixi-v6": "./src/adapters/pixi-v6/index.ts"
+    "./backends/cubism-webgl": "./src/backends/cubism-webgl/index.ts",
+    "./backends/pixi-v6": "./src/backends/pixi-v6/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -50,13 +50,13 @@
         "types": "./dist/react.d.mts",
         "default": "./dist/react.mjs"
       },
-      "./adapters/cubism-webgl": {
-        "types": "./dist/adapters/cubism-webgl.d.mts",
-        "default": "./dist/adapters/cubism-webgl.mjs"
+      "./backends/cubism-webgl": {
+        "types": "./dist/backends/cubism-webgl.d.mts",
+        "default": "./dist/backends/cubism-webgl.mjs"
       },
-      "./adapters/pixi-v6": {
-        "types": "./dist/adapters/pixi-v6.d.mts",
-        "default": "./dist/adapters/pixi-v6.mjs"
+      "./backends/pixi-v6": {
+        "types": "./dist/backends/pixi-v6.d.mts",
+        "default": "./dist/backends/pixi-v6.mjs"
       }
     }
   },

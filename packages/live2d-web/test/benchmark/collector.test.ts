@@ -1,10 +1,10 @@
-import type { CubismBenchmarkStageDiagnostics } from '../../src/adapters/cubism-webgl/diagnostics'
+import type { CubismBenchmarkStageDiagnostics } from '../../src/backends/cubism-webgl/diagnostics'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createGpuTimer,
   measureAsync,
   measureSync,
-} from '../../src/adapters/cubism-webgl/diagnostics'
+} from '../../src/backends/cubism-webgl/diagnostics'
 import { BenchmarkDiagnostics } from './collector'
 
 function diagnostics(): CubismBenchmarkStageDiagnostics {

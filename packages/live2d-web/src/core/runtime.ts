@@ -381,7 +381,7 @@ export class Live2DRuntime implements Live2DInstance {
   private async resolveBackend() {
     if (this.options.backend)
       return this.options.backend
-    const { cubismWebGL } = await import('../adapters/cubism-webgl')
+    const { cubismWebGL } = await import('../backends/cubism-webgl')
     return cubismWebGL
   }
 

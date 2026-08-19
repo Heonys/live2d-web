@@ -9,7 +9,7 @@ export default antfu({
     // Vendored Framework keeps its upstream formatting and license headers.
     'private/**',
     'packages/live2d-web/vendor/**',
-    'packages/live2d-web/src/adapters/cubism-webgl/shaderSources.generated.ts',
+    'packages/live2d-web/src/backends/cubism-webgl/shaderSources.generated.ts',
     'tmp/**',
     'test-results/**',
     'apps/playground/public/assets/**',

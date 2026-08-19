@@ -12,7 +12,7 @@ const source = path.join(
 )
 const target = path.join(
   root,
-  'packages/live2d-web/dist/adapters/cubism-webgl-shaders',
+  'packages/live2d-web/dist/backends/cubism-webgl-shaders',
 )
 const shaders = readdirSync(source).filter(file => /\.(?:frag|vert)$/i.test(file))
 

@@ -10,7 +10,10 @@ Live2D Inc.와 무관한 비공식 라이브러리입니다. 이걸로 만든 �
 별도의 [Cubism SDK 라이선스](https://www.live2d.com/en/sdk/license/)가 필요할
 수 있습니다. 자세한 내용은 [라이선스 문서](docs/licensing.md)에 있습니다.
 
-라이브 데모: 첫 공개 릴리스와 함께 열립니다.
+**[라이브 데모](https://live2d-web-demo.netlify.app/)**: 모션을 재생하고,
+캐릭터를 클릭하고, 마이크로 립싱크를 걸어볼 수 있습니다.
+[인스펙터](https://live2d-web-demo.netlify.app/inspect)에서는 직접 만든
+`model3.json`도 불러올 수 있습니다.
 
 **상태: `0.1.0`, 아직 npm에 올라가지 않았습니다.** 기본 백엔드는 공식 Cubism
 Web Framework 5-r.5 렌더러를 WebGL2 위에서 그대로 사용합니다.
@@ -273,8 +276,8 @@ character.dispose() // 모델·캔버스·GL 컨텍스트 해제. 두 번 불러
 Pixi 패키지들은 optional peer라 쓰지 않으면 설치되지 않습니다.
 
 ```ts
-import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
+import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 
 const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 ```

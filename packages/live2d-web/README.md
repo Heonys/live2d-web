@@ -7,6 +7,10 @@ An unofficial library for Live2D, not affiliated with Live2D Inc. Shipping an
 app built with it may need its own
 [Cubism SDK license](https://www.live2d.com/en/sdk/license/).
 
+**[Live demo](https://live2d-web-demo.netlify.app/)**, and an
+[inspector](https://live2d-web-demo.netlify.app/inspect) that loads any
+`model3.json` URL.
+
 ```bash
 npm install live2d-web
 ```
@@ -97,9 +101,9 @@ Hidden tabs and offscreen canvases pause automatically.
 
 - `live2d-web`: React-free runtime and renderer-neutral contracts
 - `live2d-web/react`: components and hooks (React 18.2/19, optional peer)
-- `live2d-web/adapters/cubism-webgl`: default WebGL2 backend (Framework
+- `live2d-web/backends/cubism-webgl`: default WebGL2 backend (Framework
   runtime and shaders included, Cubism Core not included)
-- `live2d-web/adapters/pixi-v6`: compatibility backend for
+- `live2d-web/backends/pixi-v6`: compatibility backend for
   `pixi-live2d-display@0.4` users (all Pixi peers optional)
 
 Full guide, React reference tables, troubleshooting and licensing:

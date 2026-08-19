@@ -14,8 +14,8 @@ React /react binding ──→ headless Live2DRuntime
                              ├─ resize / visibility / 품질 / retry
                              ├─ model / feature lifecycle
                              └─ Live2DBackend
-                                  ├─ adapters/cubism-webgl (기본)
-                                  └─ adapters/pixi-v6 (비교·호환)
+                                  ├─ backends/cubism-webgl (기본)
+                                  └─ backends/pixi-v6 (비교·호환)
 ```
 
 - `live2d-web` 루트에는 React, `"use client"`, PIXI, Framework가 없다.
@@ -153,7 +153,7 @@ FBO 조회 제거를 적용했다. vendor 수정 목록은 패키지 THIRD_PARTY
 
 Framework 5-r.5의 단일 소스는
 `packages/live2d-web/vendor/cubism-web-framework-5-r.5`이고 adapter는
-`packages/live2d-web/src/adapters/cubism-webgl`에 있다. Framework는 adapter
+`packages/live2d-web/src/backends/cubism-webgl`에 있다. Framework는 adapter
 전용 동적 chunk에, 13개 셰이더는 embedded source와 배포 asset에 포함된다.
 Core와 Hiyori는 ignored 개발 자산으로만 둔다. 공개·npm 배포 전 라이선스
 확인은 [라이선스 문서](licensing.md)를 따른다.

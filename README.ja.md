@@ -11,7 +11,10 @@
 [Cubism SDK のライセンス](https://www.live2d.com/ja/sdk/license/)が必要となる
 ことがあります。詳細は[ライセンスドキュメント](docs/licensing.md)にあります。
 
-ライブデモ: 最初の一般公開と同時に提供予定です。
+**[ライブデモ](https://live2d-web-demo.netlify.app/)**: モーションを再生し、
+キャラクターをタップし、マイクでリップシンクを試せます。
+[インスペクター](https://live2d-web-demo.netlify.app/inspect)では自分の
+`model3.json` も読み込めます。
 
 **状態: `0.1.0`、npm には未公開です。** デフォルトバックエンドは公式 Cubism
 Web Framework 5-r.5 のレンダラーを WebGL2 上でそのまま使用します。
@@ -280,8 +283,8 @@ character.dispose() // モデル・キャンバス・GLコンテキストを解�
 インストールされません。
 
 ```ts
-import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
+import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 
 const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 ```

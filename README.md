@@ -10,7 +10,9 @@ app built with it may need its own
 [Cubism SDK license](https://www.live2d.com/en/sdk/license/); details in
 [licensing notes](docs/licensing.md).
 
-Live demo: coming with the first public release.
+**[Live demo](https://live2d-web-demo.netlify.app/)**: play motions, tap the
+character, drive lip sync from your microphone, or load your own `model3.json`
+in the [inspector](https://live2d-web-demo.netlify.app/inspect).
 
 **Status: `0.1.0`, not yet published to npm.** The default backend runs the
 official Cubism Web Framework 5-r.5 renderer directly on WebGL2.
@@ -276,8 +278,8 @@ adapter exists for A/B comparison and migration from `pixi-live2d-display`;
 its Pixi packages are optional peers and are never pulled in otherwise.
 
 ```ts
-import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
+import { pixiV6 } from 'live2d-web/backends/pixi-v6'
 
 const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 ```

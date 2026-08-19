@@ -11,7 +11,7 @@ const sourceDirectory = path.join(
 )
 const output = path.join(
   root,
-  'packages/live2d-web/src/adapters/cubism-webgl/shaderSources.generated.ts',
+  'packages/live2d-web/src/backends/cubism-webgl/shaderSources.generated.ts',
 )
 const files = readdirSync(sourceDirectory)
   .filter(file => /\.(?:frag|vert)$/i.test(file))

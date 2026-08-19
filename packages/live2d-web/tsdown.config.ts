@@ -14,8 +14,8 @@ export default defineConfig({
   entry: {
     'index': 'src/index.ts',
     'react': 'src/react.ts',
-    'adapters/cubism-webgl': 'src/adapters/cubism-webgl/index.ts',
-    'adapters/pixi-v6': 'src/adapters/pixi-v6/index.ts',
+    'backends/cubism-webgl': 'src/backends/cubism-webgl/index.ts',
+    'backends/pixi-v6': 'src/backends/pixi-v6/index.ts',
   },
   format: 'esm',
   dts: true,
