@@ -13,15 +13,18 @@ jobs:
       # write: the GitHub release at the end of the job is created with the
       # workflow token.
       contents: write
-      # Required for npm provenance: the attestation is signed with this token.
+      # Required twice over: npm authenticates the publish through this OIDC
+      # token, and the provenance attestation is signed with it.
       id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+      # No dependency cache here, unlike CI: a release resolves everything from
+      # the registry so that a poisoned cache entry cannot reach the artifact
+      # that gets signed and published.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
 
@@ -43,11 +46,16 @@ jobs:
       - run: pnpm verify:package
 
       # pnpm packs (it resolves the catalog: protocol that npm cannot read),
-      # npm publishes (pnpm has no provenance support).
+      # npm publishes (pnpm has no trusted-publishing support).
       - run: pnpm --filter live2d-web pack --pack-destination .
+
+      # No token: npm authenticates through the trusted publisher registered
+      # for this package, which names this repository and this workflow file.
+      # Renaming this file breaks publishing until npm is updated to match.
+      # Trusted publishing needs npm 11.5.1 or later, which the npm bundled
+      # with Node is not guaranteed to be.
+      - run: npm install -g npm@latest
       - run: npm publish ./live2d-web-*.tgz --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # The npm publish is the release; the GitHub release page mirrors it with
       # the version's CHANGELOG section as the notes.
