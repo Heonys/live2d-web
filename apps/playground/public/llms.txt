@@ -1,0 +1,36 @@
+# live2d-web
+
+> A Live2D runtime for the modern web: model loading, motions, pointer
+> tracking, tap hit testing, lip sync and render quality, from vanilla
+> JavaScript or React, with a direct WebGL2 backend and no PixiJS dependency.
+
+live2d-web is an unofficial third-party library, not affiliated with Live2D
+Inc. Applications built with it may need their own Live2D Cubism SDK license
+(https://www.live2d.com/en/sdk/license/). The package does not bundle Cubism
+Core or any model; both are supplied by the application.
+
+Install: `npm install live2d-web`. Entry points: `live2d-web` (vanilla,
+React-free), `live2d-web/react` (components and hooks),
+`live2d-web/adapters/cubism-webgl` (default backend),
+`live2d-web/adapters/pixi-v6` (compatibility backend). TypeScript definitions
+with JSDoc ship with the package.
+
+## Docs
+
+- [README](https://github.com/Heonys/live2d-web#readme): full guide with
+  runnable examples for every feature (motions, taps, lip sync, parameters,
+  quality, errors) plus React reference tables
+- [API reference](https://github.com/Heonys/live2d-web/blob/main/docs/api-design.md):
+  complete signatures and per-frame contracts
+- [npm package](https://www.npmjs.com/package/live2d-web): install page with a
+  condensed API tour
+
+## Demo
+
+- [React playground](/): motions, expressions, tap hit testing, microphone
+  lip sync
+- [Vanilla playground](/vanilla): the same runtime driven with createLive2D()
+- [Model inspector](/inspect): load any model3.json URL and probe its motions,
+  expressions and parameters
+- [Backend comparison](/compare): the WebGL2 backend next to the Pixi v6
+  compatibility backend

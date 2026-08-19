@@ -2,46 +2,57 @@
 
 [English](README.md) | [한국어](README.ko.md) | **日本語**
 
-> 1回の呼び出しでウェブにLive2Dキャラクターを表示。PixiJS不要、グローバル
-> 汚染なし、Reactは任意。
+> モダンウェブのためのLive2Dランタイム。Cubismモデルの読み込み、モーション
+> 再生、視線追従、リップシンクまで、vanilla JavaScriptでもReactでも使えます。
+> PixiJSは不要です。
 
 株式会社Live2Dとは無関係の非公式ライブラリです。本ライブラリで制作した
 アプリケーションをリリースする場合、別途
 [Cubism SDK のライセンス](https://www.live2d.com/ja/sdk/license/)が必要となる
 ことがあります。詳細は[ライセンスドキュメント](docs/licensing.md)にあります。
 
-`live2d-web` は、Live2Dモデルのロード、ライフサイクル、フィッティング、
-インタラクション（タップのヒットテスト、ポインター追跡）、リップシンク、
-パラメータドライバー、描画品質、リトライとクリーンアップをランタイムが
-所有します。レンダリングはバックエンド契約の背後にあり、同じランタイムを
-素のJavaScriptからもReactからも利用できます。
-
 ライブデモ: 最初の一般公開と同時に提供予定です。
 
-**状態: `0.1.0` はローカルで実装・検証済みですが、npm には未公開
-です。** デフォルトバックエンドは公式 Cubism Web Framework 5-r.5 の
-レンダラーを WebGL2 上で直接使用します。PixiJS v6 は互換・性能比較用の
-バックエンドとしてのみ残しています。
-
-## はじめに
+**状態: `0.1.0`、npm には未公開です。** デフォルトバックエンドは公式 Cubism
+Web Framework 5-r.5 のレンダラーを WebGL2 上でそのまま使用します。
 
 ```bash
-npm install live2d-web   # 公開ゲート通過後にリリース予定
+npm install live2d-web
 ```
 
-キャラクター表示に必要なのは2つだけです。
+## このライブラリの特徴
 
-1. **Cubism Core** (`live2dcubismcore.min.js`) — Live2Dのクローズドソース
-   エンジンで、意図的に同梱していません。https://www.live2d.com/sdk/download/web/
-   から公式Web SDKをダウンロードし、ファイルを静的アセットに置いてそのURLを
-   `coreUrl` に渡してください。手早く試すには `OFFICIAL_CUBISM_CORE_URL`
-   定数（Live2Dのホスト版）も使えます。本番ではセルフホストを推奨します。
-2. **モデルのディレクトリ** — `model3.json` は `.moc3`、テクスチャ、
-   モーション、物理を相対パスで参照します。モデルのディレクトリごと配信し
-   （例: `public/models/hiyori/`）、`src` に `model3.json` のURLを渡して
-   ください。
+- **レンダリングフレームワークが不要です。** ランタイムが WebGL2 と直接
+  やり取りします。キャラクター1体のプロダクションビルドは gzip 約58KBで、
+  そこに PixiJS は含まれません。
+- **起動が速い。** シェーダーは必要になるまでコンパイルせず、アセットの
+  ダウンロードをシェーダー処理と並行させます。実機GPUでは初回表示までの時間が
+  Pixiベース比で4〜6倍短縮され、
+  [定常時のフレーム性能は同等です](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)。
+- **Reactを正式サポート。** コンポーネントとフックが vanilla API と同じ
+  コントローラーを共有し、フレーム単位の値が React state を通ることは
+  ありません。
+- **最新のCubismが基準。** Cubism 5.3 Core と公式 Framework 5-r.5 の上に
+  作られており、Cubism 4・5 のモデルを両方読み込めます。更新が止まった
+  `pixi-live2d-display` の移行先になります。
 
-## Vanilla API
+## 必要なもの
+
+パッケージに含まれないファイルが2つ必要です。
+
+1. **Cubism Core** (`live2dcubismcore.min.js`)。Live2Dのクローズドソース
+   エンジンです。https://www.live2d.com/sdk/download/web/ から公式Web SDKを
+   ダウンロードし、ファイルを自分で配信してそのURLを `coreUrl` に渡して
+   ください。手早く試すにはLive2Dのホスト版を指す `OFFICIAL_CUBISM_CORE_URL`
+   定数も使えます。本番ではセルフホストを推奨します。
+2. **モデルのディレクトリ。** `model3.json` は `.moc3`、テクスチャ、
+   モーション、物理ファイルを相対パスで参照するため、ディレクトリごと静的
+   ファイルとして配信し（例: `public/models/hiyori/`)、`model3.json` のURLを
+   `src` に渡します。
+
+## クイックスタート
+
+Vanilla:
 
 ```ts
 import { createLive2D, OFFICIAL_CUBISM_CORE_URL } from 'live2d-web'
@@ -49,139 +60,246 @@ import { createLive2D, OFFICIAL_CUBISM_CORE_URL } from 'live2d-web'
 const character = await createLive2D({
   container: document.querySelector('#character')!,
   coreUrl: OFFICIAL_CUBISM_CORE_URL,
+  src: '/models/hiyori/hiyori.model3.json',
   fit: 'upper-body',
   followPointer: true,
-  quality: 'auto',
-  src: '/models/hiyori/hiyori.model3.json',
 })
-
-// インタラクション: タップのヒットテスト、モーションの連結、メタデータ取得
-container.addEventListener('click', async (event) => {
-  if (character.hitTest(event.clientX, event.clientY).includes('Body'))
-    await character.motion('Tap@Body') // 再生終了時にresolveします
-})
-console.log(character.getModelInfo()) // { motions, expressions, hitAreas }
-
-character.setParameter('ParamMouthOpenY', 0.5)
-character.clearParameter('ParamMouthOpenY')
-character.pause()
-character.resume()
-character.dispose()
 ```
 
-`createLive2D()` は Core、Stage、モデルがすべて準備できてから resolve
-します。`expression`/`clearExpression`、`focus`/`focusAt`、
-`isMotionPlaying`、`setFit`、`retry`、`addParameterDriver`、`addLipSync`、
-状態のサブスクライブと冪等なクリーンアップも提供します。モーション再生は
-`priority`（'idle' | 'normal' | 'force'）を受け取り、アイドルグループは
-`idleMotion` オプションで変更でき、`false` で無効化できます。
-
-## React API
+React:
 
 ```tsx
 'use client'
 
-import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
+import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
-export function Character({ voice }: { voice: AudioNode | null }) {
+export function Character() {
   return (
-    <Live2DCanvas
-      // セルフホストしたCoreファイル。OFFICIAL_CUBISM_CORE_URL も利用可
-      coreUrl="/assets/live2dcubismcore.min.js"
-      quality="auto"
-    >
-      <Live2DModel src="/models/hiyori.model3.json" fit="upper-body">
-        <LipSync
-          source={voice}
-          active={voice !== null}
-          profile="/lipsync/profile.bin"
-        />
-      </Live2DModel>
+    <Live2DCanvas coreUrl="/assets/live2dcubismcore.min.js">
+      <Live2DModel src="/models/hiyori/hiyori.model3.json" followPointer />
     </Live2DCanvas>
   )
 }
 ```
 
-Reactコンポーネントは vanilla API と同じ headless コントローラーを生成・
-購読します。`Live2DModel.onLoad` と `useLive2DModel()` は、モーション、
-表情、フォーカス、パラメータ、モデル情報のメソッドだけを持つ同一の安全な
-コントローラーを返します。フレーム単位の値が React state を通ることは
-ありません。
+`createLive2D()` の promise はキャラクターが画面に表示されてから resolve
+します。コンテナにCSSサイズを与えると、キャンバスがそれを満たします。
 
-`<Live2DModel>` は `followPointer`、`paused`、
-`onTap={(hitAreas, event) => ...}` も受け取り、これらのトグルでモデルが
-再ロードされることはありません。`<LipSync>` は安定した driver オブジェクト
-が不便な場合、プレーンな値 `mouthOpen`/`speaking` も受け取れます。vanilla
-インスタンスを直接扱いたい React アプリには、`useLive2D({ container, src,
-... })` がライフサイクル全体（StrictMode安全）を所有し、
-`{ instance, state, error, retry }` を返します。
+## モーションと表情
 
-## トラブルシューティング
-
-- **何も表示されないのに状態は ready**: コンテナにCSSサイズがなく、キャン
-  バスが 1x1 に潰れています（コンソールに警告が出ます）。コンテナに幅と
-  高さを与えてください。
-- **モデルが404**: モデルのディレクトリを静的ファイルとして配信する必要が
-  あります。すべてのアセットは model3.json のURL基準の相対パスでロード
-  されます。HTTP 4xx はリトライせず即座に失敗します。
-- **キャラクター複数で重い**: キャンバスごとにWebGLコンテキストと描画
-  ループを所有します。ブラウザのコンテキスト上限は8〜16程度なので、
-  キャンバス数は少なく保ってください。
-- **モバイルでドラッグするとページがスクロールする**: キャンバスには
-  `touch-action: none` が設定されますが、スクロールする祖先要素にも必要な
-  場合があります。
-
-## バックエンド選択
-
-`backend` を省略すると Framework ベースの WebGL2 バックエンドが選択され
-ます。Pixi や WebGL1 へのフォールバックはしません。
+`motion()` は再生が実際に終わったときに resolve します。別のモーションに
+割り込まれて中断された場合も含みます。そのため `await` だけで連続演出を
+組めます。アイドル再生はモデルの `Idle` グループが自動で担い、`idleMotion`
+オプションで別のグループを指定するか、`false` で無効化できます。
 
 ```ts
-import {
-  createCubismWebGLBackend,
-  cubismWebGL,
-} from 'live2d-web/adapters/cubism-webgl'
-import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+const info = character.getModelInfo()
+// { motions: { Idle: 3, 'Tap@Body': 2 }, expressions: [...], hitAreas: [...] }
 
-// 再利用可能なデフォルトWebGLバックエンド
-const defaultBackend = cubismWebGL
+await character.motion('Tap@Body') // グループ内でランダム
+await character.motion('Tap@Body', 1) // インデックス指定
+await character.motion('Idle', 0, { priority: 'normal' }) // 再生中を中断しない
 
-// シェーダーをアプリ所有のURLから配信する場合のみ必要
-const customWebGL = createCubismWebGLBackend({
-  shaderBaseUrl: '/live2d-shaders/',
-})
-
-// 互換/A-B用。任意のPixi peer依存が必要
-const compatibilityBackend = pixiV6
+await character.expression('smile')
+character.clearExpression()
 ```
 
-Cubism Core 5.3 は意図的に同梱していません。公式のブラウザ用ファイルを
-`coreUrl` で渡すか、モデル作成前にロードして `coreUrl` を省略してください。
+優先度は `'idle' | 'normal' | 'force'` で、デフォルトは `'force'`（何でも
+中断して再生）。存在しないグループ名や表情名を渡すと、利用可能な名前の一覧を
+含むエラーで reject されます。
 
-## パッケージ境界
+## 視線追従とタップ
 
-- `live2d-web`: React非依存の vanilla ランタイムとレンダラー中立の契約。
-- `live2d-web/react`: クライアントコンポーネントとフック。Reactは optional
-  peer。
-- `live2d-web/adapters/cubism-webgl`: Framework ランタイムとシェーダーを
-  含むデフォルトWebGL2バックエンド。Cubism Core は含みません。
-- `live2d-web/adapters/pixi-v6`: `pixi-live2d-display@0.4` を使う互換/A-B
-  バックエンド。Pixi peer はすべて任意。
+`followPointer: true` を指定すると、ポインターがキャンバス上にある間は
+キャラクターがポインターを見つめ、離れると視線が中央に戻ります。手動で制御
+する場合は、ビューポート座標を受け取る `focusAt()` と、コンテナ基準のCSS
+ピクセルを受け取る `focus()` があります。`hitTest()` はクリック位置にある
+モデルのヒットエリア名を返します。
 
-自動品質はバッキングバッファをモバイル1.5MP、デスクトップ4MPに制限します。
-固定 `resolution` を与えると自動ダウンシフトは無効になります。
+```ts
+container.addEventListener('click', async (event) => {
+  const areas = character.hitTest(event.clientX, event.clientY)
+  if (areas.includes('Body'))
+    await character.motion('Tap@Body')
+})
+```
+
+Reactでは prop 2つで同じことができ、これらの prop はトグルしてもモデルを
+再読み込みしません。
+
+```tsx
+<Live2DModel
+  src="/models/hiyori/hiyori.model3.json"
+  followPointer
+  onTap={(areas) => {
+    if (areas.includes('Body'))
+      controller?.motion('Tap@Body')
+  }}
+/>
+```
 
 ## リップシンク
 
-vanilla の `addLipSync()` と React の `<LipSync>` はどちらも、既存の
-driver または呼び出し側が所有する WebAudio `AudioNode` を受け取ります。
-source モードは wLipSync を動的にロードします。パッケージはキャリブレー
-ションプロファイルを含まず、呼び出し側の `AudioContext` を閉じたり中断
-したりしません。
+口を動かす方法は3通りあります。いずれもSDKのモーション更新の後に値を書き込む
+ため、モーションカーブに上書きされることはありません。
 
-`ParamMouthOpenY`、200msのリリース、500msの口閉じハンドオフはこのアルファ
-APIでは固定です。最終的なパラメータ書き込みはSDKモーション更新の後に行われ、
-フレーム単位のReactレンダーは発生しません。
+**オーディオノードから**（wLipSyncによる母音分析、必要時に動的ロード）:
+
+```ts
+const stopLipSync = character.addLipSync({
+  source: audioNode, // TTS出力などのWebAudioノード
+  profile: '/lipsync/profile.bin', // wLipSyncのキャリブレーションプロファイル
+  isSpeaking: () => isPlaying,
+})
+```
+
+**自作のアナライザーから**（0〜1の口の開き具合を返すロジックなら何でも）:
+
+```ts
+character.addLipSync({
+  driver: {
+    getMouthOpen: () => currentVolume,
+    isSpeaking: () => currentVolume > 0,
+  },
+})
+```
+
+**値を直接、React専用**（すでにstateに値があるなら最も簡単）:
+
+```tsx
+<LipSync mouthOpen={mouth} speaking={mouth > 0} />
+```
+
+対象パラメータのデフォルトは `ParamMouthOpenY` で、`parameterId` で変更でき
+ます。ライブラリが呼び出し側の `AudioContext` を閉じたり中断したりすることは
+なく、キャリブレーションプロファイルも同梱しません。
+
+## パラメータの直接制御
+
+`setParameter()` は持続するオーバーライドです。`clearParameter()` で解除する
+まで、毎フレーム、モーションカーブより優先されます。毎フレーム計算し直す値
+なら、代わりにドライバーを登録してください。SDKの更新が終わるたびに
+ライブラリが値を読み取ります。
+
+```ts
+character.setParameter('ParamMouthOpenY', 0.6) // 口を開けたままにする
+character.clearParameter('ParamMouthOpenY') // 再びモーションが制御
+
+const stop = character.addParameterDriver('ParamAngleX', {
+  getValue: () => Math.sin(performance.now() / 300) * 30,
+})
+```
+
+Reactでは `useLive2DParameter(id, value)` がオーバーライドを（アンマウント時に
+自動で解除）、`useParameterDriver(id, getter)` がフレーム単位のドライバーを
+担当します。
+
+## フィッティングと描画品質
+
+`fit` はモデルファイルに手を入れずに構図を決めます。`'upper-body'`（デフォルト）、
+`'full'`、または `{ scale, offsetX, offsetY }` を直接指定でき、実行中は
+`setFit()` で変更します。
+
+描画品質はデフォルトで自動です。バッキングバッファは `devicePixelRatio` に
+追従しつつ上限があり（モバイル1.5MP、デスクトップ4MP）、フレームが長引くと
+解像度を一段ずつ下げます。固定の `resolution` を渡すと自動調整が無効になり、
+`maxFps` でフレーム上限を設定できます。タブが非表示になると描画は自動で
+止まり、キャンバスが画面外にスクロールされたときも止まります
+（`pauseWhenOffscreen: false` で無効化できます）。
+
+```ts
+const character = await createLive2D({
+  // ...
+  fit: 'full',
+  maxFps: 30,
+  pauseWhenOffscreen: false, // キャプチャ用途などで描画を続けたいとき
+})
+```
+
+## 状態・エラー・後片付け
+
+`getState()` は `{ status, loadingStage, error, render }` を返し、
+`subscribe()` は状態が変わるたびに通知します。エラーには安定した `code`
+（`'core-missing'`、`'model-load-failed'`、`'render-error'` など）とアセット
+情報が含まれます。HTTP 4xx はリトライせず即座に失敗し、一時的な失敗は
+デフォルトで2回リトライします（`retries`）。WebGLコンテキスト喪失のような
+描画エラーの後は、`retry()` がステージ全体を作り直します。
+
+```ts
+const character = await createLive2D({
+  // ...
+  onError: error => console.warn(error.code, error.message),
+})
+
+const unsubscribe = character.subscribe(() => {
+  console.log(character.getState().status) // 'loading' | 'ready' | 'error'
+})
+
+character.pause() // モーダル表示中など
+character.resume()
+character.dispose() // モデル・キャンバス・GLコンテキストを解放。2回呼んでも安全
+```
+
+読み込みの中断は、標準の `AbortSignal` を `signal` オプションに渡すだけです。
+
+## React早見表
+
+すべて `live2d-web/react` にあります。React は optional peer（18.2と19を
+サポート）で、ルートのインポートに React コードは一切含まれません。
+
+| `<Live2DCanvas>` prop                  | 役割                                                     |
+| -------------------------------------- | -------------------------------------------------------- |
+| `coreUrl`                              | Cubism Core スクリプトのURL（ロード済みなら省略可）      |
+| `quality` / `resolution`               | 自動品質（デフォルト）または固定のバッファ倍率           |
+| `maxFps`, `pauseWhenOffscreen`         | フレーム上限と画面外での一時停止                         |
+| `backend`                              | レンダラーバックエンド。レンダー間で同じ値を保つこと     |
+| `fallback`, `errorFallback`, `onError` | ローディングUI、リトライ付きエラーUI、エラーコールバック |
+
+| `<Live2DModel>` prop                  | 役割                                                           |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `src`, `fit`, `idleMotion`, `retries` | モデルURLと読み込み時オプション                                |
+| `followPointer`, `paused`, `onTap`    | インタラクションのトグル。変更してもモデルを再読み込みしません |
+| `onLoad`, `onError`                   | コントローラーの受け取りとエラーコールバック                   |
+
+| フック                           | 役割                                                                                            |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `useLive2DModel()`               | `onLoad` が渡すものと同じコントローラー（モーション・表情・フォーカス・パラメータ・モデル情報） |
+| `useLive2DCanvas()`              | ステージ状態: `status`、`loadingStage`、`error`、描画情報                                       |
+| `useLive2DParameter(id, value)`  | 宣言的なパラメータオーバーライド。解除は自動                                                    |
+| `useParameterDriver(id, getter)` | フレーム単位のパラメータドライバー                                                              |
+| `useLive2D(options)`             | vanilla インスタンスをReactのライフサイクルで管理（StrictMode安全）                             |
+
+`<LipSync>` は3つのモードのうち、ちょうど1つだけを受け取ります: `driver`、
+`source`/`active`/`profile`、または `mouthOpen`/`speaking`。
+
+## バックエンドの切り替え
+
+`backend` を省略するとデフォルトの Framework/WebGL2 アダプターがロードされ
+ます。`pixi-live2d-display` から移行する際のA/B比較用に Pixi v6 アダプターも
+ありますが、Pixi のパッケージ群は optional peer なので、使わなければ
+インストールされません。
+
+```ts
+import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/adapters/cubism-webgl'
+import { pixiV6 } from 'live2d-web/adapters/pixi-v6'
+
+const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
+```
+
+## トラブルシューティング
+
+- **何も表示されないのに状態は ready**: コンテナにCSSサイズがなく、キャンバス
+  が 1x1 に潰れています（コンソールに警告が出ます）。コンテナに幅と高さを
+  与えてください。
+- **モデルが404**: モデルのディレクトリを静的ファイルとして配信する必要が
+  あります。すべてのアセットは model3.json のURL基準の相対パスでロードされ
+  ます。HTTP 4xx はリトライせず即座に失敗します。
+- **キャラクター複数で重い**: キャンバスごとにWebGLコンテキストと描画ループが
+  1つずつ生まれます。ブラウザのコンテキスト上限は8〜16程度なので、キャンバス
+  数を減らしてください。
+- **モバイルでドラッグするとページがスクロールする**: キャンバスには
+  `touch-action: none` が設定されますが、スクロールする祖先要素にも必要な
+  場合があります。
 
 ## 開発
 
@@ -189,29 +307,17 @@ Node 24 と pnpm が必要です。
 
 ```bash
 pnpm install
-LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets
+LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # 案内される規約を確認のうえCoreとサンプルモデルを取得
 pnpm dev
 
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm test:e2e
-pnpm verify:package
+pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
 ```
 
-ベンチマークスイート（startup、18条件matrix、memory、バックエンドA/B、
-実機GPU実行）は[ベンチマークガイド](docs/benchmarking.md)に記載しています。
-
-`LIVE2D_ACCEPT_TERMS=1` は、コマンドが案内する公式規約を確認したうえで
-ローカル開発用ダウンロードを承認するフラグです。スクリプトは公式 Cubism
-5.3 Core（`core/06`）、Hiyori、固定版 `CubismWebSamples@5-r.5` の
-Mark/Mao/Rice/Ren リソースを使用し、gitignore された開発パスにのみ書き込み
-ます。これらのアセットはパッケージに含まれません。
-
-Playground は `/` にReactデモ、`/vanilla` に vanilla コントローラー、
-`/inspect` にURLベースのモデルインスペクター、`/compare` に WebGL/Pixi の
-A-Bビューを提供します。`apps/vanilla-consumer` はReact依存が一切ない別の
-Viteフィクスチャです。
+ダウンロードしたアセットは gitignore された開発パスにのみ保存され、
+パッケージに含まれることはありません。Playground は `/` にReactデモ、
+`/vanilla` に vanilla API、`/inspect` にモデルインスペクター、`/compare` に
+WebGL/Pixi 比較画面を提供します。ベンチマークは
+[ベンチマークガイド](docs/benchmarking.md)にまとめています。
 
 ## ドキュメント
 
@@ -220,14 +326,15 @@ Viteフィクスチャです。
 - [APIリファレンス](docs/api-design.md)
 - [アーキテクチャ](docs/architecture.md)
 - [ライセンス](docs/licensing.md)
-- [ベンチマークガイド](docs/benchmarking.md)と
-  [WebGL vs Pixi v6 の結果](docs/benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+- [ベンチマークガイド](docs/benchmarking.md)、
+  [WebGL vs Pixi v6 の結果](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)、
+  [実機GPUでの起動コスト](docs/benchmarks/2026-08-18-hardware-matrix.md)
 
 ## ライセンスと商標
 
-プロジェクト自体のソースはMITライセンスです。同梱される Cubism Web
-Framework とシェーダーは Live2D のライセンスに従います。パッケージの
-ライセンス詳細と変更した Framework ファイルの一覧は
+プロジェクト自体のソースはMITライセンスです。同梱される Cubism Web Framework
+とシェーダーは Live2D のライセンスに従います。パッケージのライセンス詳細と
+変更した Framework ファイルの一覧は
 [LICENSES.md](packages/live2d-web/LICENSES.md) と
 [THIRD_PARTY_NOTICES.md](packages/live2d-web/THIRD_PARTY_NOTICES.md) に
 記録されています。

@@ -1,7 +1,7 @@
 # live2d-web
 
-> Put a Live2D character on the web with one call. No PixiJS, no globals,
-> React optional.
+> A Live2D runtime for the modern web. Load a Cubism model, play motions,
+> follow the pointer and lip sync, from vanilla JavaScript or React. No PixiJS.
 
 An unofficial library for Live2D, not affiliated with Live2D Inc. Shipping an
 app built with it may need its own
@@ -11,11 +11,12 @@ app built with it may need its own
 npm install live2d-web
 ```
 
-You also need the official Cubism Core file (not bundled; see the
-[project README](https://github.com/Heonys/live2d-web#readme) for the
-one-minute setup) and a Cubism 4/5 model directory served as static files.
+You also need the official Cubism Core file (not bundled; download it from
+https://www.live2d.com/sdk/download/web/ or use the hosted
+`OFFICIAL_CUBISM_CORE_URL` for a quick trial) and a Cubism 4/5 model directory
+served as static files.
 
-## Vanilla
+## Quick start
 
 ```ts
 import { createLive2D, OFFICIAL_CUBISM_CORE_URL } from 'live2d-web'
@@ -23,22 +24,16 @@ import { createLive2D, OFFICIAL_CUBISM_CORE_URL } from 'live2d-web'
 const character = await createLive2D({
   container: document.querySelector('#character')!,
   coreUrl: OFFICIAL_CUBISM_CORE_URL, // self-host the file for production
+  src: '/models/hiyori/hiyori.model3.json',
   fit: 'upper-body',
   followPointer: true,
-  src: '/models/hiyori/hiyori.model3.json',
 })
-
-await character.motion('Tap@Body') // resolves when playback finishes
-character.hitTest(event.clientX, event.clientY) // ['Body']
-character.dispose()
 ```
-
-## React
 
 ```tsx
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
-<Live2DCanvas coreUrl="/assets/live2dcubismcore.min.js" quality="auto">
+<Live2DCanvas coreUrl="/assets/live2dcubismcore.min.js">
   <Live2DModel
     src="/models/hiyori/hiyori.model3.json"
     followPointer
@@ -47,16 +42,67 @@ import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 </Live2DCanvas>
 ```
 
+## Motions, expressions, taps
+
+```ts
+character.getModelInfo() // { motions: { Idle: 3, 'Tap@Body': 2 }, expressions, hitAreas }
+
+await character.motion('Tap@Body') // resolves when playback finishes
+await character.expression('smile')
+character.clearExpression()
+
+container.addEventListener('click', async (event) => {
+  if (character.hitTest(event.clientX, event.clientY).includes('Body'))
+    await character.motion('Tap@Body')
+})
+```
+
+## Lip sync
+
+```ts
+// From a WebAudio node (vowel analysis via wLipSync, loaded on demand):
+character.addLipSync({
+  source: audioNode,
+  profile: '/lipsync/profile.bin',
+  isSpeaking: () => isPlaying,
+})
+
+// Or from any logic that yields mouth openness 0..1:
+character.addLipSync({
+  driver: { getMouthOpen: () => volume, isSpeaking: () => volume > 0 },
+})
+```
+
+React also takes plain values: `<LipSync mouthOpen={mouth} speaking={mouth > 0} />`.
+
+## Parameters, state, cleanup
+
+```ts
+character.setParameter('ParamMouthOpenY', 0.6) // persistent override
+character.clearParameter('ParamMouthOpenY') // motions take over again
+character.addParameterDriver('ParamAngleX', { getValue: () => angle })
+
+character.subscribe(() => console.log(character.getState().status))
+character.pause()
+character.resume()
+await character.retry() // rebuilds the stage after e.g. WebGL context loss
+character.dispose() // safe to call twice
+```
+
+Rendering quality is automatic by default (capped backing buffer, steps down on
+long frames); pass a fixed `resolution` to opt out, `maxFps` to cap the rate.
+Hidden tabs and offscreen canvases pause automatically.
+
 ## Entry points
 
-- `live2d-web` — React-free runtime and renderer-neutral contracts
-- `live2d-web/react` — client components and hooks (React is an optional peer)
-- `live2d-web/adapters/cubism-webgl` — default WebGL2 backend (Framework
+- `live2d-web`: React-free runtime and renderer-neutral contracts
+- `live2d-web/react`: components and hooks (React 18.2/19, optional peer)
+- `live2d-web/adapters/cubism-webgl`: default WebGL2 backend (Framework
   runtime and shaders included, Cubism Core not included)
-- `live2d-web/adapters/pixi-v6` — compatibility backend for
+- `live2d-web/adapters/pixi-v6`: compatibility backend for
   `pixi-live2d-display@0.4` users (all Pixi peers optional)
 
-Full API reference, troubleshooting and licensing:
+Full guide, React reference tables, troubleshooting and licensing:
 [github.com/Heonys/live2d-web](https://github.com/Heonys/live2d-web#readme).
 
 The bundled Cubism Web Framework and its WebGL shaders remain under Live2D's
