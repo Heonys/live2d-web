@@ -2,9 +2,9 @@
 
 [English](README.md) | **한국어** | [日本語](README.ja.md)
 
-> 모던 웹을 위한 Live2D 런타임입니다. Cubism 모델을 불러와서 모션 재생, 시선
-> 추적, 립싱크까지 vanilla JavaScript와 React 어디서든 쓸 수 있습니다.
-> PixiJS가 필요 없습니다.
+> 웹에서 Live2D 캐릭터를 움직이는 라이브러리입니다. 모델을 불러와 모션 재생,
+> 시선 추적, 립싱크까지 처리합니다. PixiJS 없이 동작하고, React는 써도 되고
+> 안 써도 됩니다.
 
 Live2D Inc.와 무관한 비공식 라이브러리입니다. 이걸로 만든 앱을 배포할 때는
 별도의 [Cubism SDK 라이선스](https://www.live2d.com/en/sdk/license/)가 필요할
@@ -24,18 +24,15 @@ npm install live2d-web
 
 ## 왜 이 라이브러리인가
 
-- **렌더링 프레임워크가 필요 없습니다.** 런타임이 WebGL2와 직접 통신합니다.
-  캐릭터 하나를 띄우는 프로덕션 빌드가 gzip 기준 약 58KB이고, 그 안에 PixiJS는
-  없습니다.
-- **시작이 빠릅니다.** 셰이더는 필요할 때만 컴파일하고, 에셋 다운로드를 셰이더
-  작업과 겹쳐서 진행합니다. 실제 GPU에서 첫 화면까지 걸리는 시간이 Pixi 기반
-  대비 4~6배 줄었고,
+- 밑에 PixiJS가 없습니다. 런타임이 WebGL2와 직접 통신하기 때문에 캐릭터 하나가
+  gzip 기준 58KB 정도에 들어갑니다.
+- 시작이 빠릅니다. 셰이더를 필요할 때만 컴파일하고 다운로드를 컴파일과 겹쳐서,
+  실제 GPU에서 첫 화면까지의 시간이 Pixi 기반 대비 4~6배 줄었습니다.
   [평상시 프레임 성능은 동등합니다](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- **React를 정식으로 지원합니다.** 컴포넌트와 훅이 vanilla API와 같은 컨트롤러를
-  공유하고, 프레임 단위 값은 React state를 거치지 않습니다.
-- **최신 Cubism 기준입니다.** Cubism 5.3 Core와 공식 Framework 5-r.5 위에서
-  만들어져 Cubism 4·5 모델을 모두 불러옵니다. 업데이트가 멈춘
-  `pixi-live2d-display`를 대체할 수 있습니다.
+- React 지원이 래퍼가 아닙니다. 컴포넌트와 훅이 vanilla API와 같은 컨트롤러를
+  움직이고, 프레임 단위 값은 React state를 거치지 않습니다.
+- Cubism 5.3 Core와 공식 Framework 5-r.5 기준으로 만들어져 Cubism 4·5 모델을
+  모두 불러옵니다. 업데이트가 멈춘 `pixi-live2d-display`를 대신할 수 있습니다.
 
 ## 준비물
 
@@ -82,15 +79,12 @@ export function Character() {
 }
 ```
 
-`createLive2D()`가 반환하는 promise는 캐릭터가 화면에 나타난 뒤에 resolve됩니다.
-컨테이너에 CSS 크기를 주면 캔버스가 그 크기를 채웁니다.
+promise는 캐릭터가 화면에 나타난 뒤에 resolve됩니다. 컨테이너에 CSS 크기만
+주면 캔버스가 알아서 채웁니다. 레이아웃 규칙은 이게 전부입니다.
 
 ## 모션과 표정
 
-`motion()`은 재생이 실제로 끝났을 때 resolve됩니다. 다른 모션이 끼어들어
-중단된 경우도 포함해서요. 그래서 `await`만으로 순차 연출을 만들 수 있습니다.
-기본 움직임은 모델의 `Idle` 그룹이 자동으로 재생하고, `idleMotion` 옵션으로
-다른 그룹을 지정하거나 `false`로 끌 수 있습니다.
+모델에 뭐가 들어 있는지부터 물어보세요.
 
 ```ts
 const info = character.getModelInfo()
@@ -104,16 +98,20 @@ await character.expression('smile')
 character.clearExpression()
 ```
 
-우선순위는 `'idle' | 'normal' | 'force'`이고 기본값은 `'force'`(무엇이든
-중단하고 재생)입니다. 없는 그룹이나 표정 이름을 넘기면 사용 가능한 이름
-목록이 담긴 에러로 reject됩니다.
+모션의 promise는 재생이 실제로 끝났을 때 resolve됩니다. 시작 시점이 아니라요.
+덕분에 순차 연출은 `await` 하나 걸고 다음 모션을 시작하면 끝입니다. 도중에
+다른 모션이 끼어들면 그 시점에 resolve되므로 영영 기다리는 일은 없습니다.
+
+기본 움직임은 모델의 `Idle` 그룹이 알아서 재생합니다. 다른 그룹을 쓰고 싶으면
+`idleMotion`으로 지정하고, `false`를 주면 꺼집니다. 우선순위는
+`'idle' | 'normal' | 'force'` 세 단계이고 기본값 `'force'`는 재생 중인 모션을
+끊고 들어갑니다. 없는 그룹이나 표정 이름을 넘기면 쓸 수 있는 이름 목록이 담긴
+에러가 돌아옵니다.
 
 ## 시선 추적과 탭
 
-`followPointer: true`를 주면 포인터가 캔버스 위에 있는 동안 캐릭터가 포인터를
-바라보고, 벗어나면 시선이 가운데로 돌아옵니다. 직접 제어할 때는 뷰포트 좌표를
-받는 `focusAt()`, 컨테이너 기준 CSS 픽셀을 받는 `focus()`를 쓰면 됩니다.
-`hitTest()`는 클릭한 지점에 있는 모델의 히트 영역 이름을 돌려줍니다.
+`followPointer: true` 하나면 캐릭터가 캔버스 위의 포인터를 따라 보고, 포인터가
+나가면 시선이 가운데로 돌아옵니다. 탭 처리는 히트 테스트 한 번이면 됩니다.
 
 ```ts
 container.addEventListener('click', async (event) => {
@@ -123,8 +121,11 @@ container.addEventListener('click', async (event) => {
 })
 ```
 
-React에서는 prop 두 개면 되고, 이 prop들은 바뀌어도 모델을 다시 불러오지
-않습니다.
+시선을 직접 움직일 때는 메서드가 둘 있습니다. `focusAt()`은 뷰포트 좌표를,
+`focus()`는 컨테이너 기준 CSS 픽셀을 받습니다.
+
+React에서는 prop 두 개로 같은 일을 합니다. 이 prop들은 바뀌어도 모델을 다시
+불러오지 않습니다.
 
 ```tsx
 <Live2DModel
@@ -139,10 +140,12 @@ React에서는 prop 두 개면 되고, 이 prop들은 바뀌어도 모델을 다
 
 ## 립싱크
 
-입을 움직이는 방법이 세 가지 있습니다. 어느 쪽이든 SDK의 모션 업데이트가 끝난
-뒤에 값을 쓰기 때문에 모션 커브에 덮어써지지 않습니다.
+입을 움직이는 방법은 세 가지입니다. 오디오가 어디에 있느냐에 따라 고르면
+됩니다. 어느 쪽이든 SDK의 모션 업데이트가 끝난 뒤에 값을 쓰기 때문에 모션
+커브에 덮어써질 걱정은 없습니다.
 
-**오디오 노드로** (wLipSync 모음 분석, 필요할 때 동적 로드):
+WebAudio 노드(TTS 출력, 마이크)가 있다면 wLipSync에 모음 분석을 맡기세요.
+분석기는 필요할 때 동적으로 로드됩니다.
 
 ```ts
 const stopLipSync = character.addLipSync({
@@ -152,7 +155,8 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-**직접 만든 분석기로** (0~1 사이의 입 열림 값을 내는 어떤 로직이든):
+입 열림 값을 직접 계산하고 싶다면 0~1 사이 값을 내는 로직을 그대로 넘기면
+됩니다.
 
 ```ts
 character.addLipSync({
@@ -163,21 +167,23 @@ character.addLipSync({
 })
 ```
 
-**값으로 직접, React 전용** (이미 state로 값이 있을 때 가장 간단합니다):
+React에서는 값을 바로 넘길 수도 있습니다. 값이 이미 state에 있다면 이게 제일
+간단합니다.
 
 ```tsx
 <LipSync mouthOpen={mouth} speaking={mouth > 0} />
 ```
 
-대상 파라미터는 기본이 `ParamMouthOpenY`이고 `parameterId`로 바꿀 수 있습니다.
-라이브러리는 호출자의 `AudioContext`를 닫거나 멈추지 않고, 캘리브레이션
-프로파일도 포함하지 않습니다.
+대상 파라미터는 기본이 `ParamMouthOpenY`이고 `parameterId`로 바꿉니다.
+라이브러리가 호출자의 `AudioContext`를 닫거나 멈추는 일은 없고, 캘리브레이션
+프로파일도 들어 있지 않습니다.
 
 ## 파라미터 직접 제어
 
-`setParameter()`는 지속되는 오버라이드입니다. `clearParameter()`로 풀어주기
-전까지 매 프레임 모션 커브보다 우선합니다. 매 프레임 새로 계산하는 값이라면
-드라이버를 등록하세요. SDK 업데이트가 끝날 때마다 라이브러리가 값을 읽어 갑니다.
+모션이 뭐라고 하든 특정 파라미터를 원하는 값에 고정하고 싶을 때가 있습니다.
+그게 `setParameter()`입니다. `clearParameter()`로 풀기 전까지 매 프레임 모션
+커브를 이깁니다. 매 프레임 새로 계산하는 값이라면 드라이버를 등록하세요. SDK
+업데이트가 끝날 때마다 라이브러리가 값을 읽어 갑니다.
 
 ```ts
 character.setParameter('ParamMouthOpenY', 0.6) // 입을 계속 벌려 둠
@@ -188,9 +194,8 @@ const stop = character.addParameterDriver('ParamAngleX', {
 })
 ```
 
-React에서는 `useLive2DParameter(id, value)`가 오버라이드를(언마운트 시 알아서
-해제됩니다), `useParameterDriver(id, getter)`가 프레임 단위 드라이버를
-담당합니다.
+React 쪽 짝은 `useLive2DParameter(id, value)`(오버라이드, 언마운트 시 알아서
+해제)와 `useParameterDriver(id, getter)`(프레임 단위 드라이버)입니다.
 
 ## 화면 맞춤과 렌더 품질
 
@@ -198,11 +203,11 @@ React에서는 `useLive2DParameter(id, value)`가 오버라이드를(언마운�
 `'full'`, 또는 `{ scale, offsetX, offsetY }`를 직접 줄 수 있고, 실행 중에는
 `setFit()`으로 바꿉니다.
 
-렌더 품질은 기본이 자동입니다. 백킹 버퍼가 `devicePixelRatio`를 따라가되
-상한이 있고(모바일 1.5MP, 데스크톱 4MP), 프레임이 길어지면 해상도를 한 단계씩
-내립니다. 고정 `resolution`을 주면 자동 조절이 꺼지고, `maxFps`로 프레임
-상한을 걸 수 있습니다. 탭이 숨겨지면 렌더링이 자동으로 멈추고, 캔버스가 화면
-밖으로 스크롤되어도 멈춥니다(`pauseWhenOffscreen: false`로 끌 수 있습니다).
+렌더 품질은 기본적으로 알아서 돌아갑니다. 백킹 버퍼가 `devicePixelRatio`를
+따라가되 상한이 있고(모바일 1.5MP, 데스크톱 4MP), 프레임이 길어지면 해상도를
+한 단계씩 내립니다. 대부분의 앱은 이대로 두면 됩니다. 고정하고 싶다면
+`resolution`을 직접 주고, 프레임 상한은 `maxFps`로 겁니다. 숨겨진 탭과 화면
+밖으로 스크롤된 캔버스는 자동으로 멈춥니다.
 
 ```ts
 const character = await createLive2D({
@@ -216,11 +221,9 @@ const character = await createLive2D({
 ## 상태, 에러, 정리
 
 `getState()`는 `{ status, loadingStage, error, render }`를 돌려주고,
-`subscribe()`는 상태가 바뀔 때마다 알려줍니다. 에러에는 안정된 `code`
-(`'core-missing'`, `'model-load-failed'`, `'render-error'` 등)와 에셋 정보가
-담깁니다. HTTP 4xx는 재시도 없이 바로 실패하고, 일시적인 실패는 기본 2회
-재시도합니다(`retries`). WebGL 컨텍스트 손실 같은 렌더 에러 후에는 `retry()`가
-스테이지 전체를 다시 만듭니다.
+`subscribe()`는 상태가 바뀔 때마다 알려줍니다. 에러마다 안정된 `code`
+(`'core-missing'`, `'model-load-failed'`, `'render-error'` 등)와 문제가 된
+에셋 정보가 붙어 있습니다.
 
 ```ts
 const character = await createLive2D({
@@ -237,7 +240,10 @@ character.resume()
 character.dispose() // 모델·캔버스·GL 컨텍스트 해제. 두 번 불러도 안전합니다
 ```
 
-로딩 중단은 표준 `AbortSignal`을 `signal` 옵션으로 넘기면 됩니다.
+알아두면 좋은 동작 몇 가지. HTTP 4xx는 재시도 없이 바로 실패하고, 일시적인
+실패는 기본 2회 재시도합니다. WebGL 컨텍스트 손실 같은 렌더 에러 뒤에는
+`retry()`가 스테이지 전체를 다시 만듭니다. 로딩 중단은 표준 `AbortSignal`을
+`signal`로 넘기면 됩니다.
 
 ## React 한눈에 보기
 
@@ -271,9 +277,10 @@ character.dispose() // 모델·캔버스·GL 컨텍스트 해제. 두 번 불러
 
 ## 백엔드 교체
 
-`backend`를 생략하면 기본인 Framework/WebGL2 어댑터가 로드됩니다.
-`pixi-live2d-display`에서 넘어올 때의 A/B 비교용으로 Pixi v6 어댑터도 있는데,
-Pixi 패키지들은 optional peer라 쓰지 않으면 설치되지 않습니다.
+`backend`를 생략하면 기본인 Framework/WebGL2 백엔드가 로드됩니다. Pixi v6
+백엔드도 하나 더 있는데, A/B 비교와 `pixi-live2d-display`에서 넘어오는 용도로
+남겨둔 것입니다. Pixi 패키지들은 optional peer라 실제로 쓰기 전에는 설치되지
+않습니다.
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
@@ -284,18 +291,18 @@ const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 
 ## 문제 해결
 
-- **아무것도 안 보이는데 상태는 ready**: 컨테이너에 CSS 크기가 없어 캔버스가
-  1x1로 접힌 경우입니다(콘솔에 경고가 찍힙니다). 컨테이너에 너비와 높이를
-  주세요.
-- **모델 404**: 모델 디렉터리를 정적 파일로 서빙해야 하고, 모든 에셋은
-  model3.json URL 기준 상대 경로로 로드됩니다. HTTP 4xx는 재시도 없이 바로
-  실패합니다.
-- **캐릭터를 여러 개 띄우니 느림**: 캔버스마다 WebGL 컨텍스트와 렌더 루프가
-  하나씩 생깁니다. 브라우저의 컨텍스트 상한이 8~16개 수준이니 캔버스 수를
-  줄이세요.
-- **모바일에서 캐릭터를 드래그하면 페이지가 스크롤됨**: 캔버스에는
-  `touch-action: none`이 설정되지만, 스크롤되는 상위 요소에도 필요할 수
-  있습니다.
+- 아무것도 안 보이는데 상태는 ready라면: 컨테이너에 CSS 크기가 없어서 캔버스가
+  1x1로 접힌 겁니다. 컨테이너에 너비와 높이를 주세요. 이 경우 콘솔에 경고도
+  찍힙니다.
+- 모델이 404라면: 모델 디렉터리가 정적 파일로 서빙되고 있는지 확인하세요. 모든
+  에셋은 model3.json URL 기준 상대 경로로 로드되고, HTTP 4xx는 재시도 없이
+  바로 실패합니다.
+- 캐릭터를 여러 개 띄웠더니 느리다면: 캔버스마다 WebGL 컨텍스트와 렌더 루프가
+  하나씩 생기고, 브라우저의 컨텍스트 상한은 8~16개 수준입니다. 캔버스 수를
+  줄이는 게 답입니다.
+- 모바일에서 캐릭터를 드래그하면 페이지가 스크롤된다면: 캔버스에는
+  `touch-action: none`이 설정되지만, 스크롤되는 상위 요소에도 같은 설정이
+  필요할 수 있습니다.
 
 ## 개발
 

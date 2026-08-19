@@ -15,10 +15,10 @@ app built with it may need its own
 npm install live2d-web
 ```
 
-You also need the official Cubism Core file (not bundled; download it from
-https://www.live2d.com/sdk/download/web/ or use the hosted
-`OFFICIAL_CUBISM_CORE_URL` for a quick trial) and a Cubism 4/5 model directory
-served as static files.
+Two things aren't bundled: the official Cubism Core file, which you download
+from https://www.live2d.com/sdk/download/web/ (or point at the hosted
+`OFFICIAL_CUBISM_CORE_URL` for a quick trial), and a Cubism 4/5 model
+directory served as static files.
 
 ## Quick start
 
@@ -93,9 +93,9 @@ await character.retry() // rebuilds the stage after e.g. WebGL context loss
 character.dispose() // safe to call twice
 ```
 
-Rendering quality is automatic by default (capped backing buffer, steps down on
-long frames); pass a fixed `resolution` to opt out, `maxFps` to cap the rate.
-Hidden tabs and offscreen canvases pause automatically.
+Rendering quality takes care of itself: the backing buffer is capped and steps
+down when frames run long. Pass a fixed `resolution` to opt out, and `maxFps`
+to cap the frame rate. Hidden tabs and offscreen canvases pause automatically.
 
 ## Entry points
 

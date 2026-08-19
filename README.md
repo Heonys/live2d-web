@@ -23,18 +23,16 @@ npm install live2d-web
 
 ## Why this library
 
-- **No rendering framework required.** The runtime talks to WebGL2 directly.
-  A production build with one character is about 58KB gzipped, and none of it
-  is PixiJS.
-- **Fast startup.** Shader compilation is lazy, and asset loading overlaps
-  shader work. On GPU hardware this cut time-to-first-frame by 4 to 6 times
-  against the Pixi-based baseline, with
+- There's no PixiJS underneath. The runtime talks to WebGL2 itself, which is
+  how one character fits in about 58KB gzipped.
+- Startup is fast. Shaders compile lazily and downloads overlap the compile
+  work; on GPU hardware that cut time-to-first-frame by 4 to 6 times against
+  the Pixi-based baseline, at
   [equal steady-state frame rates](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- **First-class React bindings.** Components and hooks share one headless
-  controller with the vanilla API. Per-frame values never pass through React
-  state.
-- **Current Cubism.** Built for Cubism 5.3 Core and the official Framework
-  5-r.5, so Cubism 4 and 5 models both load. A drop-in path away from the
+- React support isn't a wrapper. The components and hooks drive the same
+  controller as the vanilla API, and per-frame values never touch React state.
+- It's built for Cubism 5.3 Core and the official Framework 5-r.5, loads
+  Cubism 4 and 5 models alike, and makes a realistic replacement for the
   unmaintained `pixi-live2d-display`.
 
 ## What you need
@@ -83,15 +81,12 @@ export function Character() {
 }
 ```
 
-The promise from `createLive2D()` resolves once the character is on screen.
-Give the container a CSS size; the canvas fills it.
+The promise resolves once the character is on screen. Give the container a CSS
+size and the canvas fills it; that's the whole layout contract.
 
 ## Motions and expressions
 
-`motion()` resolves when playback actually finishes, including when another
-motion interrupts it, so sequencing works with plain `await`. Idle playback
-runs automatically from the model's `Idle` group; pick another group with
-`idleMotion`, or pass `false` to disable it.
+Start by asking the model what it ships:
 
 ```ts
 const info = character.getModelInfo()
@@ -105,17 +100,21 @@ await character.expression('smile')
 character.clearExpression()
 ```
 
-Priorities are `'idle' | 'normal' | 'force'` (default `'force'`, which
-interrupts anything). Unknown group or expression names reject with an error
-that lists the available names.
+A motion's promise resolves when playback is actually done, not when it
+starts. So sequencing is just `await` one, then start the next. If something
+interrupts the motion, the promise resolves at that moment instead of hanging.
+
+Idle playback runs on its own from the model's `Idle` group; use `idleMotion`
+to pick a different group, or `false` to turn it off. Priorities are
+`'idle' | 'normal' | 'force'`, and the default `'force'` interrupts whatever
+is playing. Ask for a group or expression the model doesn't have and the error
+lists the valid names, which saves a round trip to the model file.
 
 ## Pointer tracking and taps
 
-`followPointer: true` makes the character look at the pointer while it is over
-the canvas and look back to the centre when it leaves. For manual control,
-`focusAt()` takes viewport client coordinates and `focus()` takes
-container-local CSS pixels. `hitTest()` returns the model's hit-area names
-under a client point.
+Set `followPointer: true` and the character watches the pointer while it's
+over the canvas, then looks back to the centre when it leaves. Tap handling is
+a hit test away:
 
 ```ts
 container.addEventListener('click', async (event) => {
@@ -125,8 +124,10 @@ container.addEventListener('click', async (event) => {
 })
 ```
 
-In React the same wiring is two props, and toggling them never reloads the
-model:
+For manual gaze control there are two methods: `focusAt()` takes viewport
+client coordinates, `focus()` takes container-local CSS pixels.
+
+The React wiring is two props. Toggling them never reloads the model:
 
 ```tsx
 <Live2DModel
@@ -141,10 +142,12 @@ model:
 
 ## Lip sync
 
-Three ways to drive the mouth, all writing after the SDK's own motion update
-so motion curves cannot overwrite the value.
+There are three ways to drive the mouth, because the right one depends on
+where your audio lives. All of them write after the SDK's own motion update,
+so a motion curve can't overwrite the value.
 
-**From an audio node** (vowel analysis via wLipSync, loaded on demand):
+If you have a WebAudio node (TTS output, a microphone), let wLipSync analyse
+the vowels; the analyser is loaded on demand:
 
 ```ts
 const stopLipSync = character.addLipSync({
@@ -154,7 +157,8 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-**From your own analyser** (any logic that yields mouth openness 0 to 1):
+If you'd rather compute mouth openness yourself, hand over any logic that
+yields a value between 0 and 1:
 
 ```ts
 character.addLipSync({
@@ -165,20 +169,22 @@ character.addLipSync({
 })
 ```
 
-**From plain values, React only** (simplest when state already exists):
+And in React, plain values work too, which is the simplest option when the
+number already lives in state:
 
 ```tsx
 <LipSync mouthOpen={mouth} speaking={mouth > 0} />
 ```
 
-The target parameter defaults to `ParamMouthOpenY` and can be changed with
+The target parameter defaults to `ParamMouthOpenY`; change it with
 `parameterId`. The library never closes or suspends your `AudioContext`, and
 no calibration profile is bundled.
 
 ## Direct parameter control
 
-`setParameter()` is a persistent override: it wins over motion curves every
-frame until `clearParameter()` releases it. For values you compute per frame,
+Sometimes you want a parameter held at a value no matter what the current
+motion says. That's `setParameter()`: it wins over motion curves every frame
+until `clearParameter()` releases it. For values you recompute per frame,
 register a driver instead and the library polls it after each SDK update.
 
 ```ts
@@ -190,9 +196,9 @@ const stop = character.addParameterDriver('ParamAngleX', {
 })
 ```
 
-React equivalents: `useLive2DParameter(id, value)` for the override (it cleans
-itself up on unmount) and `useParameterDriver(id, getter)` for the per-frame
-driver.
+The React equivalents are `useLive2DParameter(id, value)` for the override
+(it cleans up after itself on unmount) and `useParameterDriver(id, getter)`
+for the per-frame driver.
 
 ## Fitting, quality and performance
 
@@ -200,11 +206,12 @@ driver.
 (default), `'full'`, or a custom `{ scale, offsetX, offsetY }`. Change it at
 runtime with `setFit()`.
 
-Rendering quality is automatic by default: the backing buffer follows
-`devicePixelRatio` but is capped (1.5MP on mobile, 4MP on desktop) and steps
-down if frames run long. Pass a fixed `resolution` to opt out, and `maxFps` to
-cap the frame rate. Rendering pauses automatically in hidden tabs and, unless
-`pauseWhenOffscreen: false`, while the canvas is scrolled out of view.
+Rendering quality takes care of itself by default. The backing buffer follows
+`devicePixelRatio` up to a cap (1.5MP on mobile, 4MP on desktop) and steps
+down when frames run long; for most apps that's the right trade and you never
+think about it again. If you'd rather pin it, pass a fixed `resolution`, and
+use `maxFps` to cap the frame rate. Hidden tabs pause automatically, as do
+canvases scrolled out of view.
 
 ```ts
 const character = await createLive2D({
@@ -217,12 +224,10 @@ const character = await createLive2D({
 
 ## State, errors and cleanup
 
-`getState()` returns `{ status, loadingStage, error, render }` and
-`subscribe()` notifies on every change. Errors carry a stable `code`
-(`'core-missing'`, `'model-load-failed'`, `'render-error'`, ...) plus asset
-details. HTTP 4xx fails fast without retries; transient failures retry twice
-by default (`retries`). After a render error such as WebGL context loss,
-`retry()` rebuilds the whole stage.
+`getState()` returns `{ status, loadingStage, error, render }`, and
+`subscribe()` notifies on every change. Each error carries a stable `code`
+(`'core-missing'`, `'model-load-failed'`, `'render-error'`, ...) plus details
+about the asset involved.
 
 ```ts
 const character = await createLive2D({
@@ -239,7 +244,10 @@ character.resume()
 character.dispose() // releases model, canvas and GL context; safe to call twice
 ```
 
-Aborting is supported through a standard `AbortSignal` passed as `signal`.
+A few behaviours worth knowing: HTTP 4xx fails immediately, while transient
+failures retry twice by default. After a render error such as WebGL context
+loss, `retry()` rebuilds the whole stage. And loading can be aborted with a
+standard `AbortSignal` passed as `signal`.
 
 ## React at a glance
 
@@ -273,9 +281,10 @@ Everything lives in `live2d-web/react`; React is an optional peer dependency
 
 ## Swapping backends
 
-Omitting `backend` loads the default Framework-on-WebGL2 adapter. A Pixi v6
-adapter exists for A/B comparison and migration from `pixi-live2d-display`;
-its Pixi packages are optional peers and are never pulled in otherwise.
+Leave `backend` out and you get the default Framework-on-WebGL2 backend.
+There's also a Pixi v6 backend, kept for A/B comparison and for migrating from
+`pixi-live2d-display`; its Pixi packages are optional peers, so nothing
+Pixi-related is installed unless you actually use it.
 
 ```ts
 import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
@@ -286,16 +295,16 @@ const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
 
 ## Troubleshooting
 
-- **Nothing visible, status is ready**: the container has no CSS size; the
-  canvas collapsed to 1x1 (a console warning is printed). Give the container a
-  width and height.
-- **Model 404s**: the model directory must be served as static files; all
-  sibling assets load relative to the model3.json URL. HTTP 4xx fails fast
-  without retries.
-- **Several characters feel slow**: each canvas owns a WebGL context and its
-  own render loop; browsers cap contexts around 8-16. Prefer a few canvases.
-- **Mobile scrolls while dragging the character**: the canvas sets
-  `touch-action: none`, but a scrolling ancestor may still need it.
+- Nothing visible but the status says ready: the container has no CSS size, so
+  the canvas collapsed to 1x1. Give the container a width and height. The
+  runtime prints a console warning when this happens.
+- The model 404s: the model directory has to be served as static files, and
+  every sibling asset loads relative to the model3.json URL. HTTP 4xx fails
+  fast without retries.
+- Several characters feel slow: each canvas owns a WebGL context and a render
+  loop, and browsers cap contexts at around 8-16. Fewer canvases is the fix.
+- The page scrolls while dragging the character on mobile: the canvas sets
+  `touch-action: none`, but a scrolling ancestor may need it too.
 
 ## Development
 
@@ -309,11 +318,10 @@ pnpm dev
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
 ```
 
-Downloaded assets live only in gitignored development paths and are never
-packaged. The playground serves a React demo at `/`, the vanilla API at
-`/vanilla`, a model inspector at `/inspect` and a WebGL/Pixi comparison at
-`/compare`. Benchmark suites are documented in the
-[benchmark guide](docs/benchmarking.md).
+Downloaded assets stay in gitignored development paths and are never packaged.
+The playground serves a React demo at `/`, the vanilla API at `/vanilla`, a
+model inspector at `/inspect` and a WebGL/Pixi comparison at `/compare`.
+Benchmark suites are documented in the [benchmark guide](docs/benchmarking.md).
 
 ## Documentation
 
