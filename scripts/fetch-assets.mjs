@@ -164,9 +164,12 @@ else {
 }
 
 // 2. Hiyori 샘플 모델 (Live2D 공식 무료 샘플)
-// 공식 zip은 hiyori_pro와 hiyori_free 두 모델을 담고 있다. 이용 조건이 서로
-// 다르므로 무료 모델의 runtime만 풀고, 나머지(편집기 원본 .cmo3/.can3, Pro
-// 모델)는 배포에서 제외한다. ReadMe.txt는 Live2D가 동봉한 약관이라 남긴다.
+// 공식 zip은 hiyori_pro와 hiyori_free 두 모델을 담고 있다. FREE/PRO는
+// 라이선스가 아니라 제작에 쓰인 Cubism 에디터 등급을 가리키며, 두 ReadMe.txt의
+// 이용 조건 문구는 동일하다(2026-08-20 확인). 개발에는 모델 하나면 충분하므로
+// 텍스처를 두 벌 받지 않으려고 free의 runtime만 푼다. 편집기 원본
+// (.cmo3/.can3)은 실행에 불필요해서 제외한다. ReadMe.txt는 Live2D가 동봉한
+// 약관이라 남긴다.
 const hiyoriDir = path.join(assetsDir, 'live2d/hiyori')
 const hiyoriModelDir = path.join(hiyoriDir, 'hiyori_free')
 let model3 = findFile(hiyoriModelDir, name => name.endsWith('.model3.json'))
