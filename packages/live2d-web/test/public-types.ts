@@ -8,6 +8,7 @@ import type {
   LipSyncDriver,
   LipSyncProfile,
   LipSyncProfileInput,
+  Live2DAssetResolver,
   Live2DAssetType,
   Live2DBackend,
   Live2DErrorCode,
@@ -47,6 +48,7 @@ import type {
 } from '../src/react'
 
 export interface RootSurface {
+  assetResolver: Live2DAssetResolver
   backend: Live2DBackend
   createOptions: CreateLive2DOptions
   errorCode: Live2DErrorCode

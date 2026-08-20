@@ -4,8 +4,10 @@ Live2D Cubism 모델을 바닐라 JavaScript와 React에서 다루는 **오픈�
 브라우저 runtime**. 현재 headless controller, React binding, 자동 품질,
 source/driver 립싱크, pixi-v6 비교 백엔드와 Hiyori Playground가 구현됐다.
 공식 Framework 5-r.5 WebGL2 백엔드가 기본으로
-통합됐다. package version은 `0.1.0`이며 `v0.1.0` 태그 푸시가 발행을 실행한다.
-릴리스 워크플로가 태그와 package version의 일치를 검사한다. 계약은
+통합됐다. `v<version>` 태그 푸시가 발행을 실행하며, 릴리스 워크플로가 태그와
+package version의 일치를 검사한다. 발행은 npm Trusted Publishing(OIDC)이라
+토큰이 없고, npm에 등록된 trusted publisher가 `release.yml`을 지목하므로 이
+워크플로 파일명을 바꾸면 발행이 깨진다. 계약은
 `docs/`가 단일 기준이다. 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 포인터다.
 
 ## Tech Stack
@@ -107,7 +109,12 @@ pnpm up             # taze 일괄 업데이트 + prune + dedupe
 20. **Core 버전을 섞지 않는다.** Framework 5-r.5에는 Cubism 5.3
     `core/06`을 사용한다. fetch script는 파일이 있어도 5.3 기능이 없으면
     새로 받는다. `core/05`는 실제 Hiyori moc 로드에서 실패했다.
-21. **Pixi 비교는 Core를 분리한다.** `pixi-live2d-display@0.4`의 구형
+21. **resolver 경로는 반드시 디코드해서 넘긴다.** `resolveAsset`이 있으면
+    에셋은 `https://live2d-web.invalid/` 가상 origin에 대해 해석된다. `new
+URL()`이 pathname을 퍼센트 인코딩하므로 `decodeURIComponent` 없이는
+    CJK 파일명 모델(VTube Studio 내보내기에 흔하다)의 조회가 전부 빗나간다.
+    `assets.ts`의 `virtualAssetPath`가 그 지점이다.
+22. **Pixi 비교는 Core를 분리한다.** `pixi-live2d-display@0.4`의 구형
     Framework는 Core 5.3 blend-mode 구조와 호환되지 않는다. `/compare`는
     backend 변경 시 페이지를 다시 로드하며 pixi-v6에 `core/05`를 사용한다.
     한 페이지에서 process-global Core를 교체하지 않는다.

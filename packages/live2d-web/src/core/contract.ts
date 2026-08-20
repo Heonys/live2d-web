@@ -84,9 +84,28 @@ export interface ModelInfo {
   motions: Record<string, number>
 }
 
+/**
+ * Supplies a model's files from somewhere other than the network: an unpacked
+ * archive held in memory, a browser storage layer, or any custom source.
+ *
+ * `path` is relative to the model3.json given as `src`, exactly as the model
+ * declares it, already decoded (so non-ASCII filenames arrive readable).
+ * Return `undefined` when the source has no such file; loading then fails with
+ * `model-load-failed` naming that path.
+ */
+export type Live2DAssetResolver = (
+  path: string,
+  signal?: AbortSignal,
+) => Promise<Blob | ArrayBuffer | undefined> | Blob | ArrayBuffer | undefined
+
 export interface LoadModelOptions {
   /** Idle motion group name, or false to disable automatic idle playback. */
   idleMotion?: string | false
+  /**
+   * Loads the model's files instead of fetching them. With a resolver, `src`
+   * is a path inside the source rather than a URL.
+   */
+  resolveAsset?: Live2DAssetResolver
   signal?: AbortSignal
 }
 

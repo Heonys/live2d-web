@@ -1,6 +1,7 @@
 // Root entry: browser runtime + renderer-neutral contracts only.
 // React and renderer adapters stay in explicit subpaths.
 export type {
+  Live2DAssetResolver,
   Live2DBackend,
   LoadModelOptions,
   ModelHandle,

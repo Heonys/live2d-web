@@ -1,7 +1,32 @@
+import type { Live2DAssetResolver } from '../../core/contract'
 import type { Live2DAssetType } from '../../core/errors'
 import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import { Live2DError } from '../../core/errors'
 import { measureAsync, measureSync } from './diagnostics'
+
+// Resolver-backed models have no origin of their own, so their assets are
+// resolved against a reserved host instead. Keeping the URL machinery means
+// relative paths, nested directories and `./`/`../` keep the semantics the
+// browser already defines. `.invalid` can never resolve in DNS, so a request
+// escaping to fetch fails loudly instead of reaching a real server.
+const VIRTUAL_ORIGIN = 'https://live2d-web.invalid/'
+
+export function virtualModelUrl(src: string) {
+  return new URL(src.replace(/^\/+/, ''), VIRTUAL_ORIGIN).href
+}
+
+/**
+ * The path a resolver is asked for, or undefined when the URL is a real one
+ * the model declared absolutely and fetch should handle.
+ */
+export function virtualAssetPath(url: string) {
+  if (!url.startsWith(VIRTUAL_ORIGIN))
+    return undefined
+  // `new URL()` percent-encodes the pathname, so a model whose files are named
+  // in Korean, Japanese or Chinese would reach the resolver as `%E6%89%8B...`
+  // and miss every lookup in a map keyed by the real names.
+  return decodeURIComponent(new URL(url).pathname).slice(1)
+}
 
 export function resolveAssetUrl(path: string, modelUrl: string) {
   return new URL(path, modelUrl).href
@@ -24,8 +49,44 @@ function assetDetails(assetType: Live2DAssetType, url: string, httpStatus?: numb
     assetType,
     backend: 'cubism-webgl',
     httpStatus,
-    url,
+    // Report the path the model declared, not the reserved host it was
+    // resolved against: the user recognises the former, never the latter.
+    url: virtualAssetPath(url) ?? url,
   } as const
+}
+
+async function resolveAssetBlob(
+  resolveAsset: Live2DAssetResolver,
+  path: string,
+  url: string,
+  assetType: Live2DAssetType,
+  signal: AbortSignal | undefined,
+) {
+  let resolved: Blob | ArrayBuffer | undefined
+  try {
+    resolved = await resolveAsset(path, signal)
+  }
+  catch (error) {
+    if (signal?.aborted)
+      throw signal.reason
+    throw new Live2DError(
+      'model-load-failed',
+      `resolveAsset threw while loading ${path}.`,
+      { cause: error, details: assetDetails(assetType, url) },
+    )
+  }
+  if (signal?.aborted)
+    throw signal.reason
+  if (resolved === undefined) {
+    throw new Live2DError(
+      'model-load-failed',
+      `resolveAsset did not provide ${path}. The model declares it, so the `
+      + `source is missing this file or names it differently.`,
+      // A missing file is as final as a 404: the runtime must not retry it.
+      { details: { ...assetDetails(assetType, url), httpStatus: 404 } },
+    )
+  }
+  return resolved instanceof Blob ? resolved : new Blob([resolved])
 }
 
 async function checkedResponse(
@@ -56,17 +117,33 @@ async function checkedResponse(
   return response
 }
 
+async function loadAssetBlob(
+  url: string,
+  assetType: Live2DAssetType,
+  signal: AbortSignal | undefined,
+  resolveAsset: Live2DAssetResolver | undefined,
+) {
+  const path = resolveAsset ? virtualAssetPath(url) : undefined
+  // An absolute URL inside a resolver-backed model has no virtual path, so it
+  // keeps going through fetch as the model author intended.
+  if (resolveAsset && path !== undefined)
+    return resolveAssetBlob(resolveAsset, path, url, assetType, signal)
+  const response = await checkedResponse(url, assetType, signal)
+  return response.blob()
+}
+
 export async function fetchArrayBuffer(
   url: string,
   assetType: Live2DAssetType,
   signal?: AbortSignal,
+  resolveAsset?: Live2DAssetResolver,
 ) {
-  const response = await checkedResponse(url, assetType, signal)
-  const buffer = await response.arrayBuffer()
+  const blob = await loadAssetBlob(url, assetType, signal, resolveAsset)
+  const buffer = await blob.arrayBuffer()
   if (buffer.byteLength === 0) {
     throw new Live2DError(
       'model-load-failed',
-      `Loaded an empty asset from ${url}.`,
+      `Loaded an empty asset from ${virtualAssetPath(url) ?? url}.`,
       { details: assetDetails(assetType, url) },
     )
   }
@@ -130,11 +207,13 @@ export async function fetchTextureSource(
   url: string,
   signal?: AbortSignal,
   diagnostics?: CubismBenchmarkStageDiagnostics,
+  resolveAsset?: Live2DAssetResolver,
 ): Promise<TexImageSource> {
-  const blob = await measureAsync(diagnostics, 'textureFetch', async () => {
-    const response = await checkedResponse(url, 'texture', signal)
-    return response.blob()
-  })
+  const blob = await measureAsync(
+    diagnostics,
+    'textureFetch',
+    () => loadAssetBlob(url, 'texture', signal, resolveAsset),
+  )
   return measureAsync(
     diagnostics,
     'textureDecode',
@@ -200,8 +279,9 @@ export async function createTexture(
   url: string,
   signal?: AbortSignal,
   diagnostics?: CubismBenchmarkStageDiagnostics,
+  resolveAsset?: Live2DAssetResolver,
 ) {
-  const source = await fetchTextureSource(url, signal, diagnostics)
+  const source = await fetchTextureSource(url, signal, diagnostics, resolveAsset)
   if (signal?.aborted) {
     closeTextureSource(source)
     throw signal.reason

@@ -1,6 +1,7 @@
 'use client'
 
 export type {
+  Live2DAssetResolver,
   Live2DBackend,
   LoadModelOptions,
   ModelHandle,

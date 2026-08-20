@@ -251,6 +251,7 @@ Everything lives in `live2d-web/react`; React is an optional peer dependency
 | `<Live2DModel>` prop                  | Purpose                                                    |
 | ------------------------------------- | ---------------------------------------------------------- |
 | `src`, `fit`, `idleMotion`, `retries` | Model URL and load-time options                            |
+| `resolveAsset`                        | Supplies the model's files instead of fetching them        |
 | `followPointer`, `paused`, `onTap`    | Interaction toggles; changing them never reloads the model |
 | `onLoad`, `onError`                   | Controller delivery and error callback                     |
 
@@ -282,6 +283,37 @@ benchmarks above, but it is not published: it would pull Pixi into the
 dependency graph of every install for a path almost nobody takes. The
 `Backend` interface is public, so a Pixi backend can be written against it
 outside this package.
+
+## Model sources
+
+By default `src` is a URL and the model's own files load relative to it. When
+the model is not on a server, for instance an archive the user just picked,
+pass `resolveAsset` and `src` becomes a path inside that source instead.
+
+```tsx
+// filled from an archive, storage, ...
+const files = new Map<string, Blob>()
+
+export function Character() {
+  return (
+    <Live2DModel
+      src="hiyori/hiyori.model3.json"
+      resolveAsset={path => files.get(path)}
+    />
+  )
+}
+```
+
+The resolver is asked for each file the model declares, with the path already
+resolved relative to `src` (nested directories, `./` and `../` included) and
+decoded, so names written in Korean, Japanese or Chinese arrive as themselves.
+Return `undefined` and the load fails naming that path. Absolute URLs inside a
+model3.json are still fetched.
+
+Unpacking an archive is left to you: keeping the resolver a plain function is
+what lets this package stay free of an archive dependency. In React, keep the
+function stable with `useCallback` or a module constant, since a new identity
+reloads the model.
 
 ## Troubleshooting
 

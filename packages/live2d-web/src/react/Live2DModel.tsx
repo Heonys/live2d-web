@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { ModelHandle } from '../core/contract'
+import type { Live2DAssetResolver, ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { ModelFit } from '../core/fit'
 import type { CreateLive2DOptions } from '../core/runtime'
@@ -16,6 +16,12 @@ import { ModelStore } from './store'
 
 export interface Live2DModelProps {
   src: string
+  /**
+   * Supplies the model's files instead of fetching them. `src` then names a
+   * path inside that source. Keep the function referentially stable (useCallback
+   * or a module constant): a new identity reloads the model.
+   */
+  resolveAsset?: Live2DAssetResolver
   fit?: ModelFit
   /** Make the model look toward the pointer while it is over the canvas. */
   followPointer?: boolean
@@ -61,6 +67,7 @@ export function Live2DModel({
   onLoad,
   onTap,
   paused = false,
+  resolveAsset,
   retries = 2,
   src,
 }: Live2DModelProps) {
@@ -133,6 +140,7 @@ export function Live2DModel({
       pauseWhenOffscreen: currentRuntimeHost.pauseWhenOffscreen,
       quality: currentRuntimeHost.quality,
       resolution: currentRuntimeHost.resolution,
+      resolveAsset,
       retries,
       src,
     } as CreateLive2DOptions)
@@ -200,6 +208,7 @@ export function Live2DModel({
     modelStore,
     owner,
     reportError,
+    resolveAsset,
     retries,
     src,
   ])
@@ -227,6 +236,7 @@ export function Live2DModel({
     owner,
     paused,
     reportError,
+    resolveAsset,
     retries,
     src,
   ])

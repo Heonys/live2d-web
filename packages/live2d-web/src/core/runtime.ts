@@ -1,5 +1,6 @@
 import type { LipSyncProfileInput } from '../features/lipsync/source'
 import type {
+  Live2DAssetResolver,
   Live2DBackend,
   ModelHandle,
   ModelInfo,
@@ -48,8 +49,16 @@ export type RuntimeQualityOptions
 interface BaseCreateLive2DOptions {
   /** Element that receives the canvas. Must have a CSS size. */
   container: HTMLElement
-  /** Absolute or site-relative URL of the model3.json file. Sibling assets load relative to it. */
+  /**
+   * The model3.json file: a URL by default, or a path inside the source when
+   * `resolveAsset` is given. Sibling assets load relative to it either way.
+   */
   src: string
+  /**
+   * Supplies the model's files instead of fetching them, for models that live
+   * in memory or in browser storage rather than on a server.
+   */
+  resolveAsset?: Live2DAssetResolver
   /** Omit to use the official Framework-based cubism-webgl adapter. */
   backend?: Live2DBackend
   /** URL of the official live2dcubismcore.min.js. Omit only when the Core global is already loaded. */
@@ -192,7 +201,13 @@ function assertOptions(options: CreateLive2DOptions) {
   if (typeof options.src !== 'string' || options.src.trim() === '') {
     throw new Live2DError(
       'invalid-props',
-      'src must be a non-empty model3.json URL string.',
+      'src must be a non-empty model3.json path or URL string.',
+    )
+  }
+  if (options.resolveAsset !== undefined && typeof options.resolveAsset !== 'function') {
+    throw new Live2DError(
+      'invalid-props',
+      'resolveAsset must be a function.',
     )
   }
   if (options.quality !== undefined && options.resolution !== undefined) {
@@ -653,6 +668,7 @@ export class Live2DRuntime implements Live2DInstance {
       try {
         return await backend.loadModel(stage, this.options.src, {
           idleMotion: this.options.idleMotion,
+          resolveAsset: this.options.resolveAsset,
           signal,
         })
       }

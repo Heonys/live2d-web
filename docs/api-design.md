@@ -1,6 +1,6 @@
 # API Reference
 
-Status: 2026-08-18. The package is ESM-only, versioned `0.1.0`. The root
+Status: 2026-08-20. The package is ESM-only, versioned `0.3.0`. The root
 entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
@@ -109,6 +109,45 @@ source inside this workspace for the benchmarks only.
 
 `addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
 Registered features survive `retry()` and attach to the new model generation.
+
+## Model sources (0.3.0)
+
+```ts
+type Live2DAssetResolver = (
+  path: string,
+  signal?: AbortSignal,
+) => Promise<Blob | ArrayBuffer | undefined> | Blob | ArrayBuffer | undefined
+```
+
+`resolveAsset` is accepted by `createLive2D()`, `<Live2DModel>` and the
+backend contract's `LoadModelOptions`. Without it `src` is a URL and assets are
+fetched relative to it, exactly as before.
+
+With it, `src` names a path inside the caller's source and every asset the
+model declares is requested from the resolver instead. Returning `undefined`
+raises `model-load-failed` naming that path, with `httpStatus: 404` in the
+details so the runtime's retry policy treats it as final: a file the source
+does not have will not appear on a second attempt.
+
+Two decisions are worth recording.
+
+**Paths resolve against a reserved origin.** A resolver-backed model has no
+origin, so `assets.ts` resolves its assets against `https://live2d-web.invalid/`
+and keeps using `new URL()`. Relative paths, nested directories and `./`/`../`
+therefore keep the semantics browsers already define, `../` cannot climb above
+the source root, and an absolute URL a model declares falls out of the virtual
+origin and is fetched as the author intended. `.invalid` can never resolve in
+DNS, so a request escaping to fetch fails instead of reaching a real host.
+
+**Paths are decoded before the resolver sees them.** `new URL()`
+percent-encodes the pathname, so `exp/手姿势切换.exp3.json` would arrive as
+`exp/%E6%89%8B%E5%A7%BF...` and miss every lookup in a map keyed by real
+filenames. Archives exported by CJK riggers make this the common case rather
+than an edge one, so `virtualAssetPath()` decodes before handing the path over.
+
+Archive handling stays out of the package. A resolver is a plain function, so
+unpacking, filename recovery and storage belong to the application and no
+archive dependency is imposed on someone who only wants a character on a page.
 
 ### ensureCubismCore
 

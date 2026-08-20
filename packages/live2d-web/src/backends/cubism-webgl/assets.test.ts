@@ -5,6 +5,8 @@ import {
   fetchArrayBuffer,
   normalizeBaseUrl,
   resolveAssetUrl,
+  virtualAssetPath,
+  virtualModelUrl,
 } from './assets'
 
 describe('cubism asset URLs', () => {
@@ -119,5 +121,128 @@ describe('cubism asset URLs', () => {
       },
     })
     expect(gl.deleteTexture).toHaveBeenCalledWith(texture)
+  })
+})
+
+describe('resolver-backed models', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function bytes(text: string) {
+    return new TextEncoder().encode(text).buffer as ArrayBuffer
+  }
+
+  it('resolves sibling assets against the model path, not the page', () => {
+    const modelUrl = virtualModelUrl('hiyori/hiyori.model3.json')
+    expect(virtualAssetPath(resolveAssetUrl('hiyori.moc3', modelUrl)))
+      .toBe('hiyori/hiyori.moc3')
+    expect(virtualAssetPath(resolveAssetUrl('motion/m01.motion3.json', modelUrl)))
+      .toBe('hiyori/motion/m01.motion3.json')
+  })
+
+  it('keeps a traversing path inside the source', () => {
+    const modelUrl = virtualModelUrl('a/b/model.model3.json')
+    expect(virtualAssetPath(resolveAssetUrl('../../../../x.moc3', modelUrl)))
+      .toBe('x.moc3')
+  })
+
+  // Archives from CJK riggers name files in their own script. The URL machinery
+  // percent-encodes those, so without decoding every lookup in a file map keyed
+  // by the real names would miss.
+  it('hands the resolver decoded non-ascii paths', async () => {
+    const resolveAsset = vi.fn(async () => bytes('data'))
+    const modelUrl = virtualModelUrl('model.model3.json')
+    await fetchArrayBuffer(
+      resolveAssetUrl('exp/手姿势切换.exp3.json', modelUrl),
+      'expression',
+      undefined,
+      resolveAsset,
+    )
+    expect(resolveAsset).toHaveBeenCalledWith('exp/手姿势切换.exp3.json', undefined)
+  })
+
+  it('accepts both Blob and ArrayBuffer from the resolver', async () => {
+    const modelUrl = virtualModelUrl('model.model3.json')
+    const fromBuffer = await fetchArrayBuffer(
+      resolveAssetUrl('a.moc3', modelUrl),
+      'moc3',
+      undefined,
+      () => bytes('buffer'),
+    )
+    const fromBlob = await fetchArrayBuffer(
+      resolveAssetUrl('b.moc3', modelUrl),
+      'moc3',
+      undefined,
+      () => new Blob(['blob']),
+    )
+    expect(new TextDecoder().decode(fromBuffer)).toBe('buffer')
+    expect(new TextDecoder().decode(fromBlob)).toBe('blob')
+  })
+
+  it('reports the declared path when the resolver has no such file', async () => {
+    const modelUrl = virtualModelUrl('nested/model.model3.json')
+    const failure = fetchArrayBuffer(
+      resolveAssetUrl('motion/gone.motion3.json', modelUrl),
+      'motion',
+      undefined,
+      () => undefined,
+    )
+    await expect(failure).rejects.toMatchObject({
+      code: 'model-load-failed',
+      // A missing file is as final as a 404, so the runtime must not retry it.
+      details: { httpStatus: 404, url: 'nested/motion/gone.motion3.json' },
+    })
+    await expect(failure).rejects.toThrow('nested/motion/gone.motion3.json')
+  })
+
+  it('surfaces a resolver that throws', async () => {
+    const modelUrl = virtualModelUrl('model.model3.json')
+    await expect(fetchArrayBuffer(
+      resolveAssetUrl('a.moc3', modelUrl),
+      'moc3',
+      undefined,
+      () => {
+        throw new Error('storage is gone')
+      },
+    )).rejects.toThrow('resolveAsset threw while loading a.moc3.')
+  })
+
+  // A model may declare an absolute URL for a CDN-hosted texture; that is a
+  // real address and has to keep going over the network.
+  it('fetches absolute urls declared inside a resolver-backed model', async () => {
+    const fetchMock = vi.fn(async () => ({
+      blob: async () => new Blob(['remote']),
+      ok: true,
+      status: 200,
+    } as unknown as Response))
+    vi.stubGlobal('fetch', fetchMock)
+    const resolveAsset = vi.fn(() => bytes('local'))
+    const modelUrl = virtualModelUrl('model.model3.json')
+
+    const buffer = await fetchArrayBuffer(
+      resolveAssetUrl('https://cdn.example.com/shared.png', modelUrl),
+      'texture',
+      undefined,
+      resolveAsset,
+    )
+
+    expect(new TextDecoder().decode(buffer)).toBe('remote')
+    expect(resolveAsset).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledWith('https://cdn.example.com/shared.png', { signal: undefined })
+  })
+
+  it('still fetches when no resolver is given', async () => {
+    const fetchMock = vi.fn(async () => ({
+      blob: async () => new Blob(['served']),
+      ok: true,
+      status: 200,
+    } as unknown as Response))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const buffer = await fetchArrayBuffer('https://cdn.example.com/a.moc3', 'moc3')
+
+    expect(new TextDecoder().decode(buffer)).toBe('served')
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 })

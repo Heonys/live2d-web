@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0 - 2026-08-20
+
+### Added
+
+- `resolveAsset`, on `createLive2D()` and `<Live2DModel>`, supplies a model's
+  files from somewhere other than the network: an archive unpacked in memory,
+  a browser storage layer, or any custom source. `src` then names a path
+  inside that source and sibling assets resolve relative to it exactly as
+  they do for a URL, including nested directories and `./`/`../`. Returning
+  `undefined` fails the load naming the missing path, and never retries,
+  because a file the source does not have will not appear on a second try.
+  Absolute URLs a model declares are still fetched.
+
+  Paths reach the resolver decoded, so a model whose files are named in
+  Korean, Japanese or Chinese is looked up under the names it actually uses.
+
+  Unpacking archives stays outside this package: a resolver is a function, so
+  no archive dependency is imposed on someone who only wants a character on a
+  page.
+
 ## 0.2.0 - 2026-08-19
 
 ### Removed

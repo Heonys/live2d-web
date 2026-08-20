@@ -3,6 +3,7 @@ import type { CubismMatrix44 } from '#cubism-framework/math/cubismmatrix44'
 import type { CubismMotion } from '#cubism-framework/motion/cubismmotion'
 import type { CubismMotionQueueEntryHandle } from '#cubism-framework/motion/cubismmotionqueuemanager'
 import type {
+  Live2DAssetResolver,
   LoadModelOptions,
   ModelHandle,
   ModelInfo,
@@ -46,6 +47,7 @@ import {
   fetchTextureSource,
   resolveAssetUrl,
   uploadTexture,
+  virtualModelUrl,
 } from './assets'
 import { measureAsync, measureSync } from './diagnostics'
 import { parseShaderErrorDetails } from './error-details'
@@ -138,6 +140,7 @@ class FrameworkModel extends CubismUserModel {
     private readonly idleMotionGroup: string | false,
     private readonly releaseFramework: () => void,
     private readonly diagnostics?: CubismBenchmarkStageDiagnostics,
+    private readonly resolveAsset?: Live2DAssetResolver,
   ) {
     super()
   }
@@ -173,6 +176,7 @@ class FrameworkModel extends CubismUserModel {
           mocUrl,
           'moc3',
           this.assetController.signal,
+          this.resolveAsset,
         ),
       )
       try {
@@ -280,13 +284,13 @@ class FrameworkModel extends CubismUserModel {
       : undefined
     const [physics, pose, userData] = await Promise.all([
       physicsUrl
-        ? fetchArrayBuffer(physicsUrl, 'physics', signal)
+        ? fetchArrayBuffer(physicsUrl, 'physics', signal, this.resolveAsset)
         : undefined,
       poseUrl
-        ? fetchArrayBuffer(poseUrl, 'pose', signal)
+        ? fetchArrayBuffer(poseUrl, 'pose', signal, this.resolveAsset)
         : undefined,
       userDataUrl
-        ? fetchArrayBuffer(userDataUrl, 'user-data', signal)
+        ? fetchArrayBuffer(userDataUrl, 'user-data', signal, this.resolveAsset)
         : undefined,
     ])
     try {
@@ -399,6 +403,7 @@ class FrameworkModel extends CubismUserModel {
       url,
       this.assetController.signal,
       this.diagnostics,
+      this.resolveAsset,
     ))
     for (const promise of sourcePromises)
       promise.catch(() => {})
@@ -537,6 +542,7 @@ class FrameworkModel extends CubismUserModel {
           motionUrl,
           'motion',
           this.assetController.signal,
+          this.resolveAsset,
         )
         const motion = this.loadMotion(
           buffer,
@@ -731,6 +737,7 @@ class FrameworkModel extends CubismUserModel {
           expressionUrl,
           'expression',
           this.assetController.signal,
+          this.resolveAsset,
         )
         const expression = this.loadExpression(buffer, buffer.byteLength, id)
         if (!expression) {
@@ -931,11 +938,15 @@ export async function loadFrameworkModel(
   const readyStartedAt = diagnostics ? performance.now() : 0
   let model: FrameworkModel | undefined
   try {
-    const modelUrl = new URL(url, window.location.href).href
+    // With a resolver the model has no origin of its own; assets resolve
+    // against a reserved host so relative paths keep browser semantics.
+    const modelUrl = options.resolveAsset
+      ? virtualModelUrl(url)
+      : new URL(url, window.location.href).href
     const modelJson = await measureAsync(
       diagnostics,
       'modelJsonFetch',
-      () => fetchArrayBuffer(modelUrl, 'model3', options.signal),
+      () => fetchArrayBuffer(modelUrl, 'model3', options.signal, options.resolveAsset),
     )
     let setting: CubismModelSettingJson
     try {
@@ -962,6 +973,7 @@ export async function loadFrameworkModel(
       options.idleMotion ?? 'Idle',
       releaseFramework,
       diagnostics,
+      options.resolveAsset,
     )
     await model.initialize(options.signal)
     if (diagnostics)

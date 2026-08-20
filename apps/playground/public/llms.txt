@@ -12,7 +12,8 @@ Core or any model; both are supplied by the application.
 Install: `npm install live2d-web`. Entry points: `live2d-web` (vanilla,
 React-free), `live2d-web/react` (components and hooks),
 `live2d-web/backends/cubism-webgl` (default backend). TypeScript definitions
-with JSDoc ship with the package.
+with JSDoc ship with the package. Models load from a URL by default; pass
+`resolveAsset` to supply their files from memory or browser storage instead.
 
 ## Docs
 
