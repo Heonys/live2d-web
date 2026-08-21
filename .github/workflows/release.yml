@@ -44,6 +44,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm verify:package
+      - run: pnpm verify:packed-consumers
 
       # pnpm packs (it resolves the catalog: protocol that npm cannot read),
       # npm publishes (pnpm has no trusted-publishing support).

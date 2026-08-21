@@ -78,6 +78,28 @@ character.addLipSync({
 ```
 
 React also takes plain values: `<LipSync mouthOpen={mouth} speaking={mouth > 0} />`.
+Driver/value lip sync supports current Chromium, Firefox and WebKit. The
+optional wLipSync AudioWorklet source mode is currently verified on
+Chromium/WebKit; wlipsync 1.3 throws inside Firefox's worklet.
+
+## Local and browser-storage models
+
+Use `resolveAsset` to provide files without network fetches. `src` names the
+model3.json inside that source; sibling paths, CJK, spaces and literal `%`, `#`
+and `?` filenames are preserved.
+
+```ts
+await createLive2D({
+  container,
+  coreUrl,
+  src: 'avatar/model.model3.json',
+  resolveAsset: path => files.get(path),
+})
+```
+
+Absolute URLs declared inside model3.json intentionally bypass the resolver
+and use `fetch`. Validate untrusted local model3 files before rendering when
+your application promises no network access.
 
 ## Parameters, state, cleanup
 

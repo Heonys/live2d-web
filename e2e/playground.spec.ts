@@ -171,7 +171,11 @@ test('inspects a model URL and cleans the previous canvas on replacement', async
   await expect(canvas).toHaveCount(0)
 })
 
-test('runs and cleans up the source AudioWorklet smoke test', async ({ page }) => {
+test('runs and cleans up the source AudioWorklet smoke test', async ({ browserName, page }) => {
+  test.skip(
+    browserName === 'firefox',
+    'wlipsync 1.3 AudioWorklet currently throws inside Firefox; driver/value lip-sync remains supported.',
+  )
   const unexpectedErrors: string[] = []
   page.on('console', (message) => {
     if (message.type() === 'error')

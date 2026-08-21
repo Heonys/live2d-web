@@ -48,4 +48,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm verify:package
+      - run: pnpm verify:packed-consumers
       - run: pnpm -F @live2d-web/playground build

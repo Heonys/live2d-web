@@ -150,7 +150,7 @@ export default function E2EHarness() {
           src: '/e2e-expression.model3.json',
         })
         await instance.expression('fixture')
-        for (let frame = 0; frame < 30; frame++)
+        for (let frame = 0; frame < 60; frame++)
           await nextFrame()
         const value = instance.getParameter('ParamMouthOpenY')
         instance.dispose()
@@ -190,14 +190,23 @@ export default function E2EHarness() {
         }
       },
       async motionDuringContextLoss() {
-        const settle = (promise: Promise<void> | undefined) => Promise.race([
-          (promise ?? Promise.resolve())
-            .then(() => 'resolved')
-            .catch((error: { code?: string }) => error.code ?? 'unknown'),
-          new Promise<string>((resolve) => {
-            setTimeout(resolve, 2_000, 'hung')
-          }),
-        ])
+        const settle = async (promise: Promise<void> | undefined) => {
+          let timeout: ReturnType<typeof setTimeout> | undefined
+          try {
+            return await Promise.race([
+              (promise ?? Promise.resolve())
+                .then(() => 'resolved')
+                .catch((error: { code?: string }) => error.code ?? 'unknown'),
+              new Promise<string>((resolve) => {
+                timeout = setTimeout(resolve, 2_000, 'hung')
+              }),
+            ])
+          }
+          finally {
+            if (timeout)
+              clearTimeout(timeout)
+          }
+        }
 
         const pending = settle(character?.motion('Tap@Body', 0))
         await nextFrame()

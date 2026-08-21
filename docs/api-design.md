@@ -1,6 +1,6 @@
 # API Reference
 
-Status: 2026-08-20. The package is ESM-only, versioned `0.3.0`. The root
+Status: 2026-08-21. The package is ESM-only, versioned `0.3.1`. The root
 entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
@@ -139,11 +139,18 @@ the source root, and an absolute URL a model declares falls out of the virtual
 origin and is fetched as the author intended. `.invalid` can never resolve in
 DNS, so a request escaping to fetch fails instead of reaching a real host.
 
-**Paths are decoded before the resolver sees them.** `new URL()`
-percent-encodes the pathname, so `exp/手姿势切换.exp3.json` would arrive as
-`exp/%E6%89%8B%E5%A7%BF...` and miss every lookup in a map keyed by real
-filenames. Archives exported by CJK riggers make this the common case rather
-than an edge one, so `virtualAssetPath()` decodes before handing the path over.
+**Resolver keys are encoded by segment and decoded before the resolver sees
+them.** `new URL()` gives queries and fragments special meaning, so a raw
+archive filename such as `표정 50%/웃음#강함?.exp3.json` must be encoded before
+resolution and decoded afterwards. `/`, `./` and `../` retain URL path
+semantics; CJK, spaces and literal `%`, `#`, `?` retain filename semantics.
+
+**Absolute URLs are a deliberate network escape.** A model can declare an
+absolute URL and it will use `fetch` rather than `resolveAsset`. Applications
+that open untrusted archives should inspect model3.json first and reject those
+references when local-only or no-network behavior is required. The resolver
+cannot enforce that policy because an application may intentionally mix local
+and CDN-hosted assets.
 
 Archive handling stays out of the package. A resolver is a plain function, so
 unpacking, filename recovery and storage belong to the application and no

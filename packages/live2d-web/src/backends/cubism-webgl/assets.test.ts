@@ -162,6 +162,29 @@ describe('resolver-backed models', () => {
     expect(resolveAsset).toHaveBeenCalledWith('exp/手姿势切换.exp3.json', undefined)
   })
 
+  it('preserves URL-reserved characters and spaces in resolver paths', async () => {
+    const resolveAsset = vi.fn(async () => bytes('data'))
+    const modelUrl = virtualModelUrl('캐릭터 #1/model 100%.model3.json')
+    const declaredPath = '../표정 50%/웃음#강함?버전=1.exp3.json'
+
+    const assetUrl = resolveAssetUrl(declaredPath, modelUrl)
+    await fetchArrayBuffer(assetUrl, 'expression', undefined, resolveAsset)
+
+    expect(virtualAssetPath(modelUrl)).toBe('캐릭터 #1/model 100%.model3.json')
+    expect(virtualAssetPath(assetUrl)).toBe('표정 50%/웃음#강함?버전=1.exp3.json')
+    expect(resolveAsset).toHaveBeenCalledWith(
+      '표정 50%/웃음#강함?버전=1.exp3.json',
+      undefined,
+    )
+  })
+
+  it('keeps rooted resolver paths inside the virtual source', () => {
+    const modelUrl = virtualModelUrl('nested/model.model3.json')
+    const assetUrl = resolveAssetUrl('/shared/a%#?.moc3', modelUrl)
+
+    expect(virtualAssetPath(assetUrl)).toBe('shared/a%#?.moc3')
+  })
+
   it('accepts both Blob and ArrayBuffer from the resolver', async () => {
     const modelUrl = virtualModelUrl('model.model3.json')
     const fromBuffer = await fetchArrayBuffer(
@@ -228,6 +251,27 @@ describe('resolver-backed models', () => {
     )
 
     expect(new TextDecoder().decode(buffer)).toBe('remote')
+    expect(resolveAsset).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledWith('https://cdn.example.com/shared.png', { signal: undefined })
+  })
+
+  it('fetches protocol-relative urls declared inside a resolver-backed model', async () => {
+    const fetchMock = vi.fn(async () => ({
+      blob: async () => new Blob(['remote']),
+      ok: true,
+      status: 200,
+    } as unknown as Response))
+    vi.stubGlobal('fetch', fetchMock)
+    const resolveAsset = vi.fn(() => bytes('local'))
+    const modelUrl = virtualModelUrl('model.model3.json')
+
+    await fetchArrayBuffer(
+      resolveAssetUrl('//cdn.example.com/shared.png', modelUrl),
+      'texture',
+      undefined,
+      resolveAsset,
+    )
+
     expect(resolveAsset).not.toHaveBeenCalled()
     expect(fetchMock).toHaveBeenCalledWith('https://cdn.example.com/shared.png', { signal: undefined })
   })

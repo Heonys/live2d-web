@@ -307,6 +307,10 @@ resolver는 모델이 선언한 파일마다 호출되며, 경로는 `src` 기�
 돌려주면 그 경로를 알려주며 로드가 실패합니다. model3.json 안의 절대 URL은
 그대로 fetch됩니다.
 
+공백과 파일명에 포함된 `%`, `#`, `?`도 그대로 보존됩니다. 신뢰하지 않는 로컬
+압축 파일을 열면서 네트워크 요청을 금지하려면 렌더링 전에 model3.json을
+검사하세요. 절대 URL은 의도적으로 resolver를 건너뛰고 `fetch`를 사용합니다.
+
 압축 해제는 사용하는 쪽의 몫입니다. resolver를 그냥 함수로 둔 덕분에 이
 패키지가 압축 라이브러리에 의존하지 않습니다. React에서는 `useCallback`이나
 모듈 상수로 함수 참조를 고정하세요. 참조가 바뀌면 모델을 다시 로드합니다.
@@ -324,6 +328,13 @@ resolver는 모델이 선언한 파일마다 호출되며, 경로는 `src` 기�
   `touch-action: none`이 설정되지만, 스크롤되는 상위 요소에도 필요할 수
   있습니다.
 
+로컬 릴리스 게이트는 최신 Chromium, Firefox, WebKit을 검사합니다. OBS는 별도의
+내장 Chromium 환경이므로 현재 하위 제품의 호환 목표를 OBS 31 이상으로 두고,
+데스크톱 Chrome 결과로 추정하지 않고 직접 수동 검증합니다.
+driver/value 립싱크는 이 브라우저 범위를 지원합니다. 선택적인 wLipSync
+AudioWorklet source 모드는 wlipsync 1.3이 Firefox worklet 안에서 오류를 내므로
+현재 Chromium/WebKit만 검증합니다.
+
 ## 개발
 
 Node 24와 pnpm이 필요합니다.
@@ -334,6 +345,8 @@ LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # 안내되는 약관 확인 후 Core�
 pnpm dev
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
+pnpm verify:packed-consumers             # 실제 tarball을 소비자 3종에 설치
+LIVE2D_SOAK_MINUTES=120 pnpm test:soak   # 선택적인 장시간 로컬 게이트
 ```
 
 내려받은 에셋은 gitignore된 개발 경로에만 저장되며 패키지에 포함되지

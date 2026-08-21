@@ -91,21 +91,32 @@ export function useLive2D(options: UseLive2DOptions): UseLive2DResult {
   const { container, src } = options
 
   useEffect(() => {
-    if (!container)
+    if (!container) {
+      queueMicrotask(() => setRuntime(null))
       return
+    }
+    let active = true
     const generation = new Live2DRuntime({
       ...optionsRef.current,
       container,
     } as CreateLive2DOptions)
-    setRuntime(generation)
+    // Publishing asynchronously avoids a synchronous effect state write while
+    // still creating a fresh runtime for StrictMode's setup-cleanup replay.
+    queueMicrotask(() => {
+      if (active)
+        setRuntime(generation)
+    })
     const unsubscribe = generation.subscribe(forceRender)
     void generation.start().catch(() => {
       // The failure is already reflected in the runtime state.
     })
     return () => {
+      active = false
       unsubscribe()
       generation.dispose()
-      setRuntime(current => (current === generation ? null : current))
+      queueMicrotask(() => {
+        setRuntime(current => (current === generation ? null : current))
+      })
     }
   }, [container, src, version])
 

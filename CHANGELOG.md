@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.1 - 2026-08-21
+
+### Fixed
+
+- Resolver-backed sources now preserve literal spaces, CJK characters and URL
+  reserved characters (`%`, `#`, `?`) in archive and browser-storage filenames.
+  Relative, rooted and `./`/`../` paths keep their existing resolution rules;
+  absolute URLs declared by a model still use the network.
+- The React `useLive2D()` lifecycle no longer performs synchronous state writes
+  from its setup effect.
+
+### Verification
+
+- The exact npm tarball is installed and built in isolated vanilla Vite, React
+  Vite and Next.js SSR consumers before release.
+- The local browser gate covers Chromium, WebKit and Firefox. A separate
+  two-hour Chromium soak command checks repeated motion, recreation, Canvas
+  cleanup and post-GC heap trend without slowing CI.
+
 ## 0.3.0 - 2026-08-20
 
 ### Added

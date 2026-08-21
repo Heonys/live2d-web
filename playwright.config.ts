@@ -15,9 +15,14 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
   ],
   reporter: 'list',
   testDir: './e2e',
+  testIgnore: 'soak.spec.ts',
   timeout: 60_000,
   use: {
     baseURL: 'http://127.0.0.1:3100',

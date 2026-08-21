@@ -11,8 +11,22 @@ import { measureAsync, measureSync } from './diagnostics'
 // escaping to fetch fails loudly instead of reaching a real server.
 const VIRTUAL_ORIGIN = 'https://live2d-web.invalid/'
 
+function encodeVirtualPath(path: string) {
+  return path
+    .split('/')
+    .map((segment) => {
+      // Keep URL path traversal semantics. Every other segment is a literal
+      // resolver key, so URL-reserved characters in archive filenames must
+      // not become a query, fragment or malformed percent escape.
+      if (segment === '.' || segment === '..')
+        return segment
+      return encodeURIComponent(segment)
+    })
+    .join('/')
+}
+
 export function virtualModelUrl(src: string) {
-  return new URL(src.replace(/^\/+/, ''), VIRTUAL_ORIGIN).href
+  return new URL(encodeVirtualPath(src.replace(/^\/+/, '')), VIRTUAL_ORIGIN).href
 }
 
 /**
@@ -20,15 +34,27 @@ export function virtualModelUrl(src: string) {
  * the model declared absolutely and fetch should handle.
  */
 export function virtualAssetPath(url: string) {
-  if (!url.startsWith(VIRTUAL_ORIGIN))
+  const parsed = new URL(url)
+  if (parsed.origin !== new URL(VIRTUAL_ORIGIN).origin)
     return undefined
-  // `new URL()` percent-encodes the pathname, so a model whose files are named
-  // in Korean, Japanese or Chinese would reach the resolver as `%E6%89%8B...`
-  // and miss every lookup in a map keyed by the real names.
-  return decodeURIComponent(new URL(url).pathname).slice(1)
+  // Decode one path segment at a time. The URL is constructed by
+  // encodeVirtualPath(), so a literal `%`, `#` or `?` remains part of the
+  // resolver key rather than being interpreted as URL syntax.
+  return parsed.pathname
+    .slice(1)
+    .split('/')
+    .map(segment => decodeURIComponent(segment))
+    .join('/')
 }
 
 export function resolveAssetUrl(path: string, modelUrl: string) {
+  if (modelUrl.startsWith(VIRTUAL_ORIGIN)) {
+    // Absolute and protocol-relative URLs intentionally leave the resolver
+    // and use fetch. Relative/rooted values are raw archive paths.
+    if (/^[a-z][a-z\d+.-]*:/i.test(path) || path.startsWith('//'))
+      return new URL(path, modelUrl).href
+    return new URL(encodeVirtualPath(path), modelUrl).href
+  }
   return new URL(path, modelUrl).href
 }
 

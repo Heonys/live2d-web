@@ -72,8 +72,10 @@ LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets # 공식 Core + Hiyori(최초 1회, igno
 pnpm lint / lint:fix
 pnpm typecheck
 pnpm test
-pnpm test:e2e       # 실제 Core/Hiyori + Chromium/WebKit
+pnpm test:e2e       # 실제 Core/Hiyori + Chromium/WebKit/Firefox
 pnpm verify:package # tarball 내용물 + React 없는 소비자 번들 검증
+pnpm verify:packed-consumers # 실제 tarball 설치: vanilla/React/Next SSR + prod audit
+LIVE2D_SOAK_MINUTES=120 pnpm test:soak # 선택적인 Chromium 장시간 게이트
 pnpm benchmark:backends # 기본 5분씩 cubism-webgl/pixi-v6 비교
 pnpm up             # taze 일괄 업데이트 + prune + dedupe
 ```
@@ -109,11 +111,11 @@ pnpm up             # taze 일괄 업데이트 + prune + dedupe
 20. **Core 버전을 섞지 않는다.** Framework 5-r.5에는 Cubism 5.3
     `core/06`을 사용한다. fetch script는 파일이 있어도 5.3 기능이 없으면
     새로 받는다. `core/05`는 실제 Hiyori moc 로드에서 실패했다.
-21. **resolver 경로는 반드시 디코드해서 넘긴다.** `resolveAsset`이 있으면
+21. **resolver 경로는 segment별 encode/decode한다.** `resolveAsset`이 있으면
     에셋은 `https://live2d-web.invalid/` 가상 origin에 대해 해석된다. `new
-URL()`이 pathname을 퍼센트 인코딩하므로 `decodeURIComponent` 없이는
-    CJK 파일명 모델(VTube Studio 내보내기에 흔하다)의 조회가 전부 빗나간다.
-    `assets.ts`의 `virtualAssetPath`가 그 지점이다.
+URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/query/
+    fragment로 오해되고, 해석 뒤 decode하지 않으면 CJK 키가 빗나간다. `/`,
+    `./`, `../`만 path 의미를 유지한다. `assets.ts`가 이 계약의 단일 지점이다.
 22. **Pixi 비교는 Core를 분리한다.** `pixi-live2d-display@0.4`의 구형
     Framework는 Core 5.3 blend-mode 구조와 호환되지 않는다. `/compare`는
     backend 변경 시 페이지를 다시 로드하며 pixi-v6에 `core/05`를 사용한다.

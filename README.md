@@ -310,6 +310,11 @@ decoded, so names written in Korean, Japanese or Chinese arrive as themselves.
 Return `undefined` and the load fails naming that path. Absolute URLs inside a
 model3.json are still fetched.
 
+Spaces and literal `%`, `#` and `?` in filenames are preserved too. If you open
+untrusted local archives, validate model3.json before rendering when network
+access is not desired: absolute URLs intentionally bypass the resolver and use
+`fetch`.
+
 Unpacking an archive is left to you: keeping the resolver a plain function is
 what lets this package stay free of an archive dependency. In React, keep the
 function stable with `useCallback` or a module constant, since a new identity
@@ -327,6 +332,13 @@ reloads the model.
 - The page scrolls while dragging on mobile: the canvas sets
   `touch-action: none`, but a scrolling ancestor may need it too.
 
+The local release gate covers current Chromium, Firefox and WebKit. OBS is a
+separate embedded Chromium environment; the current downstream compatibility
+target is OBS 31+, validated manually rather than inferred from desktop Chrome.
+The driver/value lip-sync API works across that matrix. The optional wLipSync
+AudioWorklet source mode is currently gated to Chromium/WebKit because
+wlipsync 1.3 throws from its worklet in Firefox.
+
 ## Development
 
 Node 24 and pnpm are required.
@@ -337,6 +349,8 @@ LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # downloads Core + sample models after
 pnpm dev
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
+pnpm verify:packed-consumers             # installs the exact tarball in three apps
+LIVE2D_SOAK_MINUTES=120 pnpm test:soak   # optional local long-session gate
 ```
 
 Downloaded assets stay in gitignored development paths and are never

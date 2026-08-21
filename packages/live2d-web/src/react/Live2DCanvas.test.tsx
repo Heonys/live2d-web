@@ -10,7 +10,7 @@ import type { Live2DModelController } from './controller'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Profiler, StrictMode, useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useLive2DCanvas, useLive2DModel, useParameterDriver } from './hooks'
+import { useLive2D, useLive2DCanvas, useLive2DModel, useParameterDriver } from './hooks'
 import { Live2DCanvas } from './Live2DCanvas'
 import { Live2DModel } from './Live2DModel'
 
@@ -121,6 +121,22 @@ function Status() {
   return <output>{state.status}</output>
 }
 
+function RuntimeHookStatus({
+  backend,
+  container,
+}: {
+  backend: Live2DBackend
+  container: HTMLElement
+}) {
+  const result = useLive2D({
+    backend,
+    container,
+    pauseWhenOffscreen: false,
+    src: '/hiyori.model3.json',
+  })
+  return <output data-testid="runtime-hook-status">{result.state.status}</output>
+}
+
 function ControllerObserver({
   onController,
 }: {
@@ -187,6 +203,26 @@ describe('live2DCanvas lifecycle', () => {
     expect(finalDriver).toBeGreaterThan(-1)
     expect(finalDriver).toBeLessThan(finalModel)
     expect(finalModel).toBeLessThan(finalStage)
+  })
+
+  it('creates a fresh useLive2D runtime for a StrictMode effect replay', async () => {
+    const harness = createFakeHarness()
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const view = render(
+      <StrictMode>
+        <RuntimeHookStatus backend={harness.backend} container={container} />
+      </StrictMode>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('runtime-hook-status').textContent).toBe('ready'))
+    view.unmount()
+    container.remove()
+
+    const created = harness.events.filter(event => event === 'stage:create').length
+    const disposed = harness.events.filter(event => event === 'stage:dispose').length
+    expect(created).toBeGreaterThanOrEqual(1)
+    expect(disposed).toBe(created)
   })
 
   it('pauses a model that mounts with paused already set', async () => {

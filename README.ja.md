@@ -314,6 +314,11 @@ resolver はモデルが宣言した各ファイルについて呼ばれます�
 `undefined` を返すとそのパスを示して読み込みが失敗します。model3.json 内の
 絶対 URL は従来どおり fetch されます。
 
+空白とファイル名に含まれる `%`、`#`、`?` もそのまま保持されます。信頼できない
+ローカルアーカイブを開き、ネットワークアクセスを許可しない場合は、描画前に
+model3.json を検証してください。絶対 URL は意図的に resolver を経由せず
+`fetch` を使用します。
+
 アーカイブの展開は利用側の担当です。resolver を単なる関数にしていることが、
 このパッケージがアーカイブ用の依存を持たずに済む理由です。React では
 `useCallback` かモジュール定数で関数の参照を固定してください。参照が変わる
@@ -334,6 +339,13 @@ resolver はモデルが宣言した各ファイルについて呼ばれます�
   `touch-action: none` が設定されますが、スクロールする祖先要素にも同じ設定
   が必要なことがあります。
 
+ローカルのリリースゲートでは最新の Chromium、Firefox、WebKit を検証します。
+OBS は別の組み込み Chromium 環境なので、現在は OBS 31 以降を対象にし、
+デスクトップ Chrome の結果から推測せず手動で確認します。
+driver/value リップシンクはこのブラウザ範囲をサポートします。任意の
+wLipSync AudioWorklet source モードは wlipsync 1.3 が Firefox の worklet 内で
+エラーになるため、現在は Chromium/WebKit のみを検証します。
+
 ## 開発
 
 Node 24 と pnpm が必要です。
@@ -344,6 +356,8 @@ LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # 案内される規約を確認のう
 pnpm dev
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
+pnpm verify:packed-consumers             # 実際の tarball を3種類の利用側にインストール
+LIVE2D_SOAK_MINUTES=120 pnpm test:soak   # 任意の長時間ローカルゲート
 ```
 
 ダウンロードしたアセットは gitignore された開発パスにのみ保存され、
