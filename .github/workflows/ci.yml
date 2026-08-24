@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
   pull_request:
 
 # 같은 브랜치에 새 푸시가 오면 이전 실행 취소 — CI 분 절약

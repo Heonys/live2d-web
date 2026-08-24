@@ -11,6 +11,7 @@ import type { ModelFit } from './fit'
 import type {
   AutoQualityPolicy,
 } from './quality'
+import type { RuntimeFeature } from './runtime-feature'
 import {
   MOUTH_PARAMETER_ID,
   MouthController,
@@ -25,6 +26,7 @@ import {
   selectInitialResolution,
   selectLowerResolution,
 } from './quality'
+import { ManagedFeature } from './runtime-feature'
 
 export type RuntimeLoadingStage = 'core' | 'stage' | 'model'
 
@@ -152,11 +154,6 @@ export interface Live2DInstance {
 type Listener = () => void
 type Cleanup = () => void
 type PauseReason = 'hidden' | 'offscreen' | 'user'
-
-interface RuntimeFeature {
-  attach: (model: ModelHandle) => void
-  detach: () => void
-}
 
 function once(cleanup: Cleanup): Cleanup {
   let active = true
@@ -288,48 +285,6 @@ function wait(ms: number, signal: AbortSignal) {
     }, ms)
     signal.addEventListener('abort', onAbort, { once: true })
   })
-}
-
-class ManagedFeature implements RuntimeFeature {
-  private cleanup: Cleanup | undefined
-  private generation = 0
-
-  constructor(
-    private readonly setup: (model: ModelHandle) => Cleanup | Promise<Cleanup>,
-    private readonly report: (error: unknown) => void,
-  ) {}
-
-  attach(model: ModelHandle) {
-    this.detach()
-    const generation = this.generation
-    try {
-      const result = this.setup(model)
-      if (result instanceof Promise) {
-        void result.then((cleanup) => {
-          if (generation !== this.generation) {
-            cleanup()
-            return
-          }
-          this.cleanup = once(cleanup)
-        }).catch((error) => {
-          if (generation === this.generation)
-            this.report(error)
-        })
-      }
-      else {
-        this.cleanup = once(result)
-      }
-    }
-    catch (error) {
-      this.report(error)
-    }
-  }
-
-  detach() {
-    this.generation++
-    this.cleanup?.()
-    this.cleanup = undefined
-  }
 }
 
 export class Live2DRuntime implements Live2DInstance {
