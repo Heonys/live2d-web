@@ -23,6 +23,16 @@ declare global {
         parameterFade: number
         slow: number
       }>
+      motionStateFixture: () => Promise<{
+        completed: string
+        disposed: string
+        interrupted: string
+        skipped: string
+      }>
+      motionSequenceFixture: () => Promise<{
+        completed: { completedSteps: number, status: string }
+        interrupted: { completedSteps: number, status: string, stepIndex?: number }
+      }>
       fit: (fit: 'full' | 'upper-body') => void
       focus: (x: number, y: number) => void
       hitTest: (x: number, y: number) => string[]
@@ -217,6 +227,106 @@ export default function E2EHarness() {
           parameterFade: slow.parameter,
           slow: slow.value,
         }
+      },
+      async motionStateFixture() {
+        const createFixture = async () => {
+          const host = document.createElement('div')
+          host.style.height = '320px'
+          host.style.width = '240px'
+          document.body.appendChild(host)
+          const instance = await createLive2D({
+            container: host,
+            coreUrl: CORE_URL,
+            fit: 'full',
+            idleMotion: false,
+            pauseWhenOffscreen: false,
+            src: '/e2e-motion.model3.json',
+          })
+          return { host, instance }
+        }
+
+        const natural = await createFixture()
+        const completed = await natural.instance.playMotion('Fade', 0, {
+          fadeInMs: 0,
+          fadeOutMs: 0,
+        })
+        natural.instance.dispose()
+        natural.host.remove()
+
+        const replaced = await createFixture()
+        const first = replaced.instance.playMotion('Fade', 0, { fadeOutMs: 0 })
+        while (!replaced.instance.isMotionPlaying())
+          await nextFrame()
+        const replacement = replaced.instance.playMotion('Fade', 1, { fadeInMs: 0 })
+        const interrupted = await first
+        replaced.instance.dispose()
+        await replacement
+        replaced.host.remove()
+
+        const denied = await createFixture()
+        const force = denied.instance.playMotion('Fade', 0)
+        while (!denied.instance.isMotionPlaying())
+          await nextFrame()
+        const skipped = await denied.instance.playMotion('Fade', 1, { priority: 'idle' })
+        denied.instance.dispose()
+        await force
+        denied.host.remove()
+
+        const tornDown = await createFixture()
+        const active = tornDown.instance.playMotion('Fade', 0)
+        while (!tornDown.instance.isMotionPlaying())
+          await nextFrame()
+        tornDown.instance.dispose()
+        const disposed = await active
+        tornDown.host.remove()
+
+        return {
+          completed: completed.status,
+          disposed: disposed.status,
+          interrupted: interrupted.status,
+          skipped: skipped.status,
+        }
+      },
+      async motionSequenceFixture() {
+        const createFixture = async () => {
+          const host = document.createElement('div')
+          host.style.height = '320px'
+          host.style.width = '240px'
+          document.body.appendChild(host)
+          const instance = await createLive2D({
+            container: host,
+            coreUrl: CORE_URL,
+            fit: 'full',
+            idleMotion: false,
+            pauseWhenOffscreen: false,
+            src: '/e2e-motion.model3.json',
+          })
+          return { host, instance }
+        }
+        const steps = [
+          { group: 'Fade', index: 0, options: { fadeInMs: 0, fadeOutMs: 0 } },
+          { group: 'Fade', index: 1, options: { fadeInMs: 0, fadeOutMs: 0 } },
+        ] as const
+
+        const full = await createFixture()
+        const completed = await full.instance.sequence(steps)
+        full.instance.dispose()
+        full.host.remove()
+
+        const stopped = await createFixture()
+        const sequence = stopped.instance.sequence(steps)
+        while (!stopped.instance.isMotionPlaying())
+          await nextFrame()
+        const external = stopped.instance.playMotion('Fade', 1, {
+          fadeInMs: 0,
+          fadeOutMs: 0,
+        })
+        const interrupted = await sequence
+        stopped.instance.dispose()
+        await external
+        stopped.host.remove()
+
+        return { completed, interrupted }
       },
       fit: fit => character?.setFit(fit),
       focus: (x, y) => character?.focus(x, y),

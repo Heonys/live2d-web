@@ -1,9 +1,23 @@
-import type { ModelHandle, ModelInfo, MotionOptions } from '../core/contract'
+import type {
+  ModelHandle,
+  ModelInfo,
+  MotionOptions,
+  MotionPlaybackResult,
+  MotionSequenceResult,
+  MotionSequenceStep,
+} from '../core/contract'
 import { Live2DError } from '../core/errors'
+import { playMotionSequence } from '../core/motion-sequence'
 
 export interface Live2DModelController {
   /** Plays a motion. Resolves when playback finishes (or is interrupted). */
   motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
+  playMotion: (
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ) => Promise<MotionPlaybackResult>
+  sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>
   isMotionPlaying: () => boolean
   expression: (id?: string) => Promise<void>
   clearExpression: () => void
@@ -42,6 +56,30 @@ export function createLive2DModelController(
       isMotionPlaying: () => requireActive().isMotionPlaying(),
       motion: async (group: string, index?: number, options?: MotionOptions) =>
         requireActive().motion(group, index, options),
+      playMotion: async (group: string, index?: number, options?: MotionOptions) => {
+        const model = requireActive()
+        if (!model.playMotion) {
+          throw new Live2DError(
+            'adapter-error',
+            'The selected Live2D backend does not support detailed motion playback.',
+          )
+        }
+        return model.playMotion(group, index, options)
+      },
+      sequence: async (steps: readonly MotionSequenceStep[]) => {
+        const model = requireActive()
+        if (!model.playMotion) {
+          throw new Live2DError(
+            'adapter-error',
+            'The selected Live2D backend does not support motion sequences.',
+          )
+        }
+        return playMotionSequence(
+          steps,
+          model.getModelInfo(),
+          (group, index, options) => model.playMotion!(group, index, options),
+        )
+      },
       setParameter: (id: string, value: number) => requireActive().setParameter(id, value),
     }),
     invalidate: () => { active = false },

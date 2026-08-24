@@ -20,7 +20,11 @@ import type {
   ModelInfo,
   ModelTransform,
   MotionOptions,
+  MotionPlaybackResult,
+  MotionPlaybackStatus,
   MotionPriority,
+  MotionSequenceResult,
+  MotionSequenceStep,
   ParameterDriver,
   Point,
   RuntimeLipSyncOptions,
@@ -42,7 +46,11 @@ import type {
   Live2DRuntimeState as ReactLive2DRuntimeState,
   ModelInfo as ReactModelInfo,
   MotionOptions as ReactMotionOptions,
+  MotionPlaybackResult as ReactMotionPlaybackResult,
+  MotionPlaybackStatus as ReactMotionPlaybackStatus,
   MotionPriority as ReactMotionPriority,
+  MotionSequenceResult as ReactMotionSequenceResult,
+  MotionSequenceStep as ReactMotionSequenceStep,
   UseLive2DOptions,
   UseLive2DResult,
 } from '../src/react'
@@ -61,7 +69,11 @@ export interface RootSurface {
   model: ModelHandle
   modelInfo: ModelInfo
   motionOptions: MotionOptions
+  motionResult: MotionPlaybackResult
+  motionStatus: MotionPlaybackStatus
   motionPriority: MotionPriority
+  motionSequenceResult: MotionSequenceResult
+  motionSequenceStep: MotionSequenceStep
   parameterDriver: ParameterDriver
   point: Point
   profile: LipSyncProfile
@@ -93,7 +105,11 @@ export interface ReactSurface {
   modelInfo: ReactModelInfo
   modelProps: Live2DModelProps
   motionOptions: ReactMotionOptions
+  motionResult: ReactMotionPlaybackResult
+  motionStatus: ReactMotionPlaybackStatus
   motionPriority: ReactMotionPriority
+  motionSequenceResult: ReactMotionSequenceResult
+  motionSequenceStep: ReactMotionSequenceStep
   profileInput: ReactLipSyncProfileInput
   runtimeState: ReactLive2DRuntimeState
   useOptions: UseLive2DOptions

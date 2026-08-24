@@ -28,3 +28,23 @@ export function resolveMotionFade(options?: MotionOptions): ResolvedMotionFade {
 export function hasMotionFadeOverride(fade: ResolvedMotionFade) {
   return fade.fadeInSeconds !== undefined || fade.fadeOutSeconds !== undefined
 }
+
+export function validateMotionOptions(options: MotionOptions | undefined) {
+  if (options === undefined)
+    return
+  if (typeof options !== 'object' || options === null) {
+    throw new Live2DError('invalid-props', 'Motion options must be an object.')
+  }
+  if (
+    options.priority !== undefined
+    && options.priority !== 'force'
+    && options.priority !== 'idle'
+    && options.priority !== 'normal'
+  ) {
+    throw new Live2DError(
+      'invalid-props',
+      'Motion priority must be \'force\', \'idle\' or \'normal\'.',
+    )
+  }
+  resolveMotionFade(options)
+}

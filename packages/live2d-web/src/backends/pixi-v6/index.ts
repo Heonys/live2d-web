@@ -2,6 +2,8 @@ import type {
   Live2DBackend,
   LoadModelOptions,
   ModelHandle,
+  MotionOptions,
+  MotionPlaybackResult,
   StageHandle,
   StageOptions,
 } from '../../core/contract'
@@ -10,7 +12,11 @@ import { BatchRenderer } from '@pixi/core'
 import { extensions } from '@pixi/extensions'
 import { Ticker, TickerPlugin } from '@pixi/ticker'
 import { Live2DError } from '../../core/errors'
-import { hasMotionFadeOverride, resolveMotionFade } from '../../core/motion-options'
+import {
+  hasMotionFadeOverride,
+  resolveMotionFade,
+  validateMotionOptions,
+} from '../../core/motion-options'
 import { PIXI_V6_TICKER_PRIORITY } from './tickerOrder'
 
 interface CoreModelParameters {
@@ -380,6 +386,60 @@ async function loadModel(
     }
   }
 
+  const playMotion = async (
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ): Promise<MotionPlaybackResult> => {
+    if (disposed)
+      return { status: 'disposed' }
+    validateMotionOptions(options)
+    const fade = resolveMotionFade(options)
+    if (hasMotionFadeOverride(fade)) {
+      throw new Live2DError(
+        'invalid-props',
+        'The repository-only pixi-v6 backend does not support motion fade overrides.',
+        { details: { backend: 'pixi-v6' } },
+      )
+    }
+    const priority = { force: 3, idle: 1, normal: 2 }[options?.priority ?? 'force']
+    const started = await model.motion(group, index, priority)
+    if (disposed)
+      return { status: 'disposed' }
+    if (started === false)
+      return { status: 'skipped' }
+    const manager = internal.motionManager
+    if (!manager?.on)
+      return { status: 'completed' }
+    // motionFinish carries no motion identity, so currentGroup/currentIndex
+    // identify whether this playback completed or another one replaced it.
+    const ownGroup = manager.currentGroup
+    const ownIndex = manager.currentIndex
+    const superseded = () => manager.currentGroup !== ownGroup
+      || manager.currentIndex !== ownIndex
+    return new Promise<MotionPlaybackResult>((resolve) => {
+      let check = () => {}
+      const done = (status: MotionPlaybackResult['status']) => {
+        manager.off?.('motionFinish', check)
+        manager.off?.('destroy', check)
+        frameWatchers.delete(check)
+        resolve({ status })
+      }
+      check = () => {
+        if (disposed)
+          done('disposed')
+        else if (superseded())
+          done('interrupted')
+        else if (manager.isFinished?.() !== false)
+          done('completed')
+      }
+      manager.on?.('motionFinish', check)
+      manager.on?.('destroy', check)
+      frameWatchers.add(check)
+      check()
+    })
+  }
+
   return {
     clearExpression() {
       if (!disposed)
@@ -428,47 +488,9 @@ async function loadModel(
       return !disposed && internal.motionManager?.isFinished?.() === false
     },
     async motion(group, index, options) {
-      if (disposed)
-        return
-      const fade = resolveMotionFade(options)
-      if (hasMotionFadeOverride(fade)) {
-        throw new Live2DError(
-          'invalid-props',
-          'The repository-only pixi-v6 backend does not support motion fade overrides.',
-          { details: { backend: 'pixi-v6' } },
-        )
-      }
-      const priority = { force: 3, idle: 1, normal: 2 }[options?.priority ?? 'force']
-      const started = await model.motion(group, index, priority)
-      if (started === false || disposed)
-        return
-      const manager = internal.motionManager
-      if (!manager?.on)
-        return
-      // motionFinish carries no motion identity, so a motion that interrupts
-      // this one would otherwise hold the promise until the interrupter ends.
-      // currentGroup/currentIndex identify the playback that actually started.
-      const ownGroup = manager.currentGroup
-      const ownIndex = manager.currentIndex
-      const superseded = () => manager.currentGroup !== ownGroup
-        || manager.currentIndex !== ownIndex
-      await new Promise<void>((resolve) => {
-        let check = () => {}
-        const done = () => {
-          manager.off?.('motionFinish', check)
-          manager.off?.('destroy', done)
-          frameWatchers.delete(check)
-          resolve()
-        }
-        check = () => {
-          if (disposed || superseded() || manager.isFinished?.() !== false)
-            done()
-        }
-        manager.on?.('motionFinish', check)
-        manager.on?.('destroy', done)
-        frameWatchers.add(check)
-      })
+      await playMotion(group, index, options)
     },
+    playMotion,
     onAfterMotionUpdate(callback) {
       if (disposed)
         return () => {}

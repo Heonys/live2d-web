@@ -51,12 +51,16 @@ function createRuntimeHarness(pending = false): RuntimeHarness {
         events.push(`focus:${x}:${y}`)
       },
       getIntrinsicSize: () => ({ height: 1_000, width: 500 }),
-      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: { Tap: 2 } }),
       getParameter: id => parameters.get(id) ?? 0,
       hitTest: () => [],
       isMotionPlaying: () => false,
       async motion(group, index) {
         events.push(`motion:${group}:${index ?? 'random'}`)
+      },
+      async playMotion(group, index) {
+        events.push(`playMotion:${group}:${index ?? 'random'}`)
+        return { status: 'completed' }
       },
       onAfterMotionUpdate(callback) {
         afterMotionCallbacks.add(callback)
@@ -163,12 +167,18 @@ describe('createLive2D', () => {
 
     expect(instance.getState().status).toBe('ready')
     await instance.motion('Tap@Body', 0)
+    await expect(instance.playMotion('Tap', 1)).resolves.toEqual({ status: 'completed' })
+    await expect(instance.sequence([
+      { group: 'Tap', index: 0 },
+      { group: 'Tap', index: 1 },
+    ])).resolves.toEqual({ completedSteps: 2, status: 'completed' })
     await instance.expression('smile')
     instance.focus(10, 20)
     instance.setParameter('ParamAngleX', 12)
     instance.setFit('upper-body')
 
     expect(harness.events).toContain('motion:Tap@Body:0')
+    expect(harness.events).toContain('playMotion:Tap:1')
     expect(harness.events).toContain('expression:smile')
     expect(harness.events).toContain('focus:10:20')
     expect(harness.events).toContain('parameter:ParamAngleX:12')

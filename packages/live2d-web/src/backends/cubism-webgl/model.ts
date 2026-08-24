@@ -8,6 +8,7 @@ import type {
   ModelHandle,
   ModelInfo,
   ModelTransform,
+  MotionPlaybackResult,
   MotionPriority,
   StageHandle,
 } from '../../core/contract'
@@ -43,7 +44,7 @@ import { CubismUpdateOrder } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
-import { resolveMotionFade } from '../../core/motion-options'
+import { resolveMotionFade, validateMotionOptions } from '../../core/motion-options'
 import {
   closeTextureSource,
   fetchArrayBuffer,
@@ -57,6 +58,7 @@ import { parseShaderErrorDetails } from './error-details'
 import { acquireFramework } from './framework-manager'
 import { buildMvpMatrix, measureLayout } from './matrix'
 import { preparePlaybackMotion } from './motion-playback'
+import { MotionStateTracker } from './motion-state'
 import { getStageInternals } from './stage'
 
 const PRIORITY_IDLE = 1
@@ -102,14 +104,9 @@ class FrameworkModel extends CubismUserModel {
   private readonly loadedMotions = new Set<ACubismMotion>()
   private layoutMatrix: CubismModelMatrix | undefined
   private readonly manualParameters = new Map<string, number>()
-  private readonly motionResolvers: {
-    handle: CubismMotionQueueEntryHandle
-    reject: (error: Live2DError) => void
-    resolve: () => void
-  }[] = []
-
   private mvpMatrix: CubismMatrix44 | undefined
   private readonly motionCache = new Map<string, Promise<CachedMotionAsset<CubismMotion>>>()
+  private readonly motionStates = new MotionStateTracker<CubismMotionQueueEntryHandle>()
   private readonly parameterIds = new Map<string, CubismIdHandle>()
   // Held so dispose() can release GL state without asking the stage, which
   // throws once the stage itself is gone.
@@ -601,19 +598,13 @@ class FrameworkModel extends CubismUserModel {
 
   private failMotions(error: Live2DError) {
     this.renderError ??= error
-    // Splice before settling: a rejection handler may start another motion.
-    for (const pending of this.motionResolvers.splice(0))
-      pending.reject(this.renderError)
+    this.motionStates.fail(this.renderError)
   }
 
   private settleFinishedMotions() {
-    for (let index = this.motionResolvers.length - 1; index >= 0; index--) {
-      const pending = this.motionResolvers[index]
-      if (this._motionManager.isFinishedByHandle(pending.handle)) {
-        this.motionResolvers.splice(index, 1)
-        pending.resolve()
-      }
-    }
+    this.motionStates.settleFinished(
+      handle => this._motionManager.isFinishedByHandle(handle),
+    )
   }
 
   private async playMotion(
@@ -621,9 +612,9 @@ class FrameworkModel extends CubismUserModel {
     index: number | undefined,
     priority: number,
     fade: ResolvedMotionFade = {},
-  ) {
+  ): Promise<MotionPlaybackResult> {
     if (this.disposed)
-      return
+      return { status: 'disposed' }
     if (this.renderError)
       throw this.renderError
     const count = this.setting.getMotionCount(group)
@@ -644,15 +635,17 @@ class FrameworkModel extends CubismUserModel {
     if (priority === PRIORITY_FORCE)
       this._motionManager.setReservePriority(priority)
     else if (!this._motionManager.reserveMotion(priority))
-      return
+      return { status: 'skipped' }
 
     const generation = ++this.motionGeneration
     let handle: CubismMotionQueueEntryHandle
     let playback: PlaybackMotion<CubismMotion> | undefined
     try {
       const asset = await this.loadMotionAsset(group, selected)
-      if (this.disposed || generation !== this.motionGeneration)
-        return
+      if (this.disposed)
+        return { status: 'disposed' }
+      if (generation !== this.motionGeneration)
+        return { status: 'skipped' }
       playback = preparePlaybackMotion(
         asset,
         fade,
@@ -666,27 +659,20 @@ class FrameworkModel extends CubismUserModel {
       )
       if (handle === InvalidMotionQueueEntryHandleValue) {
         playback.releaseBeforeStart()
-        return
+        return { status: 'skipped' }
       }
       playback.transferToQueue()
+      this.motionStates.interruptActive()
     }
     catch (error) {
       playback?.releaseBeforeStart()
       if (this.disposed)
-        return
+        return { status: 'disposed' }
       if (generation === this.motionGeneration)
         this._motionManager.setReservePriority(0)
       throw error
     }
-    // Resolve when playback actually ends (settled by the frame loop), so
-    // callers can sequence follow-up actions with a plain await.
-    await new Promise<void>((resolve, reject) => {
-      if (this.renderError) {
-        reject(this.renderError)
-        return
-      }
-      this.motionResolvers.push({ handle, reject, resolve })
-    })
+    return this.motionStates.track(handle)
   }
 
   private hitTestStagePoint(x: number, y: number): string[] {
@@ -886,8 +872,19 @@ class FrameworkModel extends CubismUserModel {
       hitTest: (x, y) => this.hitTestStagePoint(x, y),
       isMotionPlaying: () => !this.disposed && !this._motionManager.isFinished(),
       motion: async (group, index, options) => {
+        validateMotionOptions(options)
         const fade = resolveMotionFade(options)
         await this.playMotion(
+          group,
+          index,
+          MOTION_PRIORITIES[options?.priority ?? 'force'],
+          fade,
+        )
+      },
+      playMotion: (group, index, options) => {
+        validateMotionOptions(options)
+        const fade = resolveMotionFade(options)
+        return this.playMotion(
           group,
           index,
           MOTION_PRIORITIES[options?.priority ?? 'force'],
@@ -925,8 +922,7 @@ class FrameworkModel extends CubismUserModel {
     for (let i = this.pendingExpressionKeys.size; i > 0; i--)
       this.diagnostics?.changeResource('pendingExpression', -1)
     this.pendingExpressionKeys.clear()
-    for (const pending of this.motionResolvers.splice(0))
-      pending.resolve()
+    this.motionStates.dispose()
     this.detachDriver?.()
     this.detachDriver = undefined
     this.stopErrorWatch?.()

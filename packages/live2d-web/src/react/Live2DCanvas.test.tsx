@@ -343,6 +343,8 @@ describe('live2DCanvas lifecycle', () => {
       'getParameter',
       'isMotionPlaying',
       'motion',
+      'playMotion',
+      'sequence',
       'setParameter',
     ])
     expect('dispose' in observed!).toBe(false)

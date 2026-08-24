@@ -5,6 +5,9 @@ import type {
   ModelHandle,
   ModelInfo,
   MotionOptions,
+  MotionPlaybackResult,
+  MotionSequenceResult,
+  MotionSequenceStep,
   StageHandle,
 } from './contract'
 import type { ModelFit } from './fit'
@@ -20,6 +23,7 @@ import { createSourceLipSync } from '../features/lipsync/source'
 import { ensureCubismCore } from './ensureCubismCore'
 import { Live2DError } from './errors'
 import { fitModel } from './fit'
+import { playMotionSequence } from './motion-sequence'
 import {
   isMobileViewport,
   resolveAutoQualityPolicy,
@@ -115,6 +119,14 @@ export interface Live2DInstance {
   readonly subscribe: (listener: () => void) => () => void
   /** Plays a motion. Resolves when playback finishes (or is interrupted). */
   motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
+  /** Plays a motion and reports how playback settled. */
+  playMotion: (
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ) => Promise<MotionPlaybackResult>
+  /** Plays validated motion steps until completion or the first interruption. */
+  sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>
   /** True while any motion (including idle) is playing. */
   isMotionPlaying: () => boolean
   /** Applies an expression by name, or a random one when omitted. */
@@ -678,6 +690,32 @@ export class Live2DRuntime implements Live2DInstance {
 
   motion(group: string, index?: number, options?: MotionOptions) {
     return this.requireModel().motion(group, index, options)
+  }
+
+  playMotion(group: string, index?: number, options?: MotionOptions) {
+    const model = this.requireModel()
+    if (!model.playMotion) {
+      throw new Live2DError(
+        'adapter-error',
+        'The selected Live2D backend does not support detailed motion playback.',
+      )
+    }
+    return model.playMotion(group, index, options)
+  }
+
+  sequence(steps: readonly MotionSequenceStep[]) {
+    const model = this.requireModel()
+    if (!model.playMotion) {
+      throw new Live2DError(
+        'adapter-error',
+        'The selected Live2D backend does not support motion sequences.',
+      )
+    }
+    return playMotionSequence(
+      steps,
+      model.getModelInfo(),
+      (group, index, options) => model.playMotion!(group, index, options),
+    )
   }
 
   isMotionPlaying() {

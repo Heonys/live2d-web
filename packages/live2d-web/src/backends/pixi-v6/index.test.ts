@@ -218,4 +218,31 @@ describe('pixi-v6 contract conformance', () => {
     model.dispose()
     stage.dispose()
   })
+
+  it('reports detailed completion, interruption, skipping and disposal', async () => {
+    const { model, stage } = await mountModel(1)
+
+    pixi.motionManager.finished = true
+    await expect(model.playMotion?.('Tap', 0)).resolves.toEqual({ status: 'completed' })
+
+    pixi.motionManager.finished = false
+    pixi.motionManager.currentGroup = 'Tap'
+    pixi.motionManager.currentIndex = 0
+    const interrupted = model.playMotion?.('Tap', 0)
+    await Promise.resolve()
+    pixi.motionManager.currentGroup = 'Idle'
+    pixi.emitAfterMotionUpdate()
+    await expect(interrupted).resolves.toEqual({ status: 'interrupted' })
+
+    pixi.model.motion.mockResolvedValueOnce(false)
+    await expect(model.playMotion?.('Tap', 1)).resolves.toEqual({ status: 'skipped' })
+
+    pixi.motionManager.currentGroup = 'Tap'
+    pixi.motionManager.currentIndex = 1
+    const disposed = model.playMotion?.('Tap', 1)
+    await Promise.resolve()
+    model.dispose()
+    await expect(disposed).resolves.toEqual({ status: 'disposed' })
+    stage.dispose()
+  })
 })

@@ -58,6 +58,12 @@ export interface ModelHandle {
    * error, because the frame loop never restarts after one.
    */
   motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
+  /** Optional detailed playback capability for new runtime APIs. */
+  playMotion?: (
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ) => Promise<MotionPlaybackResult>
   isMotionPlaying: () => boolean
   expression: (id?: string) => Promise<void>
   clearExpression: () => void
@@ -79,6 +85,26 @@ export interface MotionOptions {
   /** Overrides natural and interruption fade-out in milliseconds. */
   fadeOutMs?: number
 }
+
+export type MotionPlaybackStatus = 'completed' | 'interrupted' | 'skipped' | 'disposed'
+
+export interface MotionPlaybackResult {
+  status: MotionPlaybackStatus
+}
+
+export interface MotionSequenceStep {
+  group: string
+  index?: number
+  options?: MotionOptions
+}
+
+export type MotionSequenceResult
+  = | { status: 'completed', completedSteps: number }
+    | {
+      status: Exclude<MotionPlaybackStatus, 'completed'>
+      completedSteps: number
+      stepIndex: number
+    }
 
 /** Version-neutral model metadata extracted from the model settings file. */
 export interface ModelInfo {

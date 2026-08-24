@@ -388,6 +388,21 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
   expect(fade.parameterFade).toBeGreaterThan(fade.slow + 5)
   expect(fade.defaultAfterInstant).toBeLessThan(fade.instant - 5)
 
+  expect(await page.evaluate(
+    () => (window as any).__live2dWebE2E.motionStateFixture(),
+  )).toEqual({
+    completed: 'completed',
+    disposed: 'disposed',
+    interrupted: 'interrupted',
+    skipped: 'skipped',
+  })
+  expect(await page.evaluate(
+    () => (window as any).__live2dWebE2E.motionSequenceFixture(),
+  )).toEqual({
+    completed: { completedSteps: 2, status: 'completed' },
+    interrupted: { completedSteps: 0, status: 'interrupted', stepIndex: 0 },
+  })
+
   await page.evaluate(() => (window as any).__live2dWebE2E.loseContext())
   await expect.poll(async () => page.evaluate(
     () => (window as any).__live2dWebE2E.state()?.status,
