@@ -6,22 +6,25 @@ pixi-v6 비교 어댑터가 구현돼 있다. 공식 Framework 5-r.5 WebGL2 어�
 backend다.
 
 1. [로드맵](roadmap.md) — 성장 목표·상시 품질 기준·고도화 축·버전 순서
-2. [아키텍처](architecture.md)
-3. [API reference](api-design.md)
-4. [라이선스와 상표](licensing.md)
-5. [벤치마크 가이드](benchmarking.md)
-6. [배포물과 개발 저장소 보안 검증](security.md)
-7. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+2. [호환성](compatibility.md) — 지원·검증·미검증 범위와 알려진 제한
+3. [아키텍처](architecture.md)
+4. [API reference](api-design.md)
+5. [라이선스와 상표](licensing.md)
+6. [벤치마크 가이드](benchmarking.md)
+7. [배포물과 개발 저장소 보안 검증](security.md)
+8. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
+   — 공개 패키지·소비자·브라우저·smoke 회귀 기준
+9. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-8. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+10. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-9. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-10. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-11. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-12. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-13. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-14. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-15. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+11. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+12. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+13. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+14. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+15. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+16. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+17. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
