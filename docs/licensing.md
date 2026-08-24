@@ -83,6 +83,19 @@ wlipsync 패키지 코드는 MIT지만 MFCC profile은 별도 데이터다. sour
 profile을 명시적으로 제공하게 한다. Playground에는 저장소가 직접 생성한
 synthetic smoke-test fixture만 있으며 npm 패키지에는 포함하지 않는다.
 
+## MediaPipe 선택 기능
+
+`@mediapipe/tasks-vision`과 공식 Face Landmarker 모델·portrait fixture는
+Apache License 2.0이다. npm 패키지는 Tasks를 optional peer로 선언할 뿐 코드,
+WASM, 모델과 테스트 이미지를 포함하지 않는다. 개발·CI는
+`pnpm fetch-mediapipe-assets`로 고정 SHA-256을 확인해 ignored Playground 경로에
+준비한다. 이 자산은 Live2D Core/Hiyori 약관 동의와 무관하며 두 fetch 경로를
+섞지 않는다.
+
+- [MediaPipe Tasks Vision npm package](https://www.npmjs.com/package/@mediapipe/tasks-vision)
+- [MediaPipe repository and Apache-2.0 license](https://github.com/google-ai-edge/mediapipe)
+- [MediaPipe privacy notice](https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/web/vision/README.md)
+
 ## 상표
 
 이 프로젝트는 Live2D Inc.와 무관한 비공식 프로젝트다. Live2D와 Cubism은

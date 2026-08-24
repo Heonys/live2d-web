@@ -5,6 +5,9 @@
 - AIRI, copyright AIRI contributors, MIT License. Reference implementation.
 - wLipSync, copyright Noeri Huisman, MIT License. Source-mode dependency;
   calibration profiles are not included.
+- MediaPipe Tasks Vision, copyright Google LLC, Apache License 2.0. Optional
+  peer loaded only by `/tracking/mediapipe`; its WASM, models and fixtures are
+  not included.
 - Cubism Web Framework 5-r.5 and its WebGL shaders, copyright Live2D Inc.,
   Live2D Open Software License. `live2d-web` modifies shader loading so model
   readiness waits for fetch, empty-source, compile and link failures; it also

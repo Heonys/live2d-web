@@ -108,10 +108,18 @@ interface ExpressionOptions {
   fadeOutMs?: number
 }
 
+interface ModelParameterInfo {
+  id: string
+  minimum: number
+  maximum: number
+  defaultValue: number
+}
+
 interface ModelInfo {
   expressions: string[]
   hitAreas: string[]
   motions: Record<string, number> // group name -> motion count
+  parameters?: ModelParameterInfo[]
 }
 ```
 
@@ -195,6 +203,69 @@ source inside this workspace for the benchmarks only.
 
 `addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
 Registered features survive `retry()` and attach to the new model generation.
+
+## MediaPipe face tracking (0.5 candidate)
+
+The optional package boundary is `live2d-web/tracking/mediapipe`. Importing it
+is SSR-evaluation safe; creating a tracker is browser-only and dynamically
+loads the optional `@mediapipe/tasks-vision` peer.
+
+```ts
+type MediaPipeModelAsset =
+  | { modelAssetPath: string; modelAssetBuffer?: never }
+  | { modelAssetBuffer: Uint8Array; modelAssetPath?: never }
+
+type CreateMediaPipeFaceTrackerOptions = MediaPipeModelAsset & {
+  wasmPath: string
+  delegate?: 'CPU' | 'GPU' // CPU
+  maxFps?: number // 15, finite 1..60
+  inputMirrored?: boolean // false; describes input pixels, not CSS
+  signal?: AbortSignal
+}
+
+interface MediaPipeAttachOptions {
+  mapping?: 'auto' | 'standard' | 'perfect-sync'
+  channels?: Partial<Record<
+    'pose' | 'eyes' | 'brows' | 'mouth' | 'cheeks',
+    boolean
+  >>
+}
+
+interface MediaPipeFaceTracker {
+  update(source: TexImageSource, timestampMs: number):
+    | { status: 'skipped' }
+    | {
+        status: 'calibrating' | 'tracked' | 'lost'
+        inferenceMs: number
+      }
+  attach(
+    target: Live2DInstance | Live2DModelController,
+    options?: MediaPipeAttachOptions,
+  ): () => void
+  calibrate(): void
+  isTracking(): boolean
+  dispose(): void
+}
+```
+
+Exactly one model path or non-empty buffer is required. The caller owns the
+camera, video, permissions, tracks and scheduling, then invokes `update()` at
+most once for an input frame. Invalid, duplicate, decreasing or rate-limited
+timestamps return `skipped`. `dispose()` and the detach callback are
+idempotent.
+
+The tracker calibrates against one second of valid neutral face frames, then
+uses time-based smoothing (60ms facial coefficients, 100ms pose). Face loss
+holds the last value for 250ms and returns toward model defaults over 300ms.
+`calibrate()` clears prior neutral and smoothing state.
+
+`auto` selects direct 52-parameter Perfect Sync mapping only when all expected
+parameter IDs are present in `ModelInfo.parameters`; otherwise it uses common
+pose, body, eye, brow, mouth and cheek parameters. Forced Perfect Sync reports
+every missing ID with `invalid-props`. Setting `channels.mouth` to false is the
+supported way to keep volume or audio lip sync as the sole mouth writer.
+Multiple independent targets can attach to one tracker; reattaching the same
+target replaces its old driver set.
 
 ## Model sources (0.3.0)
 
@@ -464,6 +535,7 @@ instance from React (StrictMode-safe) for apps that want the full
 - `invalid-props`
 - `invalid-tree`
 - `lipsync-error`
+- `tracking-error`
 - `model-load-failed`
 - `render-error`
 - `adapter-error`
@@ -493,6 +565,6 @@ load. In that case Core errors still include the final URL and asset type.
 
 ## Next.js and SSR
 
-The root, cubism-webgl and pixi entries are SSR-evaluation safe. The React
-entry is a client entry. Framework, renderer and wLipSync runtime modules load
-only in browser lifecycle code.
+The root, cubism-webgl, pixi and MediaPipe tracking entries are SSR-evaluation
+safe. The React entry is a client entry. Framework, renderer, wLipSync and
+MediaPipe runtime modules load only in browser lifecycle code.

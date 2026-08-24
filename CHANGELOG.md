@@ -4,6 +4,15 @@
 
 ### Added
 
+- Optional `live2d-web/tracking/mediapipe` face tracking dynamically loads
+  MediaPipe Tasks Vision, performs one-second neutral calibration, smoothing
+  and face-loss recovery, then attaches standard or 52-parameter Perfect Sync
+  drivers to vanilla instances and React controllers. Camera capture,
+  scheduling, WASM and model assets remain caller-owned and unbundled.
+  Main-thread inference defaults to 15fps after cross-browser measurement.
+- Built-in backends expose optional parameter ranges through
+  `ModelInfo.parameters`; custom backends remain compatible. MediaPipe
+  initialization and inference failures use the new `tracking-error` code.
 - `createVolumeLipSync()` provides a React-free, SSR-safe driver that turns
   caller-sampled RMS volume into stable mouth openness with initial noise-floor
   calibration, attack/release smoothing and speaking hysteresis. Capture,

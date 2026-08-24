@@ -35,6 +35,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./react": "./src/react.ts",
+    "./tracking/mediapipe": "./src/tracking/mediapipe/index.ts",
     "./backends/cubism-webgl": "./src/backends/cubism-webgl/index.ts",
     "./backends/pixi-v6": "./src/backends/pixi-v6/index.ts"
   },
@@ -49,6 +50,10 @@
       "./react": {
         "types": "./dist/react.d.mts",
         "default": "./dist/react.mjs"
+      },
+      "./tracking/mediapipe": {
+        "types": "./dist/tracking/mediapipe.d.mts",
+        "default": "./dist/tracking/mediapipe.mjs"
       },
       "./backends/cubism-webgl": {
         "types": "./dist/backends/cubism-webgl.d.mts",
@@ -70,9 +75,13 @@
     "typecheck": "pnpm build:shader-sources && pnpm build:framework-types && tsc --noEmit"
   },
   "peerDependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "react": ">=18.2 <20"
   },
   "peerDependenciesMeta": {
+    "@mediapipe/tasks-vision": {
+      "optional": true
+    },
     "react": {
       "optional": true
     }
@@ -81,6 +90,7 @@
     "wlipsync": "catalog:"
   },
   "devDependencies": {
+    "@mediapipe/tasks-vision": "catalog:",
     "@pixi/app": "catalog:",
     "@pixi/constants": "catalog:",
     "@pixi/core": "catalog:",

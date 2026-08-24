@@ -21,6 +21,11 @@ import {
 import { PIXI_V6_TICKER_PRIORITY } from './tickerOrder'
 
 interface CoreModelParameters {
+  getParameterCount: () => number
+  getParameterDefaultValue: (index: number) => number
+  getParameterId: (index: number) => { getString?: () => string } | string
+  getParameterMaximumValue: (index: number) => number
+  getParameterMinimumValue: (index: number) => number
   getParameterValueById: (id: string) => number
   setParameterValueById: (id: string, value: number) => void
 }
@@ -477,6 +482,7 @@ async function loadModel(
     },
     getIntrinsicSize: () => ({ ...initialSize }),
     getModelInfo() {
+      const core = model.internalModel.coreModel as unknown as CoreModelParameters
       const motions: Record<string, number> = {}
       for (const [group, list] of Object.entries(internal.settings?.motions ?? {}))
         motions[group] = Array.isArray(list) ? list.length : 0
@@ -486,6 +492,15 @@ async function loadModel(
           .filter(name => name !== ''),
         hitAreas: Object.keys(internal.hitAreas ?? {}),
         motions,
+        parameters: Array.from({ length: core.getParameterCount() }, (_, index) => {
+          const id = core.getParameterId(index)
+          return {
+            defaultValue: core.getParameterDefaultValue(index),
+            id: typeof id === 'string' ? id : id.getString?.() ?? String(id),
+            maximum: core.getParameterMaximumValue(index),
+            minimum: core.getParameterMinimumValue(index),
+          }
+        }),
       }
     },
     getParameter(id) {

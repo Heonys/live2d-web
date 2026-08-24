@@ -16,6 +16,7 @@ packages:
 catalog:
   '@antfu/eslint-config': ^9.2.0
   '@eslint-react/eslint-plugin': ^5.18.0
+  '@mediapipe/tasks-vision': ^1.0.1
   # pixi-v6 어댑터용 (PIXI v6 고정 — pixi-live2d-display@0.4가 v7/v8 미지원)
   '@pixi/app': ^6.5.10
   '@pixi/constants': ^6.5.10

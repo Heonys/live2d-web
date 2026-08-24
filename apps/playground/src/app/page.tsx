@@ -9,6 +9,12 @@ import type {
   VolumeLipSyncDriver,
 } from 'live2d-web'
 import type { Live2DModelController } from 'live2d-web/react'
+import type {
+  MediaPipeAttachOptions,
+  MediaPipeFaceChannel,
+  MediaPipeFaceTracker,
+  MediaPipeMappingMode,
+} from 'live2d-web/tracking/mediapipe'
 import type { AssetManifest } from '../lib/assetManifest'
 import { createVolumeLipSync } from 'live2d-web'
 import {
@@ -17,6 +23,7 @@ import {
   Live2DModel,
   useLive2DCanvas,
 } from 'live2d-web/react'
+import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { preload } from 'react-dom'
@@ -170,10 +177,31 @@ export default function Home() {
   const [fixedQuality, setFixedQuality] = useState(false)
   const [lipSyncError, setLipSyncError] = useState('')
   const [lipSyncMode, setLipSyncMode] = useState<'demo' | 'source'>('demo')
+  const [faceTrackingActive, setFaceTrackingActive] = useState(false)
+  const [faceTrackingError, setFaceTrackingError] = useState('')
+  const [faceTrackingStatus, setFaceTrackingStatus] = useState('idle')
+  const [faceInferenceMs, setFaceInferenceMs] = useState(0)
+  const [faceMapping, setFaceMapping] = useState<MediaPipeMappingMode>('auto')
+  const [facePreviewMirrored, setFacePreviewMirrored] = useState(true)
+  const [faceChannels, setFaceChannels] = useState<Record<MediaPipeFaceChannel, boolean>>({
+    brows: true,
+    cheeks: true,
+    eyes: true,
+    mouth: true,
+    pose: true,
+  })
   const [sourceActive, setSourceActive] = useState(false)
   const [sourceNode, setSourceNode] = useState<AudioNode | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const micGenerationRef = useRef(0)
+  const faceGenerationRef = useRef(0)
+  const faceVideoRef = useRef<HTMLVideoElement>(null)
+  const faceTrackingRef = useRef<{
+    detach: () => void
+    frame: number
+    stream: MediaStream
+    tracker: MediaPipeFaceTracker
+  } | null>(null)
   const micRef = useRef<{
     analyser: AnalyserNode
     data: Uint8Array<ArrayBuffer>
@@ -211,6 +239,114 @@ export default function Home() {
     for (const track of mic.stream.getTracks())
       track.stop()
   }, [])
+
+  const stopFaceTracking = useCallback(() => {
+    faceGenerationRef.current++
+    const tracking = faceTrackingRef.current
+    faceTrackingRef.current = null
+    setFaceTrackingActive(false)
+    setFaceTrackingStatus('idle')
+    if (tracking) {
+      cancelAnimationFrame(tracking.frame)
+      tracking.detach()
+      tracking.tracker.dispose()
+      for (const track of tracking.stream.getTracks())
+        track.stop()
+    }
+    const video = faceVideoRef.current
+    if (video) {
+      video.pause()
+      video.srcObject = null
+    }
+  }, [])
+
+  const startFaceTracking = useCallback(async () => {
+    stopFaceTracking()
+    setFaceTrackingError('')
+    setFaceTrackingStatus('initializing')
+    const generation = ++faceGenerationRef.current
+    let stream: MediaStream | undefined
+    let tracker: MediaPipeFaceTracker | undefined
+    try {
+      if (!controller)
+        throw new Error('Wait for the Live2D model to become ready.')
+      const video = faceVideoRef.current
+      if (!video)
+        throw new Error('The camera preview is not mounted.')
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+      })
+      if (generation !== faceGenerationRef.current) {
+        for (const track of stream.getTracks())
+          track.stop()
+        return
+      }
+      video.srcObject = stream
+      await video.play()
+      if (generation !== faceGenerationRef.current) {
+        for (const track of stream.getTracks())
+          track.stop()
+        return
+      }
+      const createdTracker = await createMediaPipeFaceTracker({
+        modelAssetPath: '/assets/mediapipe/face_landmarker.task',
+        wasmPath: '/assets/mediapipe/wasm',
+      })
+      tracker = createdTracker
+      if (generation !== faceGenerationRef.current) {
+        createdTracker.dispose()
+        for (const track of stream.getTracks())
+          track.stop()
+        return
+      }
+      const attachOptions: MediaPipeAttachOptions = {
+        channels: faceChannels,
+        mapping: faceMapping,
+      }
+      const tracking = {
+        detach: createdTracker.attach(controller, attachOptions),
+        frame: 0,
+        stream,
+        tracker: createdTracker,
+      }
+      faceTrackingRef.current = tracking
+      const sample = (timestamp: number) => {
+        if (faceTrackingRef.current !== tracking)
+          return
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          try {
+            const update = createdTracker.update(video, timestamp)
+            if (update.status !== 'skipped') {
+              setFaceTrackingStatus(update.status)
+              setFaceInferenceMs(update.inferenceMs)
+            }
+          }
+          catch (error) {
+            setFaceTrackingError(error instanceof Error ? error.message : String(error))
+            stopFaceTracking()
+            return
+          }
+        }
+        tracking.frame = requestAnimationFrame(sample)
+      }
+      tracking.frame = requestAnimationFrame(sample)
+      setFaceTrackingActive(true)
+    }
+    catch (error) {
+      tracker?.dispose()
+      for (const track of stream?.getTracks() ?? [])
+        track.stop()
+      const video = faceVideoRef.current
+      if (video && video.srcObject === stream) {
+        video.pause()
+        video.srcObject = null
+      }
+      if (generation === faceGenerationRef.current) {
+        setFaceTrackingError(error instanceof Error ? error.message : String(error))
+        setFaceTrackingStatus('error')
+      }
+    }
+  }, [controller, faceChannels, faceMapping, stopFaceTracking])
 
   const startMic = useCallback(async () => {
     stopMic()
@@ -342,6 +478,7 @@ export default function Home() {
 
   useEffect(() => {
     const micGeneration = micGenerationRef
+    const faceGeneration = faceGenerationRef
     return () => {
       const signal = signalRef.current
       signalRef.current = null
@@ -371,8 +508,41 @@ export default function Home() {
       }
       void audioContextRef.current?.close()
       audioContextRef.current = null
+      const face = faceTrackingRef.current
+      faceGeneration.current++
+      faceTrackingRef.current = null
+      if (face) {
+        cancelAnimationFrame(face.frame)
+        face.detach()
+        face.tracker.dispose()
+        for (const track of face.stream.getTracks())
+          track.stop()
+      }
     }
   }, [])
+
+  useEffect(() => {
+    const tracking = faceTrackingRef.current
+    if (!tracking)
+      return
+    tracking.detach()
+    if (!controller) {
+      queueMicrotask(stopFaceTracking)
+      return
+    }
+    try {
+      tracking.detach = tracking.tracker.attach(controller, {
+        channels: faceChannels,
+        mapping: faceMapping,
+      })
+    }
+    catch (error) {
+      queueMicrotask(() => {
+        setFaceTrackingError(error instanceof Error ? error.message : String(error))
+        stopFaceTracking()
+      })
+    }
+  }, [controller, faceChannels, faceMapping, stopFaceTracking])
 
   const motionOptions = useMemo<MotionOption[]>(() => {
     if (!modelInfo)
@@ -770,9 +940,78 @@ export default function Home() {
                 Fixed 1× resolution
               </label>
 
+              <section className="tracking-tools">
+                <strong>MediaPipe face tracking</strong>
+                <video
+                  ref={faceVideoRef}
+                  muted
+                  playsInline
+                  data-testid="face-preview"
+                  style={{ transform: facePreviewMirrored ? 'scaleX(-1)' : undefined }}
+                />
+                <output data-testid="face-tracking-status">
+                  {faceTrackingStatus}
+                  {faceTrackingActive && ` · ${faceInferenceMs.toFixed(1)} ms`}
+                </output>
+                <button
+                  type="button"
+                  disabled={!controller}
+                  onClick={() => faceTrackingActive
+                    ? stopFaceTracking()
+                    : void startFaceTracking()}
+                >
+                  {faceTrackingActive ? 'Stop face tracking' : 'Start face tracking'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!faceTrackingActive}
+                  onClick={() => faceTrackingRef.current?.tracker.calibrate()}
+                >
+                  Recalibrate face
+                </button>
+                <label>
+                  Mapping
+                  <select
+                    aria-label="Face mapping"
+                    value={faceMapping}
+                    onChange={event => setFaceMapping(
+                      event.target.value as MediaPipeMappingMode,
+                    )}
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="standard">Standard</option>
+                    <option value="perfect-sync">Perfect Sync</option>
+                  </select>
+                </label>
+                <label className="toggle">
+                  <input
+                    checked={facePreviewMirrored}
+                    type="checkbox"
+                    onChange={event => setFacePreviewMirrored(event.target.checked)}
+                  />
+                  Mirrored camera preview
+                </label>
+                {(['pose', 'eyes', 'brows', 'mouth', 'cheeks'] as const).map(channel => (
+                  <label key={channel} className="toggle">
+                    <input
+                      checked={faceChannels[channel]}
+                      type="checkbox"
+                      onChange={event => setFaceChannels(current => ({
+                        ...current,
+                        [channel]: event.target.checked,
+                      }))}
+                    />
+                    {channel}
+                  </label>
+                ))}
+                {faceTrackingError && <p className="note">{faceTrackingError}</p>}
+              </section>
+
               <button
                 type="button"
                 onClick={() => {
+                  if (mounted)
+                    stopFaceTracking()
                   if (mounted)
                     stopMic()
                   setMounted(value => !value)

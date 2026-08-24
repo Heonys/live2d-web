@@ -9,6 +9,7 @@ export type {
   LoadModelOptions,
   ModelHandle,
   ModelInfo,
+  ModelParameterInfo,
   ModelTransform,
   MotionOptions,
   MotionPlaybackResult,

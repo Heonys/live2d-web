@@ -113,12 +113,22 @@ export type MotionSequenceResult
       stepIndex: number
     }
 
+/** Range metadata for one parameter in the loaded Cubism model. */
+export interface ModelParameterInfo {
+  id: string
+  minimum: number
+  maximum: number
+  defaultValue: number
+}
+
 /** Version-neutral model metadata extracted from the model settings file. */
 export interface ModelInfo {
   expressions: string[]
   hitAreas: string[]
   /** Motion group name to motion count within that group. */
   motions: Record<string, number>
+  /** Optional for compatibility with third-party backends written before v0.5. */
+  parameters?: ModelParameterInfo[]
 }
 
 /**

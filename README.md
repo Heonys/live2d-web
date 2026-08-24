@@ -23,6 +23,8 @@ app built with it may need its own
   pixi-live2d-display](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
 - React works out of the box, with components and hooks over the same API as
   vanilla JavaScript.
+- Optional MediaPipe face tracking maps head pose and 52 face blendshapes to
+  standard or Perfect Sync parameters without entering the root bundle.
 - Built for the current Cubism 5.3, so Cubism 4 and 5 models both load. A
   replacement for the unmaintained `pixi-live2d-display`.
 
@@ -192,6 +194,46 @@ The target parameter defaults to `ParamMouthOpenY`; change it with
 `parameterId`. The library never closes or suspends your `AudioContext`, and
 no wLipSync calibration profile is bundled. `createVolumeLipSync()` itself is
 React-free and does not access WebAudio or browser globals.
+
+## MediaPipe face tracking
+
+Install the optional peer and self-host its WASM files and Face Landmarker
+model. `live2d-web` does not bundle them or choose a remote CDN.
+
+```bash
+npm install live2d-web @mediapipe/tasks-vision
+```
+
+```ts
+import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
+
+const tracker = await createMediaPipeFaceTracker({
+  wasmPath: '/mediapipe/wasm',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+})
+const detach = tracker.attach(character, {
+  mapping: 'auto',
+  channels: { mouth: false }, // keep audio lip sync as the mouth writer
+})
+
+function frame(timestamp: number) {
+  tracker.update(video, timestamp)
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+```
+
+The application owns `getUserMedia`, the video element, permissions, tracks
+and frame scheduling. The tracker owns only inference, one-second neutral
+calibration, smoothing and parameter drivers. Call `calibrate()` for a new
+neutral pose, then `detach()` and `tracker.dispose()` on cleanup. `auto` uses
+all 52 Perfect Sync parameters when present and otherwise falls back to common
+pose, eye, brow, mouth and cheek parameters.
+
+Inference runs on-device, but applications must still disclose camera use and
+follow the MediaPipe privacy notice. The first version caps inference at 15fps
+on the main thread after Firefox exceeded the frame budget in local testing;
+use `maxFps` to opt into a different rate.
 
 ## Direct parameter control
 

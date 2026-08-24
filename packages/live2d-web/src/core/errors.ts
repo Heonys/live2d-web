@@ -11,6 +11,8 @@ export type Live2DErrorCode
     | 'invalid-tree'
     /** Lip sync failed; only the feature stops, the stage keeps running. */
     | 'lipsync-error'
+    /** An optional tracking provider failed to initialize or infer a frame. */
+    | 'tracking-error'
     /** A model asset failed to fetch or parse (see details.assetType/url). */
     | 'model-load-failed'
     /** The stage or renderer failed after setup (including context loss). */

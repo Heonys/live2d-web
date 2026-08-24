@@ -50,3 +50,21 @@ jobs:
       - run: pnpm verify:package
       - run: pnpm verify:packed-consumers
       - run: pnpm -F @live2d-web/playground build
+
+  tracking-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: apps/playground/public/assets/mediapipe
+          key: mediapipe-web-1.0.1-face-landmarker-float16-v1
+      - run: pnpm fetch-mediapipe-assets
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm test:tracking:e2e

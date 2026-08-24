@@ -1,9 +1,9 @@
 # live2d-web 문서 지도
 
 상태 기준일: **2026-08-24**. 바닐라 우선 headless runtime, React binding,
-상호작용 API(hitTest/followPointer/모션 완료 대기), source/driver 립싱크와
-pixi-v6 비교 어댑터가 구현돼 있다. 공식 Framework 5-r.5 WebGL2 어댑터가 기본
-backend다.
+상호작용 API(hitTest/followPointer/모션 완료 대기), source/driver 립싱크,
+선택형 MediaPipe 얼굴 추적과 pixi-v6 비교 어댑터가 구현돼 있다. 공식
+Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 
 1. [로드맵](roadmap.md) — 성장 목표·상시 품질 기준·고도화 축·버전 순서
 2. [호환성](compatibility.md) — 지원·검증·미검증 범위와 알려진 제한
@@ -20,17 +20,19 @@ backend다.
    — root/runtime/cubism/model chunk·tarball의 v0.3.1 기준선 대비 변화
 11. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
    — 상세 상태·시퀀스·가중 Idle·표정 페이드 뒤 chunk·tarball 변화
-12. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+12. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
+   — 선택형 tracking entry·자산 크기·브라우저 추론과 프레임 영향
+13. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-13. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+14. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-14. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-15. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-16. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-17. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-18. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-19. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-20. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+15. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+16. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+17. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+18. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+19. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+20. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+21. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
@@ -38,8 +40,9 @@ backend다.
 - 현재 발행 버전은 `0.3.1`이다. 0.4 기능 개발 전에 0.3.x 기반 안정화를 거치며,
   `v*` 태그 푸시가 릴리스 워크플로를 실행해 npm에 발행한다. 변경 이력은
   [CHANGELOG](../CHANGELOG.md)에 기록한다.
-- npm 패키지는 하나이며 `.`, `/react`, `/backends/cubism-webgl`로 경계를
-  나눈다. pixi-v6는 저장소 안의 벤치마크 비교 대상이며 발행하지 않는다.
+- npm 패키지는 하나이며 `.`, `/react`, `/tracking/mediapipe`,
+  `/backends/cubism-webgl`로 경계를 나눈다. pixi-v6는 저장소 안의 벤치마크
+  비교 대상이며 발행하지 않는다.
 - 루트는 React와 `"use client"`가 없는 바닐라 API다. React는 optional
   peer이며 `/react`에만 존재한다.
 - 바닐라와 React가 같은 headless controller를 사용한다.
@@ -52,6 +55,8 @@ backend다.
   cubism-webgl 전용 chunk/asset에만 포함한다.
 - backend 생략 시 cubism-webgl을 동적 로딩한다. pixi-v6는 명시적
   비교·호환용으로 유지한다.
+- MediaPipe는 `/tracking/mediapipe` optional peer 경계에서만 동적 로딩하고,
+  카메라·WASM·모델과 스케줄러는 앱이 공급·소유한다.
 
 ### 2026-08-22 라이브러리 성장 방향
 
@@ -86,3 +91,18 @@ backend다.
 - **재검토 조건**: 브라우저 3종 e2e가 자동 게이트가 되면 문서의 표현을 현재
   상태로 갱신한다. 다중 모델이 Stage 소유 계약을 바꿔야 할 때는 이 원칙과
   공개 계약을 다시 검토한다.
+
+### 2026-08-24 MediaPipe 입력 경계
+
+- **결정문**: 얼굴 추적은 `live2d-web/tracking/mediapipe` 선택 서브패스로
+  제공한다. 라이브러리는 추론·중립 보정·매핑과 driver 정리만 소유하고,
+  카메라 권한·video·track·rAF와 WASM·모델 경로는 앱이 소유한다.
+- **근거**: 기존 `addParameterDriver()` 프레임 계약을 재사용하면 바닐라와
+  React가 같은 추적 결과를 쓰면서 루트 번들과 카메라 생명주기를 격리할 수
+  있다. reference Chromium p95는 14.4ms였지만 Firefox headless가 202ms로
+  임계값을 넘어 첫 버전 기본 상한을 15fps로 낮췄다.
+- **포기와 대체**: 기본 CDN·자산 동봉·라이브러리 소유 `getUserMedia`, 첫
+  버전의 Worker를 넣지 않는다. 사용자는 self-host하고 필요한 경우 `maxFps`를
+  명시한다.
+- **재검토 조건**: Firefox·저성능 장치의 Worker 경계를 다음 성능 작업에서
+  검증한다. Worker 뒤에도 추론 비용이 크면 장치별 권장 상한을 문서화한다.

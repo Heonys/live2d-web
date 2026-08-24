@@ -746,6 +746,15 @@ class FrameworkModel extends CubismUserModel {
         (_, index) => this.setting.getHitAreaName(index),
       ),
       motions,
+      parameters: Array.from(
+        { length: this.getModel().getParameterCount() },
+        (_, index) => ({
+          defaultValue: this.getModel().getParameterDefaultValue(index),
+          id: this.getModel().getParameterId(index).getString(),
+          maximum: this.getModel().getParameterMaximumValue(index),
+          minimum: this.getModel().getParameterMinimumValue(index),
+        }),
+      ),
     }
   }
 

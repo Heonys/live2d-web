@@ -13,6 +13,7 @@ const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
 const cubismAdapter = readFileSync(path.join(dist, 'backends/cubism-webgl.mjs'), 'utf8')
+const mediaPipeEntry = readFileSync(path.join(dist, 'tracking/mediapipe.mjs'), 'utf8')
 const rootDeclaration = readFileSync(path.join(dist, 'index.d.mts'), 'utf8')
 const reactDeclaration = readFileSync(path.join(dist, 'react.d.mts'), 'utf8')
 const publicDeclarations = readdirSync(dist, { recursive: true })
@@ -46,6 +47,7 @@ function collectGraph(entryFile, includeDynamic) {
 
 const rootBundle = collectGraph('index.mjs', false)
 const cubismBundle = collectGraph('backends/cubism-webgl.mjs', true)
+const mediaPipeBundle = collectGraph('tracking/mediapipe.mjs', false)
 
 const failures = []
 if (entry.includes('"use client"') || entry.includes('\'use client\''))
@@ -66,6 +68,8 @@ if (rootBundle.includes('@pixi/') || rootBundle.includes('pixi-live2d-display'))
   failures.push('root bundle contains a PIXI dependency')
 if (rootBundle.includes('CubismFramework') || rootBundle.includes('csmGetVersion'))
   failures.push('root bundle appears to contain Cubism runtime code')
+if (rootBundle.includes('@mediapipe/tasks-vision') || rootBundle.includes('FaceLandmarker'))
+  failures.push('root bundle contains MediaPipe tracking code')
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
@@ -78,6 +82,10 @@ if (!rootBundle.includes('import("wlipsync")'))
   failures.push('wlipsync must remain a browser-time dynamic import')
 if (rootBundle.includes('wlipsync-single') || rootBundle.includes('audio-processor.js'))
   failures.push('root bundle appears to inline the wlipsync runtime')
+if (!mediaPipeEntry.includes('import("@mediapipe/tasks-vision")'))
+  failures.push('MediaPipe entry must load @mediapipe/tasks-vision dynamically')
+if (mediaPipeBundle.includes('vision_wasm_internal') || mediaPipeBundle.includes('face_landmarker.task'))
+  failures.push('MediaPipe entry contains a bundled WASM or model asset')
 
 const bundledAssets = readdirSync(dist, { recursive: true })
   .map(file => String(file))
@@ -145,11 +153,18 @@ catch (error) {
   failures.push(`cubism-webgl adapter is not SSR-evaluation safe: ${String(error)}`)
 }
 
+try {
+  await import(pathToFileURL(path.join(dist, 'tracking/mediapipe.mjs')).href)
+}
+catch (error) {
+  failures.push(`MediaPipe entry is not SSR-evaluation safe: ${String(error)}`)
+}
+
 if (failures.length) {
   for (const failure of failures)
     console.error(`[package] ${failure}`)
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/cubism boundaries verified')
+  console.log('[package] vanilla/react/cubism/mediapipe boundaries verified')
 }

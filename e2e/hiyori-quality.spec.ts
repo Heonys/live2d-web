@@ -185,8 +185,8 @@ test('records and validates the Hiyori 0.4 quality candidate', async ({
       expect(everyValueIsFinite(samples)).toBe(true)
       expect(maxFrameDelta(samples)).toBeLessThan(50)
     }
-    expect(traceEnergy(quality.expression.instant))
-      .toBeGreaterThan(traceEnergy(quality.expression.slow))
+    expect(quality.expression.instant[0].values.ParamAngleX)
+      .toBeGreaterThan((quality.expression.slow[0].values.ParamAngleX ?? 0) + 10)
   }
   finally {
     await context.close()

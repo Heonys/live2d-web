@@ -104,6 +104,30 @@ Driver/value lip sync supports current Chromium, Firefox and WebKit. The
 optional wLipSync AudioWorklet source mode is currently verified on
 Chromium/WebKit; wlipsync 1.3 throws inside Firefox's worklet.
 
+## MediaPipe face tracking
+
+Install `@mediapipe/tasks-vision` and use the isolated optional entry. The app
+owns camera permissions, video, tracks and rAF; no WASM or model is bundled.
+
+```ts
+import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
+
+const tracker = await createMediaPipeFaceTracker({
+  wasmPath: '/mediapipe/wasm',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+})
+const detach = tracker.attach(character, {
+  mapping: 'auto',
+  channels: { mouth: false },
+})
+tracker.update(video, performance.now()) // once per app-owned capture frame
+```
+
+The tracker performs one-second neutral calibration, smoothing, face-loss
+recovery and standard/52-parameter Perfect Sync mapping. Clean up with
+`detach()` and `tracker.dispose()`. Main-thread inference defaults to 15fps;
+set `maxFps` explicitly to choose another limit.
+
 ## Local and browser-storage models
 
 Use `resolveAsset` to provide files without network fetches. `src` names the
@@ -145,6 +169,7 @@ cap the frame rate. Hidden tabs and offscreen canvases pause automatically.
 
 - `live2d-web`: React-free runtime and renderer-neutral contracts
 - `live2d-web/react`: components and hooks (React 18.2/19, optional peer)
+- `live2d-web/tracking/mediapipe`: optional MediaPipe Face Landmarker mapping
 - `live2d-web/backends/cubism-webgl`: default WebGL2 backend (Framework
   runtime and shaders included, Cubism Core not included)
 

@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   reporter: 'list',
   testDir: './e2e',
-  testIgnore: 'soak.spec.ts',
+  testIgnore: ['soak.spec.ts', 'tracking/**', 'tracking-soak/**'],
   timeout: 60_000,
   use: {
     baseURL: 'http://127.0.0.1:3100',

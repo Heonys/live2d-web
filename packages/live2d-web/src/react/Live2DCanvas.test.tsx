@@ -369,6 +369,7 @@ describe('live2DCanvas lifecycle', () => {
     await waitFor(() => expect(observed).toBeDefined())
     expect(observed).toBe(loaded)
     expect(Object.keys(observed!)).toEqual([
+      'addParameterDriver',
       'clearExpression',
       'clearParameter',
       'expression',

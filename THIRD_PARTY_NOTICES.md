@@ -13,6 +13,10 @@ is excluded from the root static bundle.
 - [wLipSync](https://github.com/mrxz/wLipSync), copyright Noeri Huisman,
   MIT License. Dynamically loaded by the source lip-sync mode. Its runtime is
   installed as a dependency but no calibration profile is bundled.
+- [MediaPipe Tasks Vision](https://github.com/google-ai-edge/mediapipe),
+  copyright Google LLC, Apache License 2.0. It is an optional peer loaded only
+  by the MediaPipe tracking subpath. WASM, models and test images are not in the
+  npm package.
 
 - [Cubism Web Framework 5-r.5](https://github.com/Live2D/CubismWebFramework)
   and its WebGL shaders, copyright Live2D Inc., Live2D Open Software License.

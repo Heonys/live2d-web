@@ -44,6 +44,22 @@ React 18.2는 공개 peer 범위에 포함되지만 현재 자동 소비자 fixt
 "지원"과 "현재 자동 검증 버전"을 같은 의미로 쓰지 않는다. Vue, Svelte,
 Webpack, Rollup 직접 구성은 현재 미검증이다.
 
+## MediaPipe 선택 기능
+
+| 대상 | 상태 | 2026-08-24 실제 검증 |
+| --- | --- | --- |
+| `@mediapipe/tasks-vision` | `^1.0.1` optional peer | `1.0.1`, CPU delegate와 VIDEO mode |
+| Chromium·WebKit·Firefox | 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성 |
+| 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 Hiyori 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증 |
+| Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
+| GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
+| 메인 스레드 추론 성능 | 부분 검증 | Chromium은 기준 안, WebKit은 경계(17ms), Firefox headless는 기준 초과. 기본 15fps이며 Worker 검증이 남아 있다. |
+| 물리 카메라·모바일 실기 | 미검증 | 권한·장치별 자연스러움은 소비자 검증이 필요하다. |
+
+트래킹 전용 브라우저 게이트는 Apache-2.0 공식 모델·portrait와 npm 패키지의
+WASM을 SHA-256으로 고정해 PR/main CI에서 세 엔진 모두 실행한다. Live2D Core와
+Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독립적이다.
+
 ## 브라우저
 
 2026-08-24 로컬 `pnpm test:e2e`는 Playwright `1.62.0`과 다음 엔진에서
@@ -66,10 +82,10 @@ wLipSync source는 브라우저가 `AudioWorklet`을 제공하는 secure context
 `getUserMedia` 정책을 책임진다. 라이브러리는 전달받은 `AudioNode`를 분석하며
 마이크 권한 UI를 소유하지 않는다.
 
-현재 e2e는 로컬 수동 게이트다. CI는 lint·typecheck·unit·package 경계와 실제
-tarball 소비자 빌드를 자동화하지만, Hiyori와 Core를 Git·Actions cache·artifact에
-넣지 않으므로 실제 자산 브라우저 e2e는 자동 실행하지 않는다. 자산 공급에 대한
-별도 확인 또는 자체 소유 fixture를 확보한 뒤 CI 승격 여부를 갱신한다.
+Hiyori/Core를 쓰는 일반 runtime e2e는 로컬 수동 게이트다. 두 자산을
+Git·Actions cache·artifact에 넣지 않으므로 자동 CI에는 포함하지 않는다.
+MediaPipe 전용 e2e만 재배포 가능한 Apache 자산으로 자동화되어 있으며, 이 결과를
+Live2D 모델 렌더링 전체가 CI에서 검증된 것으로 확대해 해석하지 않는다.
 
 OBS 31 이상은 하위 제품의 호환 목표일 뿐 이 기준일에 직접 검증한 브라우저
 항목은 아니다. iOS Safari와 Android Chrome 실기기도 아직 미검증이다.

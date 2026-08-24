@@ -43,7 +43,7 @@
 source / value), 자동 품질과 프레임 상한, 일시정지·재시도·정리, 에러 모델,
 `resolveAsset`로 메모리·저장소의 모델 로드, WebGL2 투명 배경.
 
-**못 하는 것**: 웹캠·센서 입력, 모션 간 블렌딩 제어, 표정 동시 적용, Stage당
+**못 하는 것**: 웹캠 이외 센서 입력, 모션 간 블렌딩 제어, 표정 동시 적용, Stage당
 모델 둘 이상, Worker 오프로드, 모바일 GPU 실측 게이트, 공식 MotionSync
 립싱크, 프레임워크 문서 사이트.
 
@@ -160,13 +160,24 @@ Livesona는 선택 기능을 얻고 VS Code 확장과 히비엔도 같은 입력
 
 **범위 밖.** 전신·손 추적, iPhone 앱 연동, 모델 편집.
 
-**검증.** 실제 웹캠으로 Chromium·WebKit에서 고개 회전·눈 깜빡임·입 열림이
-모델에 반영되는 e2e. 30분 연속 실행에서 드리프트 없음. Perfect Sync 모델과
-일반 모델 각 1종.
+**검증.** 공식 portrait와 실제 Face Landmarker는 Chromium·WebKit·Firefox
+자동 게이트로 검증한다. 실제 웹캠의 고개 회전·눈 깜빡임·입 열림, 10분 연속
+실행과 Perfect Sync 모델의 체감은 로컬·소비자 검증으로 남긴다.
 
 **의존과 리스크.** MediaPipe WASM 번들이 크다(수 MB). 동적 로드와 캐시
 전략이 먼저 정해져야 한다. AIRI의 `model-driver-mediapipe`가 참조
 구현(MIT)이며 매핑 표를 배울 수 있다.
+
+**0.5 구현 상태 (2026-08-24).** `develop`에 선택 서브패스, 표준·Perfect Sync
+자동 매핑, 1초 중립 보정·평활화·loss 복귀, React/vanilla attach, Playground
+웹캠 생명주기와 세 브라우저 실제 Face Landmarker CI를 구현했다. root에는
+MediaPipe와 자산이 들어가지 않는다. 실제 Perfect Sync 모델과 물리 카메라의
+최종 체감, Livesona/VS Code 소비자 채택이 남았으므로 **라이브러리 구현 완료,
+소비자 검증 대기** 상태다.
+
+성능 측정에서 Chromium은 프레임 기준 안, WebKit은 경계였지만 Firefox
+headless의 동기 추론이 p95 202ms를 기록했다. 계획의 실패 기준에 따라 기본
+상한은 15fps로 낮췄으며, Worker 추론 경계가 0.5 이후 첫 성능 후속 작업이다.
 
 ### B. 립싱크 품질
 
@@ -331,7 +342,7 @@ suspend 복구와 장치 변경 대응.
 | --- | --- | --- |
 | 0.3.x | 기반 안정화·검증 계약·호환성 기준선 | 문서와 실제 자동 게이트가 일치하고 브라우저 3종 e2e가 자동화되며 공개 API·번들·성능 기준선이 기록됨 |
 | 0.4 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼 | 라이브러리 구현 완료, Livesona 전환·소비자 검증 대기 |
-| 0.5 | A 웹캠 트래킹 `/tracking/mediapipe` | Livesona 선택 기능 또는 VS Code 확장이 사용 |
+| 0.5 | A 웹캠 트래킹 `/tracking/mediapipe` | 라이브러리 구현 완료, Livesona 선택 기능 또는 VS Code 확장 채택 대기 |
 | 0.6 | D 다중 모델 Stage | 히비엔 또는 합방 데모가 사용 |
 | 0.7 | B 공식 MotionSync | 라이선스 확인 후, Livesona가 립싱크 모드로 채택 |
 | 0.8 | E 모바일 게이트·soak 정기화·Worker 검토 | 모바일·장시간 검증이 정기 릴리스 운영에 포함 |

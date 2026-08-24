@@ -38,11 +38,16 @@
     "test:watch": "vitest",
     "pretest:e2e": "pnpm -F @live2d-web/playground build",
     "test:e2e": "playwright test",
+    "pretest:tracking:e2e": "pnpm -F @live2d-web/playground build",
+    "test:tracking:e2e": "playwright test --config playwright.tracking.config.ts",
+    "pretest:tracking:soak": "pnpm -F @live2d-web/playground build",
+    "test:tracking:soak": "playwright test --config playwright.tracking-soak.config.ts",
     "pretest:soak": "pnpm -F @live2d-web/playground build",
     "test:soak": "playwright test --config playwright.soak.config.ts",
     "verify:package": "pnpm build && node scripts/verify-package.mjs && pnpm -F live2d-web exec npm pack --dry-run && pnpm -F @live2d-web/vanilla-consumer build && node scripts/verify-vanilla-consumer.mjs",
     "verify:packed-consumers": "pnpm build && node scripts/verify-packed-consumers.mjs",
     "fetch-assets": "node scripts/fetch-assets.mjs",
+    "fetch-mediapipe-assets": "node scripts/fetch-mediapipe-assets.mjs",
     "up": "taze -w -r -I && pnpm prune && pnpm dedupe"
   },
   "devDependencies": {

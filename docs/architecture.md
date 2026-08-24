@@ -153,9 +153,36 @@ WebGL frame cap은 refresh 간격의 작은 나머지만 보존한다. 초기 sh
   override는 사용자 `setParameter()`뿐이며 `clearParameter()`로 해제한다.
 - 실패는 `lipsync-error`로 기능만 중단한다.
 
+## MediaPipe 얼굴 추적
+
+`live2d-web/tracking/mediapipe`는 root·React·backend와 분리된 선택 계층이다.
+서브패스 자체는 SSR 평가가 가능하고, `createMediaPipeFaceTracker()`가 호출된
+브라우저에서만 `@mediapipe/tasks-vision`을 동적으로 불러온다. WASM과
+Face Landmarker 모델은 사용자 경로나 버퍼로 받으며 dist에 포함하지 않는다.
+
+앱은 `getUserMedia`·video·track·rAF를 소유한다. 트래커는 `detectForVideo()`의
+결과를 중립 보정 → 좌우 미러 정규화 → 시간 기반 평활화 → 모델 범위 변환
+순서로 처리하고, 결과를 기존 `addParameterDriver()` 집합으로 붙인다. 따라서
+추적 입력도 motion/effect/physics 뒤, draw 전에 적용되는 기존 프레임 계약을
+따른다. React controller는 같은 driver 등록 기능만 위임하며 추적 전용 상태를
+소유하지 않는다.
+
+내장 backend는 `ModelInfo.parameters`에 ID·최소·최대·기본값을 제공한다.
+필드는 optional이라 기존 custom backend는 깨지지 않는다. 메타데이터가 없으면
+표준 Cubism 범위를 사용하며, 52개 Perfect Sync 자동 매핑은 모든 ID를 확인한
+경우에만 켠다. 트래커 하나는 여러 모델에 붙을 수 있고, 각 detach와 전체
+dispose는 driver를 먼저 제거한 뒤 MediaPipe task를 한 번만 닫는다.
+
+MediaPipe의 동기 추론이 메인 스레드를 막을 수 있어 첫 구현은 기본 15fps로
+제한한다. 2026-08-24 reference Chromium은 inference p95 14.4ms와 33ms 초과
+프레임 0.16%였지만 Firefox headless는 p95 202ms로 임계값을 넘었다. 따라서
+초기 기본값을 15fps로 낮췄고, Worker는 Firefox·저성능 장치의 렌더 스레드를
+보호하는 다음 성능 작업으로 남긴다.
+
 ## 오류와 정리
 
 - 초기 바닐라 생성 실패는 `Live2DError` reject다.
+- MediaPipe 초기화·추론 실패는 `tracking-error`이며 Live2D Stage는 유지한다.
 - 준비 후 backend 오류는 상태 구독과 `onError`에 전달된다.
 - `Live2DError.details`는 자산 종류, backend, 최종 URL과 가능한 HTTP 상태를
   보존한다. 원래 예외는 `cause`에 유지한다.

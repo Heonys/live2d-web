@@ -198,7 +198,10 @@ export function Live2DModel({
         resource = { dispose, handle: model }
         if (!currentStageStore.setModelResource(owner, resource))
           return
-        const controllerBinding = createLive2DModelController(model)
+        const controllerBinding = createLive2DModelController(
+          model,
+          (id, driver) => runtime.addParameterDriver(id, driver),
+        )
         invalidateController = controllerBinding.invalidate
         const controller = controllerBinding.controller
         modelStore.setController(controller)

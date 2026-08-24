@@ -24,6 +24,8 @@
   同等です](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)。
 - Reactにそのまま対応し、vanillaと同じ機能をコンポーネントとフックで
   使えます。
+- オプションのMediaPipe顔トラッキングは、ルートバンドルを重くせず、顔の向きと
+  52個の表情係数を標準またはPerfect Syncパラメータへ接続します。
 - 最新の Cubism 5.3 が基準で、Cubism 4・5 のモデルに対応します。更新が
   止まった `pixi-live2d-display` の代わりに使えます。
 
@@ -195,6 +197,44 @@ React専用として、値を直接渡す方式。
 ことはなく、キャリブレーションプロファイルも同梱しません。
 `createVolumeLipSync()` 自体はReact、WebAudio、ブラウザのグローバルを使用
 しません。
+
+## MediaPipe顔トラッキング
+
+オプションpeerをインストールし、MediaPipeのWASMとFace Landmarkerモデルを
+セルフホストします。`live2d-web`はこれらを同梱せず、既定のCDNも選びません。
+
+```bash
+npm install live2d-web @mediapipe/tasks-vision
+```
+
+```ts
+import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
+
+const tracker = await createMediaPipeFaceTracker({
+  wasmPath: '/mediapipe/wasm',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+})
+const detach = tracker.attach(character, {
+  mapping: 'auto',
+  channels: { mouth: false }, // 口は音量・音声リップシンクだけで制御
+})
+
+function frame(timestamp: number) {
+  tracker.update(video, timestamp)
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+```
+
+カメラ権限、`getUserMedia`、video、track、フレームスケジュールはアプリが
+所有します。トラッカーは推論、1秒のニュートラル補正、平滑化、パラメータ
+ドライバーだけを管理します。再補正には`calibrate()`、終了時には`detach()`と
+`dispose()`を呼びます。`auto`は52個のPerfect Syncパラメータが全てあれば
+直接マッピングし、それ以外は一般的な顔・目・眉・口・頬へ切り替えます。
+
+推論は端末内で実行されますが、カメラ利用の告知とMediaPipeのプライバシー
+案内はアプリ側の責任です。Firefoxのローカル計測がフレーム予算を超えたため、
+初版のメインスレッド既定値は15fpsです。別の上限は`maxFps`で指定できます。
 
 ## パラメータの直接制御
 

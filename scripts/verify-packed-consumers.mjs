@@ -25,6 +25,7 @@ function installedVersion(packagePath, name) {
 }
 
 const versions = {
+  mediaPipe: installedVersion('packages/live2d-web', '@mediapipe/tasks-vision'),
   next: installedVersion('apps/playground', 'next'),
   react: installedVersion('apps/playground', 'react'),
   reactDom: installedVersion('apps/playground', 'react-dom'),
@@ -128,6 +129,35 @@ try {
     }),
   }, [['npm', ['run', 'build']]])
 
+  installAndRun('tracking-vite', {
+    name: 'packed-tracking-consumer',
+    private: true,
+    type: 'module',
+    scripts: { build: 'tsc --noEmit && vite build' },
+    dependencies: {
+      '@mediapipe/tasks-vision': versions.mediaPipe,
+      'live2d-web': tarball,
+    },
+    devDependencies: {
+      typescript: versions.typescript,
+      vite: versions.vite,
+    },
+  }, {
+    'index.html': '<div id="app"></div><script type="module" src="/src.ts"></script>',
+    'src.ts': `import type { MediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'\nimport { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'\n\nlet tracker: MediaPipeFaceTracker | undefined\nvoid tracker\nvoid createMediaPipeFaceTracker\n`,
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: {
+        lib: ['ES2022', 'DOM'],
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        noEmit: true,
+        strict: true,
+        target: 'ES2022',
+      },
+      include: ['src.ts'],
+    }),
+  }, [['npm', ['run', 'build']]])
+
   installAndRun('next-ssr', {
     name: 'packed-next-consumer',
     private: true,
@@ -170,7 +200,7 @@ try {
     }),
   }, [['npm', ['run', 'build']]])
 
-  console.log('[packed-consumers] vanilla Vite, React Vite and Next SSR verified')
+  console.log('[packed-consumers] vanilla, React, tracking Vite and Next SSR verified')
 }
 finally {
   rmSync(temporaryRoot, { force: true, recursive: true })

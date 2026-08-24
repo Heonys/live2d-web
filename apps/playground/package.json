@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "catalog:",
     "@pixi/app": "catalog:",
     "@pixi/constants": "catalog:",
     "@pixi/core": "catalog:",

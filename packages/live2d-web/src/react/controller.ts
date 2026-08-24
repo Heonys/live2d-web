@@ -7,6 +7,7 @@ import type {
   MotionSequenceResult,
   MotionSequenceStep,
 } from '../core/contract'
+import type { ParameterDriver } from '../core/runtime'
 import { Live2DError } from '../core/errors'
 import { playMotionSequence } from '../core/motion-sequence'
 
@@ -28,10 +29,13 @@ export interface Live2DModelController {
   /** Persistent override until clearParameter() removes it. */
   setParameter: (id: string, value: number) => void
   clearParameter: (id: string) => void
+  /** Writes a transient value after every SDK update. */
+  addParameterDriver: (id: string, driver: ParameterDriver) => () => void
 }
 
 export function createLive2DModelController(
   handle: ModelHandle,
+  addParameterDriver?: (id: string, driver: ParameterDriver) => () => void,
 ): {
   controller: Live2DModelController
   invalidate: () => void
@@ -48,6 +52,16 @@ export function createLive2DModelController(
   }
   return {
     controller: Object.freeze({
+      addParameterDriver: (id: string, driver: ParameterDriver) => {
+        requireActive()
+        if (!addParameterDriver) {
+          throw new Live2DError(
+            'adapter-error',
+            'This React Live2D model controller cannot attach parameter drivers.',
+          )
+        }
+        return addParameterDriver(id, driver)
+      },
       clearExpression: () => requireActive().clearExpression(),
       clearParameter: (id: string) => requireActive().clearParameter(id),
       expression: async (id?: string, options?: ExpressionOptions) =>

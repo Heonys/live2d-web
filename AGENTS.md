@@ -2,7 +2,8 @@
 
 Live2D Cubism 모델을 바닐라 JavaScript와 React에서 다루는 **오픈소스
 브라우저 runtime**. 현재 headless controller, React binding, 자동 품질,
-source/driver 립싱크, pixi-v6 비교 백엔드와 Hiyori Playground가 구현됐다.
+source/driver 립싱크, 선택형 MediaPipe 얼굴 트래킹, pixi-v6 비교 백엔드와
+Hiyori Playground가 구현됐다.
 공식 Framework 5-r.5 WebGL2 백엔드가 기본으로
 통합됐다. `v<version>` 태그 푸시가 발행을 실행하며, 릴리스 워크플로가 태그와
 package version의 일치를 검사한다. 발행은 npm Trusted Publishing(OIDC)이라
@@ -13,7 +14,8 @@ package version의 일치를 검사한다. 발행은 npm Trusted Publishing(OIDC
 ## Tech Stack
 
 - pnpm workspace(catalog 버전 관리) — **npm 퍼블리시는 `live2d-web` 하나** +
-  `.`, `/react`, `/backends/cubism-webgl` 서브패스. pixi-v6는 workspace
+  `.`, `/react`, `/backends/cubism-webgl`, `/tracking/mediapipe` 서브패스.
+  pixi-v6는 workspace
   안에서만 소스로 resolve되고 발행하지 않는다(0.2.0에서 제외)
 - 퍼블리시 라이브러리 — tsdown 빌드(ESM + d.ts). 개발 중엔 소스-export + Next `transpilePackages`, 퍼블리시 시 `publishConfig.exports`가 dist로 전환
 - 바닐라 root: React 없는 `createLive2D()`와 backend-neutral 계약
@@ -55,6 +57,7 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 - `packages/live2d-web/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller
 - `packages/live2d-web/src/core/` — 계약·Core 로더·품질·프레이밍
 - `packages/live2d-web/src/features/lipsync/` — 순수 mouth controller와 wLipSync source 연결
+- `packages/live2d-web/src/tracking/mediapipe/` — 선택형 Face Landmarker 상태·매핑·생명주기
 - `packages/live2d-web/src/react/LipSync.tsx` — source/driver React 생명주기
 - `packages/live2d-web/src/backends/pixi-v6/index.ts` — 단일 티커 PIXI v6 어댑터
 - `packages/live2d-web/src/backends/cubism-webgl/` — 기본 Framework/WebGL2 어댑터
@@ -70,13 +73,16 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 pnpm dev            # apps/playground dev 서버
 pnpm build          # live2d-web 패키지 tsdown 빌드 (dist/)
 LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets # 공식 Core + Hiyori(최초 1회, ignored)
+pnpm fetch-mediapipe-assets # 공식 WASM + Face Landmarker + portrait(ignored)
 pnpm lint / lint:fix
 pnpm typecheck
 pnpm test
 pnpm test:e2e       # 실제 Core/Hiyori + Chromium/WebKit/Firefox
+pnpm test:tracking:e2e # MediaPipe portrait + Chromium/WebKit/Firefox
 pnpm verify:package # tarball 내용물 + React 없는 소비자 번들 검증
 pnpm verify:packed-consumers # 실제 tarball 설치: vanilla/React/Next SSR + prod audit
 LIVE2D_SOAK_MINUTES=120 pnpm test:soak # 선택적인 Chromium 장시간 게이트
+LIVE2D_TRACKING_SOAK_MINUTES=5 pnpm test:tracking:soak # 선택적인 MediaPipe 안정성 smoke
 pnpm benchmark:backends # 기본 5분씩 cubism-webgl/pixi-v6 비교
 pnpm up             # taze 일괄 업데이트 + prune + dedupe
 ```
@@ -121,6 +127,10 @@ URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/quer
     Framework는 Core 5.3 blend-mode 구조와 호환되지 않는다. `/compare`는
     backend 변경 시 페이지를 다시 로드하며 pixi-v6에 `core/05`를 사용한다.
     한 페이지에서 process-global Core를 교체하지 않는다.
+23. **MediaPipe는 선택형 서브패스다.** `@mediapipe/tasks-vision`은 optional
+    peer이며 `/tracking/mediapipe`에서만 동적 import한다. root에 정적 import,
+    기본 CDN, WASM·task 모델 동봉을 추가하지 않는다. 카메라·video·rAF·track은
+    앱이 소유하고 tracker는 task와 Live2D parameter driver만 정리한다.
 
 ## 규칙
 

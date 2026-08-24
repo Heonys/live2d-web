@@ -21,6 +21,7 @@ import type {
   ModelFit,
   ModelHandle,
   ModelInfo,
+  ModelParameterInfo,
   ModelTransform,
   MotionOptions,
   MotionPlaybackResult,
@@ -77,6 +78,7 @@ export interface RootSurface {
   loadModelOptions: LoadModelOptions
   model: ModelHandle
   modelInfo: ModelInfo
+  modelParameterInfo: ModelParameterInfo
   motionOptions: MotionOptions
   motionResult: MotionPlaybackResult
   motionStatus: MotionPlaybackStatus

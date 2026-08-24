@@ -409,9 +409,11 @@ test('owns microphone sampling and tracks across restart and unmount', async ({
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   await page.getByRole('button', { name: 'Lip sync with microphone' }).click()
   await expect(page.getByRole('button', { name: 'Stop microphone' })).toBeVisible()
-  await expect.poll(async () => (await readMetrics()).samples, {
-    timeout: 4_000,
-  }).toBeGreaterThan(90)
+  const calibrationStart = (await readMetrics()).samples
+  await waitFrames(96)
+  const calibrationDelta = (await readMetrics()).samples - calibrationStart
+  expect(calibrationDelta).toBeGreaterThanOrEqual(90)
+  expect(calibrationDelta).toBeLessThanOrEqual(102)
   expect(await readMetrics()).toMatchObject({ activeTracks: 1, calls: 1 })
 
   await page.evaluate(() => (window as typeof window & {
@@ -444,6 +446,96 @@ test('owns microphone sampling and tracks across restart and unmount', async ({
   const unmountedSamples = (await readMetrics()).samples
   await waitFrames(12)
   expect((await readMetrics()).samples - unmountedSamples).toBeLessThanOrEqual(1)
+  expect(unexpectedErrors).toEqual([])
+})
+
+test('owns MediaPipe camera tracks across stop, restart and canvas unmount', async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== 'chromium', 'The deterministic canvas camera uses Chromium captureStream.')
+  const unexpectedErrors: string[] = []
+  page.on('console', (message) => {
+    const isMediaPipeDelegateInfo = message.text().includes(
+      'Created TensorFlow Lite XNNPACK delegate for CPU.',
+    )
+    if (message.type() === 'error' && !isMediaPipeDelegateInfo)
+      unexpectedErrors.push(message.text())
+  })
+  page.on('pageerror', error => unexpectedErrors.push(error.message))
+  await page.addInitScript(() => {
+    const metrics = { activeTracks: 0, calls: 0, stops: 0 }
+    const state = window as typeof window & { __fakeCamera: typeof metrics }
+    state.__fakeCamera = metrics
+    const mediaDevices = navigator.mediaDevices ?? {}
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: mediaDevices,
+    })
+    Object.defineProperty(mediaDevices, 'getUserMedia', {
+      configurable: true,
+      async value(constraints: MediaStreamConstraints) {
+        if (!constraints.video)
+          throw new Error('This fixture only supplies video.')
+        state.__fakeCamera.calls++
+        const canvas = document.createElement('canvas')
+        canvas.width = 320
+        canvas.height = 240
+        const context = canvas.getContext('2d')!
+        let hue = 0
+        const timer = window.setInterval(() => {
+          context.fillStyle = `hsl(${hue++ % 360} 40% 10%)`
+          context.fillRect(0, 0, canvas.width, canvas.height)
+        }, 33)
+        const stream = canvas.captureStream(30)
+        for (const track of stream.getTracks()) {
+          const stop = track.stop.bind(track)
+          let stopped = false
+          Object.defineProperty(track, 'stop', {
+            configurable: true,
+            value() {
+              if (stopped)
+                return
+              stopped = true
+              state.__fakeCamera.activeTracks--
+              state.__fakeCamera.stops++
+              clearInterval(timer)
+              stop()
+            },
+          })
+          state.__fakeCamera.activeTracks++
+        }
+        return stream
+      },
+    })
+  })
+
+  const metrics = () => page.evaluate(() => ({
+    ...(window as typeof window & {
+      __fakeCamera: { activeTracks: number, calls: number, stops: number }
+    }).__fakeCamera,
+  }))
+
+  await page.goto('/')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await page.getByText('Developer tools').click()
+  await page.getByRole('button', { name: 'Start face tracking' }).click()
+  await expect(page.getByRole('button', { name: 'Stop face tracking' })).toBeVisible()
+  await expect(page.getByTestId('face-tracking-status')).toContainText('lost', {
+    timeout: 30_000,
+  })
+  expect(await metrics()).toMatchObject({ activeTracks: 1, calls: 1 })
+
+  await page.getByRole('button', { name: 'Stop face tracking' }).click()
+  await expect.poll(async () => (await metrics()).activeTracks).toBe(0)
+  await page.getByRole('button', { name: 'Start face tracking' }).click()
+  await expect.poll(async () => (await metrics()).calls).toBe(2)
+  expect(await metrics()).toMatchObject({ activeTracks: 1 })
+
+  await page.getByRole('button', { name: 'Unmount canvas' }).click()
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
+  await expect.poll(async () => (await metrics()).activeTracks).toBe(0)
+  expect(await metrics()).toMatchObject({ calls: 2, stops: 2 })
   expect(unexpectedErrors).toEqual([])
 })
 

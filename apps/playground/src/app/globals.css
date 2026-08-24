@@ -414,6 +414,21 @@ label output {
   line-height: 1.5;
 }
 
+.tracking-tools {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #2f2b3d;
+}
+
+.tracking-tools video {
+  width: 100%;
+  max-height: 160px;
+  border-radius: 8px;
+  background: #191720;
+  object-fit: cover;
+}
+
 .benchmark-page {
   width: max-content;
   min-width: 100%;
