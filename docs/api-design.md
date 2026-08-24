@@ -225,6 +225,14 @@ interface LipSyncDriver {
   isSpeaking(): boolean
 }
 
+interface VolumeLipSyncDriver {
+  sample(rms: number, elapsedMs: number): void
+  getMouthOpen(): number
+  isSpeaking(): boolean
+}
+
+function createVolumeLipSync(): VolumeLipSyncDriver
+
 type RuntimeLipSyncOptions =
   { parameterId?: string } & (
     | { driver: LipSyncDriver }
@@ -242,6 +250,15 @@ inconvenient. Source mode dynamically imports wLipSync. The caller owns the
 `AudioNode` and `AudioContext`; cleanup removes only the analysis edge and
 node owned by this feature. `parameterId` retargets models that do not use
 `ParamMouthOpenY`.
+
+`createVolumeLipSync()` is a React-free helper for driver mode. The caller
+samples non-negative RMS once per capture frame and passes the time since
+capture started. The helper performs a fixed 1.5 second noise-floor
+calibration, freezes the floor while speaking after calibration, and applies
+attack/release smoothing plus on/off hysteresis. Invalid RMS becomes zero;
+invalid or decreasing elapsed time never moves its internal clock backward.
+It owns no `AudioNode`, microphone permission, `AudioContext`, analyser, timer
+or browser global. The first API has no options or reset method.
 
 Mouth values are clamped to 0–1. `ParamMouthOpenY`, a 200 ms smoothstep release
 and a 500 ms closed-mouth hold are fixed in v0.1.

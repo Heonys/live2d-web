@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `createVolumeLipSync()` provides a React-free, SSR-safe driver that turns
+  caller-sampled RMS volume into stable mouth openness with initial noise-floor
+  calibration, attack/release smoothing and speaking hysteresis. Capture,
+  WebAudio nodes and scheduling remain caller-owned.
+
 ## 0.3.1 - 2026-08-21
 
 ### Fixed

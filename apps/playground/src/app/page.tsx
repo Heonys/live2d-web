@@ -1,8 +1,9 @@
 'use client'
 
-import type { ModelFit, ModelInfo } from 'live2d-web'
+import type { ModelFit, ModelInfo, VolumeLipSyncDriver } from 'live2d-web'
 import type { Live2DModelController } from 'live2d-web/react'
 import type { AssetManifest } from '../lib/assetManifest'
+import { createVolumeLipSync } from 'live2d-web'
 import {
   LipSync,
   Live2DCanvas,
@@ -141,44 +142,35 @@ export default function Home() {
   const [sourceActive, setSourceActive] = useState(false)
   const [sourceNode, setSourceNode] = useState<AudioNode | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const micGenerationRef = useRef(0)
   const micRef = useRef<{
     analyser: AnalyserNode
     data: Uint8Array<ArrayBuffer>
-    smoothed: number
+    frame: number
     source: MediaStreamAudioSourceNode
     stream: MediaStream
+    volume: VolumeLipSyncDriver
   } | null>(null)
   const signalRef = useRef<{
     gain: GainNode
     oscillator: OscillatorNode
   } | null>(null)
 
-  // Volume-based mouth driver: honest microphone demo without a wLipSync
-  // calibration profile. Reads the analyser once per frame.
+  // The sampler below owns WebAudio and rAF. The library driver only turns
+  // caller-provided RMS samples into stable mouth values.
   const micDriver = useMemo(() => ({
-    getMouthOpen: () => {
-      const mic = micRef.current
-      if (!mic)
-        return 0
-      mic.analyser.getByteTimeDomainData(mic.data)
-      let sum = 0
-      for (let index = 0; index < mic.data.length; index++) {
-        const value = (mic.data[index] - 128) / 128
-        sum += value * value
-      }
-      const rms = Math.sqrt(sum / mic.data.length)
-      mic.smoothed = mic.smoothed * 0.7 + Math.min(1, rms * 9) * 0.3
-      return mic.smoothed
-    },
-    isSpeaking: () => micRef.current !== null,
+    getMouthOpen: () => micRef.current?.volume.getMouthOpen() ?? 0,
+    isSpeaking: () => micRef.current?.volume.isSpeaking() ?? false,
   }), [])
 
   const stopMic = useCallback(() => {
+    micGenerationRef.current++
     const mic = micRef.current
     micRef.current = null
     setMicActive(false)
     if (!mic)
       return
+    cancelAnimationFrame(mic.frame)
     try {
       mic.source.disconnect()
     }
@@ -190,29 +182,62 @@ export default function Home() {
   }, [])
 
   const startMic = useCallback(async () => {
+    stopMic()
     setMicError('')
+    const generation = ++micGenerationRef.current
+    let stream: MediaStream | undefined
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (generation !== micGenerationRef.current) {
+        for (const track of stream.getTracks())
+          track.stop()
+        return
+      }
       const context = audioContextRef.current ?? new AudioContext()
       audioContextRef.current = context
       await context.resume()
+      if (generation !== micGenerationRef.current) {
+        for (const track of stream.getTracks())
+          track.stop()
+        return
+      }
       const source = context.createMediaStreamSource(stream)
       const analyser = context.createAnalyser()
       analyser.fftSize = 512
       source.connect(analyser)
-      micRef.current = {
+      const volume = createVolumeLipSync()
+      const startedAt = performance.now()
+      const mic = {
         analyser,
         data: new Uint8Array(analyser.fftSize),
-        smoothed: 0,
+        frame: 0,
         source,
         stream,
+        volume,
       }
+      micRef.current = mic
+      const sample = (timestamp: number) => {
+        if (micRef.current !== mic)
+          return
+        analyser.getByteTimeDomainData(mic.data)
+        let sum = 0
+        for (let index = 0; index < mic.data.length; index++) {
+          const value = (mic.data[index] - 128) / 128
+          sum += value * value
+        }
+        volume.sample(Math.sqrt(sum / mic.data.length), timestamp - startedAt)
+        mic.frame = requestAnimationFrame(sample)
+      }
+      mic.frame = requestAnimationFrame(sample)
       setMicActive(true)
     }
     catch (error) {
-      setMicError(error instanceof Error ? error.message : String(error))
+      for (const track of stream?.getTracks() ?? [])
+        track.stop()
+      if (generation === micGenerationRef.current)
+        setMicError(error instanceof Error ? error.message : String(error))
     }
-  }, [])
+  }, [stopMic])
 
   const stopSourceSignal = useCallback(() => {
     const signal = signalRef.current
@@ -285,6 +310,7 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    const micGeneration = micGenerationRef
     return () => {
       const signal = signalRef.current
       signalRef.current = null
@@ -299,8 +325,10 @@ export default function Home() {
         }
       }
       const mic = micRef.current
+      micGeneration.current++
       micRef.current = null
       if (mic) {
+        cancelAnimationFrame(mic.frame)
         try {
           mic.source.disconnect()
         }
@@ -603,7 +631,14 @@ export default function Home() {
                 Fixed 1× resolution
               </label>
 
-              <button type="button" onClick={() => setMounted(value => !value)}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (mounted)
+                    stopMic()
+                  setMounted(value => !value)
+                }}
+              >
                 {mounted ? 'Unmount canvas' : 'Mount canvas'}
               </button>
 

@@ -57,3 +57,5 @@ export type {
   LipSyncProfile,
   LipSyncProfileInput,
 } from './features/lipsync/source'
+export { createVolumeLipSync } from './features/lipsync/volume'
+export type { VolumeLipSyncDriver } from './features/lipsync/volume'

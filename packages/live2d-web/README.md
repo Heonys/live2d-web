@@ -64,6 +64,8 @@ container.addEventListener('click', async (event) => {
 ## Lip sync
 
 ```ts
+import { createVolumeLipSync } from 'live2d-web'
+
 // From a WebAudio node (vowel analysis via wLipSync, loaded on demand):
 character.addLipSync({
   source: audioNode,
@@ -71,13 +73,15 @@ character.addLipSync({
   isSpeaking: () => isPlaying,
 })
 
-// Or from any logic that yields mouth openness 0..1:
-character.addLipSync({
-  driver: { getMouthOpen: () => volume, isSpeaking: () => volume > 0 },
-})
+// Or convert caller-sampled RMS volume into a stable driver:
+const volume = createVolumeLipSync()
+character.addLipSync({ driver: volume })
+volume.sample(rms, elapsedMs) // once per capture frame
 ```
 
 React also takes plain values: `<LipSync mouthOpen={mouth} speaking={mouth > 0} />`.
+The app owns microphone access, RMS analysis and scheduling; the volume driver
+only calibrates the noise floor, smooths the value and detects speaking.
 Driver/value lip sync supports current Chromium, Firefox and WebKit. The
 optional wLipSync AudioWorklet source mode is currently verified on
 Chromium/WebKit; wlipsync 1.3 throws inside Firefox's worklet.

@@ -148,16 +148,22 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-입 열림 값(0~1)을 직접 계산해 넘기는 방식.
+마이크처럼 RMS 볼륨을 얻을 수 있는 입력에는 내장 드라이버가 노이즈 기준 보정,
+평활화, 발화 히스테리시스를 처리합니다. 캡처, RMS 계산, 프레임 스케줄링은
+애플리케이션이 계속 소유합니다.
 
 ```ts
-character.addLipSync({
-  driver: {
-    getMouthOpen: () => currentVolume,
-    isSpeaking: () => currentVolume > 0,
-  },
-})
+import { createVolumeLipSync } from 'live2d-web'
+
+const volume = createVolumeLipSync()
+const stopLipSync = character.addLipSync({ driver: volume })
+
+// 캡처 프레임마다 한 번. elapsedMs는 캡처 시작 후 경과 시간입니다.
+volume.sample(rms, elapsedMs)
 ```
+
+`getMouthOpen()`과 `isSpeaking()`을 구현한 사용자 드라이버도 그대로 쓸 수
+있습니다.
 
 React 전용으로, 값을 그대로 넘기는 방식.
 
@@ -167,7 +173,8 @@ React 전용으로, 값을 그대로 넘기는 방식.
 
 대상 파라미터는 기본 `ParamMouthOpenY`이고 `parameterId`로 변경합니다.
 라이브러리는 호출자의 `AudioContext`를 닫거나 중단하지 않으며, 캘리브레이션
-프로파일을 포함하지 않습니다.
+프로파일을 포함하지 않습니다. `createVolumeLipSync()` 자체는 React와 WebAudio,
+브라우저 전역을 사용하지 않습니다.
 
 ## 파라미터 직접 제어
 

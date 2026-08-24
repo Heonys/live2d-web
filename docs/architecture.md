@@ -109,6 +109,9 @@ WebGL frame cap은 refresh 간격의 작은 나머지만 보존한다. 초기 sh
 사용한다.
 
 - driver 모드는 매 프레임 getter를 읽는다.
+- `createVolumeLipSync()`는 호출자가 프레임마다 계산한 RMS를 받아 노이즈 기준
+  보정·attack/release 평활화·발화 히스테리시스를 수행하는 순수 driver다.
+  WebAudio, 마이크 권한, 타이머를 소유하거나 브라우저 전역을 참조하지 않는다.
 - source 모드는 사용자 AudioNode를 wLipSync 분석 node에 연결한다.
 - 사용자 AudioNode/AudioContext 소유권을 가져오지 않는다.
 - 말이 끝나면 200ms crossfade, 500ms closed hold 뒤 파라미터 쓰기를

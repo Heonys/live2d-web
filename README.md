@@ -148,16 +148,22 @@ const stopLipSync = character.addLipSync({
 })
 ```
 
-From your own logic, as a mouth-openness value between 0 and 1:
+For a microphone or another RMS volume source, the built-in driver performs
+noise-floor calibration, smoothing and speaking hysteresis. Your app still
+owns capture, RMS analysis and frame scheduling:
 
 ```ts
-character.addLipSync({
-  driver: {
-    getMouthOpen: () => currentVolume,
-    isSpeaking: () => currentVolume > 0,
-  },
-})
+import { createVolumeLipSync } from 'live2d-web'
+
+const volume = createVolumeLipSync()
+const stopLipSync = character.addLipSync({ driver: volume })
+
+// Once per capture frame; elapsedMs is time since capture started.
+volume.sample(rms, elapsedMs)
 ```
+
+You can also provide any custom object with `getMouthOpen()` and
+`isSpeaking()` as the driver.
 
 From plain values, React only:
 
@@ -167,7 +173,8 @@ From plain values, React only:
 
 The target parameter defaults to `ParamMouthOpenY`; change it with
 `parameterId`. The library never closes or suspends your `AudioContext`, and
-no calibration profile is bundled.
+no wLipSync calibration profile is bundled. `createVolumeLipSync()` itself is
+React-free and does not access WebAudio or browser globals.
 
 ## Direct parameter control
 
