@@ -1,6 +1,6 @@
 'use client'
 
-import type { ModelFit, ModelInfo, VolumeLipSyncDriver } from 'live2d-web'
+import type { ModelFit, ModelInfo, MotionOptions, VolumeLipSyncDriver } from 'live2d-web'
 import type { Live2DModelController } from 'live2d-web/react'
 import type { AssetManifest } from '../lib/assetManifest'
 import { createVolumeLipSync } from 'live2d-web'
@@ -20,6 +20,15 @@ import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
 interface MotionOption {
   group: string
   index: number
+}
+
+type MotionFadePreset = '500' | 'instant' | 'model'
+
+function optionsForFadePreset(preset: MotionFadePreset): MotionOptions | undefined {
+  if (preset === 'model')
+    return undefined
+  const milliseconds = preset === 'instant' ? 0 : 500
+  return { fadeInMs: milliseconds, fadeOutMs: milliseconds }
 }
 
 const DEMO_CODE = `import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
@@ -127,6 +136,7 @@ export default function Home() {
   const [controller, setController] = useState<Live2DModelController | null>(null)
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
   const [motionValue, setMotionValue] = useState('')
+  const [motionFadePreset, setMotionFadePreset] = useState<MotionFadePreset>('model')
   const [playingMotion, setPlayingMotion] = useState<string | null>(null)
   const playGenerationRef = useRef(0)
   const codeSampleRef = useRef<HTMLDetailsElement>(null)
@@ -370,13 +380,13 @@ export default function Home() {
     const generation = ++playGenerationRef.current
     setPlayingMotion(index === undefined ? group : `${group} ${index + 1}`)
     void controller
-      .motion(group, index)
+      .motion(group, index, optionsForFadePreset(motionFadePreset))
       .catch(() => {})
       .finally(() => {
         if (playGenerationRef.current === generation)
           setPlayingMotion(null)
       })
-  }, [controller])
+  }, [controller, motionFadePreset])
 
   const handleTap = useCallback((hitAreas: string[]) => {
     setHitReadout(hitAreas.length ? `Hit: ${hitAreas.join(', ')}` : 'Hit: none')
@@ -586,6 +596,19 @@ export default function Home() {
           <details className="dev-tools">
             <summary>Developer tools</summary>
             <div className="dev-tools-body">
+              <label>
+                Motion fade
+                <select
+                  aria-label="Motion fade"
+                  value={motionFadePreset}
+                  onChange={event => setMotionFadePreset(event.target.value as MotionFadePreset)}
+                >
+                  <option value="model">Model default</option>
+                  <option value="instant">Instant</option>
+                  <option value="500">500 ms</option>
+                </select>
+              </label>
+
               <label>
                 Lip-sync mode
                 <select

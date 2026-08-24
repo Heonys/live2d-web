@@ -17,6 +17,12 @@ declare global {
       abortLoad: () => Promise<string>
       cycle: (count: number) => Promise<{ canvases: number, mouth: number }>
       expressionFixture: () => Promise<number>
+      motionFadeFixture: () => Promise<{
+        defaultAfterInstant: number
+        instant: number
+        parameterFade: number
+        slow: number
+      }>
       fit: (fit: 'full' | 'upper-body') => void
       focus: (x: number, y: number) => void
       hitTest: (x: number, y: number) => string[]
@@ -156,6 +162,61 @@ export default function E2EHarness() {
         instance.dispose()
         host.remove()
         return value
+      },
+      async motionFadeFixture() {
+        const createFixture = async () => {
+          const host = document.createElement('div')
+          host.style.height = '320px'
+          host.style.width = '240px'
+          document.body.appendChild(host)
+          const instance = await createLive2D({
+            container: host,
+            coreUrl: CORE_URL,
+            fit: 'full',
+            idleMotion: false,
+            pauseWhenOffscreen: false,
+            src: '/e2e-motion.model3.json',
+          })
+          return { host, instance }
+        }
+        const sample = async (fadeInMs: number) => {
+          const { host, instance } = await createFixture()
+          const playback = instance.motion('Fade', 0, { fadeInMs })
+          while (!instance.isMotionPlaying())
+            await nextFrame()
+          await nextFrame()
+          const values = {
+            parameter: instance.getParameter('ParamAngleY'),
+            value: instance.getParameter('ParamAngleX'),
+          }
+          instance.dispose()
+          await playback
+          host.remove()
+          return values
+        }
+
+        const instant = await sample(0)
+        const slow = await sample(2_000)
+
+        // Reuse one model to prove an override did not mutate the default
+        // parsed cache object used by the next playback.
+        const { host, instance } = await createFixture()
+        await instance.motion('Fade', 0, { fadeInMs: 0 })
+        const defaultPlayback = instance.motion('Fade', 0)
+        while (!instance.isMotionPlaying())
+          await nextFrame()
+        await nextFrame()
+        const defaultAfterInstant = instance.getParameter('ParamAngleX')
+        instance.dispose()
+        await defaultPlayback
+        host.remove()
+
+        return {
+          defaultAfterInstant,
+          instant: instant.value,
+          parameterFade: slow.parameter,
+          slow: slow.value,
+        }
       },
       fit: fit => character?.setFit(fit),
       focus: (x, y) => character?.focus(x, y),

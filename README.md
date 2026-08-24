@@ -88,6 +88,7 @@ const info = character.getModelInfo()
 await character.motion('Tap@Body') // random index within the group
 await character.motion('Tap@Body', 1) // specific index
 await character.motion('Idle', 0, { priority: 'normal' }) // do not interrupt
+await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
 
 await character.expression('smile')
 character.clearExpression()
@@ -96,6 +97,11 @@ character.clearExpression()
 `motion()` resolves when playback finishes, so sequencing works with plain
 `await`. If another motion interrupts, the promise resolves at that point;
 after a render error such as WebGL context loss it rejects instead.
+
+`fadeInMs` and `fadeOutMs` override the model's motion-wide fade for that
+playback only. Values are finite, non-negative milliseconds; `0` makes the
+corresponding fade instant. Omitted values keep the model3/motion3 defaults,
+and parameter-specific fades authored in motion3 stay unchanged.
 
 Idle playback runs automatically from the model's `Idle` group; use
 `idleMotion` to pick a different group, or `false` to turn it off. Priorities

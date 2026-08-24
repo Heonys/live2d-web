@@ -1,0 +1,16 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "/assets/live2d/hiyori/hiyori_free/runtime/hiyori_free_t08.moc3",
+    "Textures": [
+      "/assets/live2d/hiyori/hiyori_free/runtime/hiyori_free_t08.2048/texture_00.png"
+    ],
+    "Motions": {
+      "Fade": [
+        {
+          "File": "/e2e-fixtures/fade.motion3.json"
+        }
+      ]
+    }
+  }
+}

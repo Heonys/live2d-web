@@ -52,6 +52,7 @@ import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 character.getModelInfo() // { motions: { Idle: 3, 'Tap@Body': 2 }, expressions, hitAreas }
 
 await character.motion('Tap@Body') // resolves when playback finishes
+await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
 await character.expression('smile')
 character.clearExpression()
 
@@ -60,6 +61,10 @@ container.addEventListener('click', async (event) => {
     await character.motion('Tap@Body')
 })
 ```
+
+Motion fade overrides are finite, non-negative milliseconds and affect only
+that playback. Use `0` for an instant fade; omit a field to retain the
+model3/motion3 default. Parameter-specific motion3 fades remain authored.
 
 ## Lip sync
 

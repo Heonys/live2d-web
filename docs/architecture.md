@@ -1,6 +1,6 @@
 # 아키텍처
 
-상태 기준일: **2026-08-15**. headless runtime과 React binding이 같은
+상태 기준일: **2026-08-24**. headless runtime과 React binding이 같은
 controller를 사용하며, 공식 Framework 기반 cubism-webgl이 기본 backend다.
 pixi-v6는 명시적 비교·호환 backend로 남아 있다.
 
@@ -64,6 +64,21 @@ per-frame 데이터는 React state로 올리지 않는다.
   expression, after-motion 구독과 dispose
 
 이 경계 덕분에 vanilla/React API와 테스트는 renderer를 몰라도 된다.
+
+## 모션 재생과 페이드 소유권
+
+기본 cubism-webgl backend는 각 모션의 원본 `ArrayBuffer`와 model3 설정까지
+반영한 기본 파싱 객체를 함께 캐시한다. 페이드 옵션이 없는 호출은 기본 객체를
+재사용한다. `fadeInMs`나 `fadeOutMs`가 있는 호출만 캐시된 버퍼에서 재생 전용
+객체를 새로 파싱하고, 전체 모션 페이드만 덮어쓴다. motion3의 파라미터별
+페이드는 파싱 결과에 남아 해당 파라미터에서 계속 우선한다.
+
+재생 전용 객체가 큐에 들어가면 Framework의 `autoDelete`가 소유하고 완료·중단
+뒤 해제한다. 로드 중 오래된 요청이 되거나 dispose·시작 실패가 발생해 큐에
+들어가지 못한 객체만 backend가 직접 한 번 해제한다. 이 분리로 서로 다른
+옵션을 연속 호출해도 기본 캐시와 이미 재생 중인 모션을 변경하지 않는다.
+pixi-v6 비교 backend는 페이드 옵션을 지원하지 않으며 조용히 무시하지 않고
+`invalid-props`를 반환한다.
 
 ## 프레임 순서
 

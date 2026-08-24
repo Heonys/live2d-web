@@ -1,6 +1,6 @@
 # API Reference
 
-Status: 2026-08-21. The package is ESM-only, versioned `0.3.1`. The root
+Status: 2026-08-24. The package is ESM-only, versioned `0.3.1`. The root
 entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
@@ -62,6 +62,8 @@ interface Live2DInstance {
 
 interface MotionOptions {
   priority?: 'force' | 'idle' | 'normal' // default 'force'
+  fadeInMs?: number
+  fadeOutMs?: number
 }
 
 interface ModelInfo {
@@ -76,6 +78,19 @@ is a plain `await`. It resolves on dispose, and rejects with the stage error if
 a render error (such as WebGL context loss) stops the frame loop; motions
 started after that error reject immediately. `focusAt`/`hitTest` take viewport
 client coordinates; `focus` takes stage-local CSS pixels.
+
+`fadeInMs` and `fadeOutMs` are optional, finite, non-negative millisecond
+overrides for one playback. `0` disables that motion-wide fade; omitting a
+field keeps the authored value. Resolution order is the call option, the
+model3 motion entry, motion3 `Meta`, then the Framework default. A motion3
+parameter curve's own fade remains in force for that parameter. `fadeOutMs`
+applies both at natural completion and when another motion interrupts it.
+Invalid values reject with `invalid-props`.
+
+The default `cubism-webgl` backend implements these overrides. The
+repository-only `pixi-v6` comparison backend rejects a supplied fade option
+with `invalid-props` instead of silently ignoring it. A custom backend must
+likewise either implement a public option or reject it explicitly.
 
 `setParameter()` is a persistent per-frame override that is re-applied after
 every SDK update until `clearParameter()` removes it. `pauseWhenOffscreen`

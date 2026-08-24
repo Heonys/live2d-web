@@ -8,6 +8,10 @@
   caller-sampled RMS volume into stable mouth openness with initial noise-floor
   calibration, attack/release smoothing and speaking hysteresis. Capture,
   WebAudio nodes and scheduling remain caller-owned.
+- `motion()` accepts per-playback `fadeInMs` and `fadeOutMs` overrides on the
+  default cubism-webgl backend without mutating the model's cached motion or
+  parameter-specific motion3 fades. Invalid values and the unsupported
+  repository-only pixi-v6 path fail explicitly with `invalid-props`.
 
 ## 0.3.1 - 2026-08-21
 

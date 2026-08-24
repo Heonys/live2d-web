@@ -9,6 +9,14 @@ const mouthExpression = readFileSync(
   new URL('./fixtures/cubism-webgl/mouth-open.exp3.json', import.meta.url),
   'utf8',
 )
+const motionModel = readFileSync(
+  new URL('./fixtures/cubism-webgl/hiyori-motion.model3.json', import.meta.url),
+  'utf8',
+)
+const fadeMotion = readFileSync(
+  new URL('./fixtures/cubism-webgl/fade.motion3.json', import.meta.url),
+  'utf8',
+)
 
 // PIXI destroys and loses every context, but Playwright WebKit defers removing
 // rapidly replaced contexts from its per-page budget. Keep 20 cycles while
@@ -72,6 +80,9 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
 
   // The mount/unmount QA buttons live in the collapsed developer tools.
   await page.getByText('Developer tools').click()
+  await page.getByLabel('Motion fade').selectOption('500')
+  await page.getByRole('button', { name: 'Play motion' }).click()
+  await expect(page.getByTestId('playing-motion')).toBeVisible()
   for (let index = 0; index < 20; index++) {
     await page.getByRole('button', { name: 'Unmount canvas' }).click()
     await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
@@ -306,6 +317,14 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
     body: mouthExpression,
     contentType: 'application/json',
   }))
+  await page.route('**/e2e-motion.model3.json', route => route.fulfill({
+    body: motionModel,
+    contentType: 'application/json',
+  }))
+  await page.route('**/e2e-fixtures/fade.motion3.json', route => route.fulfill({
+    body: fadeMotion,
+    contentType: 'application/json',
+  }))
 
   await page.goto('/e2e')
   await expect(page.locator('#e2e-status')).toHaveText('ready')
@@ -361,6 +380,13 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
     .toBe('AbortError')
   expect(await page.evaluate(() => (window as any).__live2dWebE2E.expressionFixture()))
     .toBeGreaterThan(0.1)
+
+  const fade = await page.evaluate(
+    () => (window as any).__live2dWebE2E.motionFadeFixture(),
+  )
+  expect(fade.instant).toBeGreaterThan(fade.slow + 5)
+  expect(fade.parameterFade).toBeGreaterThan(fade.slow + 5)
+  expect(fade.defaultAfterInstant).toBeLessThan(fade.instant - 5)
 
   await page.evaluate(() => (window as any).__live2dWebE2E.loseContext())
   await expect.poll(async () => page.evaluate(

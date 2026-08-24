@@ -90,6 +90,7 @@ const info = character.getModelInfo()
 await character.motion('Tap@Body') // グループ内でランダム
 await character.motion('Tap@Body', 1) // インデックス指定
 await character.motion('Idle', 0, { priority: 'normal' }) // 再生中を中断しない
+await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
 
 await character.expression('smile')
 character.clearExpression()
@@ -98,6 +99,11 @@ character.clearExpression()
 `motion()` は再生が終わった時点で resolve するため、`await` だけで連続
 演出を組めます。別のモーションに割り込まれた場合はその時点で resolve し、
 WebGLコンテキスト喪失のような描画エラーの後は reject します。
+
+`fadeInMs` と `fadeOutMs` は、その再生に限ってモーション全体のフェードを
+ミリ秒単位で上書きします。値は0以上の有限数で、`0` は該当フェードを即時に
+します。省略した値は model3/motion3 の既定値を維持し、motion3 に記録された
+パラメータ別フェードもそのまま保たれます。
 
 アイドル再生はモデルの `Idle` グループが自動で行います。`idleMotion` で別の
 グループを指定でき、`false` で無効になります。優先度は

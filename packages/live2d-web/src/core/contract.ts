@@ -74,6 +74,10 @@ export type MotionPriority = 'force' | 'idle' | 'normal'
 export interface MotionOptions {
   /** Playback priority. 'force' interrupts anything (default). */
   priority?: MotionPriority
+  /** Overrides the motion-wide fade-in duration in milliseconds. */
+  fadeInMs?: number
+  /** Overrides natural and interruption fade-out in milliseconds. */
+  fadeOutMs?: number
 }
 
 /** Version-neutral model metadata extracted from the model settings file. */

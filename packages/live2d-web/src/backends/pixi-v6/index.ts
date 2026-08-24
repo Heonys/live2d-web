@@ -10,6 +10,7 @@ import { BatchRenderer } from '@pixi/core'
 import { extensions } from '@pixi/extensions'
 import { Ticker, TickerPlugin } from '@pixi/ticker'
 import { Live2DError } from '../../core/errors'
+import { hasMotionFadeOverride, resolveMotionFade } from '../../core/motion-options'
 import { PIXI_V6_TICKER_PRIORITY } from './tickerOrder'
 
 interface CoreModelParameters {
@@ -429,6 +430,14 @@ async function loadModel(
     async motion(group, index, options) {
       if (disposed)
         return
+      const fade = resolveMotionFade(options)
+      if (hasMotionFadeOverride(fade)) {
+        throw new Live2DError(
+          'invalid-props',
+          'The repository-only pixi-v6 backend does not support motion fade overrides.',
+          { details: { backend: 'pixi-v6' } },
+        )
+      }
       const priority = { force: 3, idle: 1, normal: 2 }[options?.priority ?? 'force']
       const started = await model.motion(group, index, priority)
       if (started === false || disposed)

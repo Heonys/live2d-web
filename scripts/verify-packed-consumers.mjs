@@ -78,7 +78,7 @@ try {
     },
   }, {
     'index.html': '<div id="app"></div><script type="module" src="/src.ts"></script>',
-    'src.ts': `import { createLive2D, createVolumeLipSync } from 'live2d-web'\n\nconst volume = createVolumeLipSync()\nvolume.sample(0, 0)\nvoid createLive2D\n`,
+    'src.ts': `import type { MotionOptions } from 'live2d-web'\nimport { createLive2D, createVolumeLipSync } from 'live2d-web'\n\nconst volume = createVolumeLipSync()\nconst motion = { fadeInMs: 250, fadeOutMs: 400 } satisfies MotionOptions\nvolume.sample(0, 0)\nvoid createLive2D\nvoid motion\n`,
     'tsconfig.json': JSON.stringify({
       compilerOptions: {
         lib: ['ES2022', 'DOM'],

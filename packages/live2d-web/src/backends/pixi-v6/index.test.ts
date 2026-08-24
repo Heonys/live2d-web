@@ -202,4 +202,20 @@ describe('pixi-v6 contract conformance', () => {
     model.dispose()
     stage.dispose()
   })
+
+  it('explicitly rejects motion fade overrides without starting playback', async () => {
+    const { model, stage } = await mountModel(1)
+
+    await expect(model.motion('Tap', 0, { fadeInMs: 250 })).rejects.toMatchObject({
+      code: 'invalid-props',
+      details: { backend: 'pixi-v6' },
+    })
+    expect(pixi.model.motion).not.toHaveBeenCalled()
+
+    pixi.model.motion.mockResolvedValueOnce(false)
+    await model.motion('Tap', 0, { priority: 'normal' })
+    expect(pixi.model.motion).toHaveBeenCalledWith('Tap', 0, 2)
+    model.dispose()
+    stage.dispose()
+  })
 })

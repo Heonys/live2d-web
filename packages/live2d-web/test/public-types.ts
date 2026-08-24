@@ -75,6 +75,12 @@ export interface RootSurface {
   transform: ModelTransform
 }
 
+export const motionFadeFixture = {
+  fadeInMs: 250,
+  fadeOutMs: 400,
+  priority: 'normal',
+} satisfies MotionOptions
+
 // Everything the /react signatures mention has to be nameable from /react too.
 export interface ReactSurface {
   canvasProps: Live2DCanvasProps

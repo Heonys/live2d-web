@@ -12,7 +12,9 @@ import type {
   StageHandle,
 } from '../../core/contract'
 import type { Live2DAssetType, Live2DErrorDetails } from '../../core/errors'
+import type { ResolvedMotionFade } from '../../core/motion-options'
 import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
+import type { CachedMotionAsset, PlaybackMotion } from './motion-playback'
 import type { LayoutBounds } from './types'
 import { CubismDefaultParameterId } from '#cubism-framework/cubismdefaultparameterid'
 import { CubismModelSettingJson } from '#cubism-framework/cubismmodelsettingjson'
@@ -41,6 +43,7 @@ import { CubismUpdateOrder } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
+import { resolveMotionFade } from '../../core/motion-options'
 import {
   closeTextureSource,
   fetchArrayBuffer,
@@ -53,6 +56,7 @@ import { measureAsync, measureSync } from './diagnostics'
 import { parseShaderErrorDetails } from './error-details'
 import { acquireFramework } from './framework-manager'
 import { buildMvpMatrix, measureLayout } from './matrix'
+import { preparePlaybackMotion } from './motion-playback'
 import { getStageInternals } from './stage'
 
 const PRIORITY_IDLE = 1
@@ -105,7 +109,7 @@ class FrameworkModel extends CubismUserModel {
   }[] = []
 
   private mvpMatrix: CubismMatrix44 | undefined
-  private readonly motionCache = new Map<string, Promise<CubismMotion>>()
+  private readonly motionCache = new Map<string, Promise<CachedMotionAsset<CubismMotion>>>()
   private readonly parameterIds = new Map<string, CubismIdHandle>()
   // Held so dispose() can release GL state without asking the stage, which
   // throws once the stage itself is gone.
@@ -129,6 +133,7 @@ class FrameworkModel extends CubismUserModel {
   private look: CubismLook | undefined
   private mvpDirty = true
   private motionUpdated = false
+  private motionGeneration = 0
   private transform: ModelTransform = { scale: 1, x: 0, y: 0 }
 
   constructor(
@@ -544,27 +549,9 @@ class FrameworkModel extends CubismUserModel {
           this.assetController.signal,
           this.resolveAsset,
         )
-        const motion = this.loadMotion(
-          buffer,
-          buffer.byteLength,
-          key,
-          undefined,
-          undefined,
-          this.setting,
-          group,
-          index,
-          true,
-        )
-        if (!motion) {
-          throw new Live2DError(
-            'model-load-failed',
-            `Failed to parse motion ${key}.`,
-            { details: modelAssetDetails('motion', motionUrl) },
-          )
-        }
-        motion.setEffectIds(this.eyeBlinkIds, [])
+        const motion = this.parseMotion(buffer, key, group, index, motionUrl)
         this.loadedMotions.add(motion)
-        return motion
+        return { buffer, motion }
       }
       finally {
         if (this.pendingMotionKeys.delete(key))
@@ -574,6 +561,35 @@ class FrameworkModel extends CubismUserModel {
     this.motionCache.set(key, promise)
     promise.catch(() => this.motionCache.delete(key))
     return promise
+  }
+
+  private parseMotion(
+    buffer: ArrayBuffer,
+    key: string,
+    group: string,
+    index: number,
+    motionUrl = resolveAssetUrl(this.setting.getMotionFileName(group, index), this.modelUrl),
+  ) {
+    const motion = this.loadMotion(
+      buffer,
+      buffer.byteLength,
+      key,
+      undefined,
+      undefined,
+      this.setting,
+      group,
+      index,
+      true,
+    )
+    if (!motion) {
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to parse motion ${key}.`,
+        { details: modelAssetDetails('motion', motionUrl) },
+      )
+    }
+    motion.setEffectIds(this.eyeBlinkIds, [])
+    return motion
   }
 
   private motionGroupNames() {
@@ -600,7 +616,12 @@ class FrameworkModel extends CubismUserModel {
     }
   }
 
-  private async playMotion(group: string, index: number | undefined, priority: number) {
+  private async playMotion(
+    group: string,
+    index: number | undefined,
+    priority: number,
+    fade: ResolvedMotionFade = {},
+  ) {
     if (this.disposed)
       return
     if (this.renderError)
@@ -625,21 +646,38 @@ class FrameworkModel extends CubismUserModel {
     else if (!this._motionManager.reserveMotion(priority))
       return
 
+    const generation = ++this.motionGeneration
     let handle: CubismMotionQueueEntryHandle
+    let playback: PlaybackMotion<CubismMotion> | undefined
     try {
-      const motion = await this.loadMotionAsset(group, selected)
-      if (this.disposed)
+      const asset = await this.loadMotionAsset(group, selected)
+      if (this.disposed || generation !== this.motionGeneration)
         return
-      handle = this._motionManager.startMotionPriority(motion, false, priority)
+      playback = preparePlaybackMotion(
+        asset,
+        fade,
+        buffer => this.parseMotion(buffer, `${group}:${selected}`, group, selected),
+        motion => ACubismMotion.delete(motion),
+      )
+      handle = this._motionManager.startMotionPriority(
+        playback.motion,
+        playback.autoDelete,
+        priority,
+      )
+      if (handle === InvalidMotionQueueEntryHandleValue) {
+        playback.releaseBeforeStart()
+        return
+      }
+      playback.transferToQueue()
     }
     catch (error) {
+      playback?.releaseBeforeStart()
       if (this.disposed)
         return
-      this._motionManager.setReservePriority(0)
+      if (generation === this.motionGeneration)
+        this._motionManager.setReservePriority(0)
       throw error
     }
-    if (handle === InvalidMotionQueueEntryHandleValue)
-      return
     // Resolve when playback actually ends (settled by the frame loop), so
     // callers can sequence follow-up actions with a plain await.
     await new Promise<void>((resolve, reject) => {
@@ -847,11 +885,15 @@ class FrameworkModel extends CubismUserModel {
       getParameter: id => this.getModel().getParameterValueById(this.parameterId(id)),
       hitTest: (x, y) => this.hitTestStagePoint(x, y),
       isMotionPlaying: () => !this.disposed && !this._motionManager.isFinished(),
-      motion: (group, index, options) => this.playMotion(
-        group,
-        index,
-        MOTION_PRIORITIES[options?.priority ?? 'force'],
-      ),
+      motion: async (group, index, options) => {
+        const fade = resolveMotionFade(options)
+        await this.playMotion(
+          group,
+          index,
+          MOTION_PRIORITIES[options?.priority ?? 'force'],
+          fade,
+        )
+      },
       onAfterMotionUpdate: (callback) => {
         this.afterMotionCallbacks.add(callback)
         return once(() => this.afterMotionCallbacks.delete(callback))
@@ -873,6 +915,7 @@ class FrameworkModel extends CubismUserModel {
     if (this.disposed)
       return
     this.disposed = true
+    this.motionGeneration++
     this.assetController.abort(new DOMException('Model disposed', 'AbortError'))
     // The abort settles fetch rejections asynchronously, so reconcile the
     // in-flight load counters now to keep dispose-time diagnostics exact.

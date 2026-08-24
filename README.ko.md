@@ -87,6 +87,7 @@ const info = character.getModelInfo()
 await character.motion('Tap@Body') // 그룹 안에서 무작위 선택
 await character.motion('Tap@Body', 1) // 인덱스 지정
 await character.motion('Idle', 0, { priority: 'normal' }) // 진행 중인 모션을 끊지 않음
+await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
 
 await character.expression('smile')
 character.clearExpression()
@@ -95,6 +96,11 @@ character.clearExpression()
 `motion()`은 재생이 끝나는 시점에 resolve되므로 `await`만으로 순차 연출이
 가능합니다. 다른 모션이 끼어들면 그 시점에 resolve되고, WebGL 컨텍스트 손실
 같은 렌더 에러 뒤에는 reject됩니다.
+
+`fadeInMs`와 `fadeOutMs`는 해당 재생의 모션 전체 페이드만 밀리초 단위로
+덮어씁니다. 값은 0 이상의 유한한 수이며 `0`이면 해당 페이드가 즉시
+적용됩니다. 생략한 값은 model3/motion3 기본 설정을 유지하고, motion3의
+파라미터별 페이드도 그대로 보존됩니다.
 
 기본 움직임은 모델의 `Idle` 그룹이 자동 재생합니다. `idleMotion`으로 다른
 그룹을 지정하거나 `false`로 끌 수 있습니다. 우선순위는
