@@ -42,13 +42,14 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 ## Key Path Index
 
 - `docs/README.md` — 문서 지도 + 확정된 결정 목록
+- `docs/roadmap.md` — 성장 목표·고도화 축·버전 순서 (기능 추가 전 여기서 소비자를 확인)
 - `private/docs/ecosystem-survey.md` — npm 실측 + 이름 결정 기록 (로컬 전용, 미추적)
 - `docs/architecture.md` — 구현된 어댑터·프레임·생명주기·품질 계약
 - `docs/api-design.md` — 컴포넌트·훅 시그니처 + per-frame 규약 + 에러 모델
 - `private/docs/extraction-map.md` — 선행 참조 구현 이관 기록 (로컬 전용, 미추적)
 - `docs/licensing.md` — Cubism Core 비동봉 인과, 상표 고지, 선행 코드 크레딧
 - `private/docs/cubism-webgl-plan.md` — WebGL 백엔드 구현·성능 계획 (로컬 전용, 미추적)
-- `private/docs/roadmap.md` — 로드맵 (로컬 전용, 미추적)
+- `private/docs/roadmap.md` — 지나온 마일스톤 M0~M5 이력 (로컬 전용, 미추적)
 - `packages/live2d-web/src/core/contract.ts` — 백엔드 계약 타입(architecture.md의 코드화)
 - `packages/live2d-web/src/react/` — headless runtime binding, Store, hooks
 - `packages/live2d-web/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller
