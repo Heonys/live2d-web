@@ -5,6 +5,9 @@
 import type {
   AutoQualityPolicy,
   CreateLive2DOptions,
+  ExpressionOptions,
+  IdleMotion,
+  IdleMotionOptions,
   LipSyncDriver,
   LipSyncProfile,
   LipSyncProfileInput,
@@ -40,6 +43,9 @@ import type {
   Live2DModelController,
   Live2DModelProps,
   CreateLive2DOptions as ReactCreateLive2DOptions,
+  ExpressionOptions as ReactExpressionOptions,
+  IdleMotion as ReactIdleMotion,
+  IdleMotionOptions as ReactIdleMotionOptions,
   LipSyncDriver as ReactLipSyncDriver,
   LipSyncProfileInput as ReactLipSyncProfileInput,
   Live2DInstance as ReactLive2DInstance,
@@ -59,6 +65,9 @@ export interface RootSurface {
   assetResolver: Live2DAssetResolver
   backend: Live2DBackend
   createOptions: CreateLive2DOptions
+  expressionOptions: ExpressionOptions
+  idleMotion: IdleMotion
+  idleMotionOptions: IdleMotionOptions
   errorCode: Live2DErrorCode
   assetType: Live2DAssetType
   fit: ModelFit
@@ -99,6 +108,9 @@ export interface ReactSurface {
   canvasState: Live2DCanvasState
   controller: Live2DModelController
   createOptions: ReactCreateLive2DOptions
+  expressionOptions: ReactExpressionOptions
+  idleMotion: ReactIdleMotion
+  idleMotionOptions: ReactIdleMotionOptions
   instance: ReactLive2DInstance
   lipSyncDriver: ReactLipSyncDriver
   lipSyncProps: LipSyncProps

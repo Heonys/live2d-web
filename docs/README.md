@@ -18,17 +18,19 @@ backend다.
    — root/runtime chunk·tarball의 v0.3.1 기준선 대비 변화
 10. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
    — root/runtime/cubism/model chunk·tarball의 v0.3.1 기준선 대비 변화
-11. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+11. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
+   — 상세 상태·시퀀스·가중 Idle·표정 페이드 뒤 chunk·tarball 변화
+12. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-12. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+13. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-13. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-14. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-15. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-16. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-17. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-18. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-19. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+14. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+15. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+16. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+17. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+18. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+19. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+20. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 

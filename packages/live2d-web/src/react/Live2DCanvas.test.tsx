@@ -282,6 +282,40 @@ describe('live2DCanvas lifecycle', () => {
       .toBeGreaterThan(pausesBefore)
   })
 
+  it('keeps equivalent inline weighted idle options stable', async () => {
+    const harness = createFakeHarness()
+    const view = render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel
+          idleMotion={{ group: 'Idle', weights: [1, 0] }}
+          src="/hiyori.model3.json"
+        />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(harness.stages).toHaveLength(1))
+
+    view.rerender(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel
+          idleMotion={{ group: 'Idle', weights: [1, 0] }}
+          src="/hiyori.model3.json"
+        />
+      </Live2DCanvas>,
+    )
+    await Promise.resolve()
+    expect(harness.stages).toHaveLength(1)
+
+    view.rerender(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel
+          idleMotion={{ group: 'Idle', weights: [0, 1] }}
+          src="/hiyori.model3.json"
+        />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(harness.stages).toHaveLength(2))
+  })
+
   it('recenters the gaze when the pointer leaves the canvas', async () => {
     const harness = createFakeHarness()
     render(

@@ -13,6 +13,8 @@ import type {
   StageHandle,
 } from '../../core/contract'
 import type { Live2DAssetType, Live2DErrorDetails } from '../../core/errors'
+import type { ResolvedExpressionFade } from '../../core/expression-options'
+import type { ResolvedIdleMotion } from '../../core/idle-motion'
 import type { ResolvedMotionFade } from '../../core/motion-options'
 import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import type { CachedMotionAsset, PlaybackMotion } from './motion-playback'
@@ -44,6 +46,8 @@ import { CubismUpdateOrder } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
+import { resolveExpressionFade } from '../../core/expression-options'
+import { resolveIdleMotion, selectIdleMotionIndex } from '../../core/idle-motion'
 import { resolveMotionFade, validateMotionOptions } from '../../core/motion-options'
 import {
   closeTextureSource,
@@ -100,7 +104,7 @@ function modelAssetDetails(
 class FrameworkModel extends CubismUserModel {
   private readonly afterMotionCallbacks = new Set<(deltaMs: number) => void>()
   private readonly assetController = new AbortController()
-  private readonly expressionCache = new Map<string, Promise<ACubismMotion>>()
+  private readonly expressionCache = new Map<string, Promise<CachedMotionAsset<ACubismMotion>>>()
   private readonly loadedMotions = new Set<ACubismMotion>()
   private layoutMatrix: CubismModelMatrix | undefined
   private readonly manualParameters = new Map<string, number>()
@@ -125,6 +129,7 @@ class FrameworkModel extends CubismUserModel {
   private bounds: LayoutBounds = { centerX: 0, centerY: 0, height: 1, width: 1 }
   private detachDriver: (() => void) | undefined
   private disposed = false
+  private expressionGeneration = 0
   private eyeBlinkIds: CubismIdHandle[] = []
   private idlePending = false
   private look: CubismLook | undefined
@@ -139,7 +144,7 @@ class FrameworkModel extends CubismUserModel {
     private readonly setting: CubismModelSettingJson,
     private readonly shaderBaseUrl: string,
     private readonly shaderSources: Readonly<Record<string, string>> | undefined,
-    private readonly idleMotionGroup: string | false,
+    private readonly idleMotion: ResolvedIdleMotion | false,
     private readonly releaseFramework: () => void,
     private readonly diagnostics?: CubismBenchmarkStageDiagnostics,
     private readonly resolveAsset?: Live2DAssetResolver,
@@ -255,14 +260,14 @@ class FrameworkModel extends CubismUserModel {
     })
     // The delay may have been cut short by dispose; the settings object is
     // released at that point, so bail out before touching it.
-    if (this.disposed || this.idleMotionGroup === false)
+    if (this.disposed || this.idleMotion === false)
       return
-    const count = this.setting.getMotionCount(this.idleMotionGroup)
+    const count = this.setting.getMotionCount(this.idleMotion.group)
     for (let index = 0; index < count; index++) {
       if (this.disposed)
         return
       try {
-        await this.loadMotionAsset(this.idleMotionGroup, index)
+        await this.loadMotionAsset(this.idleMotion.group, index)
       }
       catch {
         // Prefetch is best-effort; playback surfaces real failures.
@@ -515,11 +520,18 @@ class FrameworkModel extends CubismUserModel {
   }
 
   private scheduleIdle() {
-    const group = this.idleMotionGroup
-    if (group === false || this.idlePending || this.setting.getMotionCount(group) === 0)
+    if (this.idleMotion === false || this.idlePending)
+      return
+    const { group, weights } = this.idleMotion
+    const count = this.setting.getMotionCount(group)
+    if (count === 0)
       return
     this.idlePending = true
-    void this.playMotion(group, undefined, PRIORITY_IDLE)
+    void this.playMotion(
+      group,
+      selectIdleMotionIndex(count, weights),
+      PRIORITY_IDLE,
+    )
       .catch((error) => {
         if (!this.disposed)
           getStageInternals(this.stage).reportError(asModelError(error, 'Idle motion failed'))
@@ -763,16 +775,9 @@ class FrameworkModel extends CubismUserModel {
           this.assetController.signal,
           this.resolveAsset,
         )
-        const expression = this.loadExpression(buffer, buffer.byteLength, id)
-        if (!expression) {
-          throw new Live2DError(
-            'model-load-failed',
-            `Failed to parse expression ${id}.`,
-            { details: modelAssetDetails('expression', expressionUrl) },
-          )
-        }
+        const expression = this.parseExpression(buffer, id, expressionUrl)
         this.loadedMotions.add(expression)
-        return expression
+        return { buffer, motion: expression }
       }
       finally {
         if (this.pendingExpressionKeys.delete(id))
@@ -782,6 +787,58 @@ class FrameworkModel extends CubismUserModel {
     this.expressionCache.set(id, promise)
     promise.catch(() => this.expressionCache.delete(id))
     return promise
+  }
+
+  private parseExpression(
+    buffer: ArrayBuffer,
+    id: string,
+    expressionUrl = resolveAssetUrl(this.setting.getExpressionFileName(
+      this.findExpression(id),
+    ), this.modelUrl),
+  ) {
+    const expression = this.loadExpression(buffer, buffer.byteLength, id)
+    if (!expression) {
+      throw new Live2DError(
+        'model-load-failed',
+        `Failed to parse expression ${id}.`,
+        { details: modelAssetDetails('expression', expressionUrl) },
+      )
+    }
+    return expression
+  }
+
+  private async playExpression(
+    id: string,
+    index: number,
+    fade: ResolvedExpressionFade,
+  ) {
+    const generation = ++this.expressionGeneration
+    let playback: PlaybackMotion<ACubismMotion> | undefined
+    try {
+      const asset = await this.loadExpressionAsset(id, index)
+      if (this.disposed || generation !== this.expressionGeneration)
+        return
+      playback = preparePlaybackMotion(
+        asset,
+        fade,
+        buffer => this.parseExpression(buffer, id),
+        expression => ACubismMotion.delete(expression),
+      )
+      const handle = this._expressionManager.startMotion(
+        playback.motion,
+        playback.autoDelete,
+      )
+      if (handle === InvalidMotionQueueEntryHandleValue) {
+        playback.releaseBeforeStart()
+        return
+      }
+      playback.transferToQueue()
+    }
+    catch (error) {
+      playback?.releaseBeforeStart()
+      if (!this.disposed)
+        throw error
+    }
   }
 
   private draw() {
@@ -826,14 +883,17 @@ class FrameworkModel extends CubismUserModel {
   toHandle(): ModelHandle {
     return {
       clearExpression: () => {
-        if (!this.disposed)
+        if (!this.disposed) {
+          this.expressionGeneration++
           this._expressionManager.stopAllMotions()
+        }
       },
       clearParameter: (id) => {
         this.manualParameters.delete(id)
       },
       dispose: () => this.disposeModel(),
-      expression: async (id) => {
+      expression: async (id, options) => {
+        const fade = resolveExpressionFade(options)
         const count = this.setting.getExpressionCount()
         if (count === 0) {
           if (id)
@@ -849,15 +909,7 @@ class FrameworkModel extends CubismUserModel {
               this.readModelInfo().expressions.join(', ')}`,
           )
         }
-        try {
-          const expression = await this.loadExpressionAsset(selectedId, index)
-          if (!this.disposed)
-            this._expressionManager.startMotion(expression, false)
-        }
-        catch (error) {
-          if (!this.disposed)
-            throw error
-        }
+        await this.playExpression(selectedId, index, fade)
       },
       focus: (x, y) => {
         const size = this.stage.getSize()
@@ -913,6 +965,7 @@ class FrameworkModel extends CubismUserModel {
       return
     this.disposed = true
     this.motionGeneration++
+    this.expressionGeneration++
     this.assetController.abort(new DOMException('Model disposed', 'AbortError'))
     // The abort settles fetch rejections asynchronously, so reconcile the
     // in-flight load counters now to keep dispose-time diagnostics exact.
@@ -1003,13 +1056,17 @@ export async function loadFrameworkModel(
         { cause: error, details: modelAssetDetails('model3', modelUrl) },
       )
     }
+    const idleMotion = resolveIdleMotion(
+      options.idleMotion,
+      group => setting.getMotionCount(group),
+    )
     model = new FrameworkModel(
       stage,
       modelUrl,
       setting,
       shaderBaseUrl,
       shaderSources,
-      options.idleMotion ?? 'Idle',
+      idleMotion,
       releaseFramework,
       diagnostics,
       options.resolveAsset,

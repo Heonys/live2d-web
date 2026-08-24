@@ -91,14 +91,22 @@ await character.motion('Tap@Body') // グループ内でランダム
 await character.motion('Tap@Body', 1) // インデックス指定
 await character.motion('Idle', 0, { priority: 'normal' }) // 再生中を中断しない
 await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
+const result = await character.playMotion('Tap@Body')
+// { status: 'completed' | 'interrupted' | 'skipped' | 'disposed' }
+await character.sequence([
+  { group: 'Tap@Body', index: 0 },
+  { group: 'Tap@Body', index: 1, options: { fadeInMs: 250 } },
+])
 
-await character.expression('smile')
+await character.expression('smile', { fadeInMs: 250, fadeOutMs: 400 })
 character.clearExpression()
 ```
 
 `motion()` は再生が終わった時点で resolve するため、`await` だけで連続
-演出を組めます。別のモーションに割り込まれた場合はその時点で resolve し、
-WebGLコンテキスト喪失のような描画エラーの後は reject します。
+演出を組め、従来の `Promise<void>` 契約も維持します。終了理由が必要な場合は
+`playMotion()` を使います。`sequence()` は全ステップを先に検証して順番に
+実行し、最初の非完了ステータスで停止します。描画・アセットエラーは
+ステータスに変換せず reject します。
 
 `fadeInMs` と `fadeOutMs` は、その再生に限ってモーション全体のフェードを
 ミリ秒単位で上書きします。値は0以上の有限数で、`0` は該当フェードを即時に
@@ -106,10 +114,12 @@ WebGLコンテキスト喪失のような描画エラーの後は reject しま�
 パラメータ別フェードもそのまま保たれます。
 
 アイドル再生はモデルの `Idle` グループが自動で行います。`idleMotion` で別の
-グループを指定でき、`false` で無効になります。優先度は
-`'idle' | 'normal' | 'force'` の3段階で、デフォルトの `'force'` は再生中の
-モーションを中断します。存在しないグループ名や表情名を渡すと、有効な名前の
-一覧を含むエラーで reject されます。
+グループを指定でき、`false` で無効になり、
+`{ group: 'Idle', weights: [5, 2, 1] }` で重み付きランダムを設定できます。
+weights の長さはグループのモーション数と一致する必要があり、0の項目は選択
+されません。優先度は `'idle' | 'normal' | 'force'` の3段階です。表情フェード
+も0以上のミリ秒で指定し、省略時は exp3/Framework の既定値を保ちます。
+`clearExpression()` は従来通り即時リセットです。
 
 ## 視線追従とタップ
 

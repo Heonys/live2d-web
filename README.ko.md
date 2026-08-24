@@ -88,14 +88,22 @@ await character.motion('Tap@Body') // 그룹 안에서 무작위 선택
 await character.motion('Tap@Body', 1) // 인덱스 지정
 await character.motion('Idle', 0, { priority: 'normal' }) // 진행 중인 모션을 끊지 않음
 await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
+const result = await character.playMotion('Tap@Body')
+// { status: 'completed' | 'interrupted' | 'skipped' | 'disposed' }
+await character.sequence([
+  { group: 'Tap@Body', index: 0 },
+  { group: 'Tap@Body', index: 1, options: { fadeInMs: 250 } },
+])
 
-await character.expression('smile')
+await character.expression('smile', { fadeInMs: 250, fadeOutMs: 400 })
 character.clearExpression()
 ```
 
 `motion()`은 재생이 끝나는 시점에 resolve되므로 `await`만으로 순차 연출이
-가능합니다. 다른 모션이 끼어들면 그 시점에 resolve되고, WebGL 컨텍스트 손실
-같은 렌더 에러 뒤에는 reject됩니다.
+가능하며 기존 `Promise<void>` 계약을 유지합니다. 종료 이유가 필요하면
+`playMotion()`을 사용합니다. `sequence()`는 모든 항목을 먼저 검증하고 순서대로
+실행하며, 처음으로 정상 완료되지 않은 항목에서 멈춥니다. 렌더·자산 오류는
+상태로 바꾸지 않고 reject됩니다.
 
 `fadeInMs`와 `fadeOutMs`는 해당 재생의 모션 전체 페이드만 밀리초 단위로
 덮어씁니다. 값은 0 이상의 유한한 수이며 `0`이면 해당 페이드가 즉시
@@ -103,10 +111,13 @@ character.clearExpression()
 파라미터별 페이드도 그대로 보존됩니다.
 
 기본 움직임은 모델의 `Idle` 그룹이 자동 재생합니다. `idleMotion`으로 다른
-그룹을 지정하거나 `false`로 끌 수 있습니다. 우선순위는
-`'idle' | 'normal' | 'force'`이며 기본값 `'force'`는 재생 중인 모션을
-중단합니다. 없는 그룹이나 표정 이름을 넘기면 사용 가능한 이름 목록이 담긴
-에러로 reject됩니다.
+그룹을 지정하거나 `false`로 끌 수 있고,
+`{ group: 'Idle', weights: [5, 2, 1] }`처럼 가중 랜덤도 설정할 수 있습니다.
+weights 길이는 그룹의 모션 수와 같아야 하며 0인 항목은 선택되지 않습니다.
+우선순위는 `'idle' | 'normal' | 'force'`이며 기본값 `'force'`는 재생 중인
+모션을 중단합니다. 표정 페이드는 모션과 같은 0 이상의 밀리초 규칙을 사용하고,
+생략하면 exp3/Framework 기본값을 유지합니다. `clearExpression()`은 기존처럼
+즉시 초기화합니다.
 
 ## 시선 추적과 탭
 

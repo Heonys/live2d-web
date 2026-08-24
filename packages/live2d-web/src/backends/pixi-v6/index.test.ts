@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ModelHandle, StageHandle } from '../../core/contract'
+import type { LoadModelOptions, ModelHandle, StageHandle } from '../../core/contract'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pixi = vi.hoisted(() => {
@@ -130,7 +130,10 @@ vi.mock('pixi-live2d-display/cubism4', () => ({
 
 const { pixiV6 } = await import('./index')
 
-async function mountModel(resolution: number): Promise<{
+async function mountModel(
+  resolution: number,
+  options: LoadModelOptions = {},
+): Promise<{
   model: ModelHandle
   stage: StageHandle
 }> {
@@ -139,7 +142,7 @@ async function mountModel(resolution: number): Promise<{
     resolution,
     width: 800,
   })
-  const model = await pixiV6.loadModel(stage, '/hiyori.model3.json', {})
+  const model = await pixiV6.loadModel(stage, '/hiyori.model3.json', options)
   return { model, stage }
 }
 
@@ -244,5 +247,33 @@ describe('pixi-v6 contract conformance', () => {
     model.dispose()
     await expect(disposed).resolves.toEqual({ status: 'disposed' })
     stage.dispose()
+  })
+
+  it('explicitly rejects weighted idle and expression fade options', async () => {
+    const stage = pixiV6.createStage(document.body, {
+      height: 600,
+      resolution: 1,
+      width: 800,
+    })
+    await expect(pixiV6.loadModel(stage, '/hiyori.model3.json', {
+      idleMotion: { group: 'Idle', weights: [1] },
+    })).rejects.toMatchObject({
+      code: 'invalid-props',
+      details: { backend: 'pixi-v6' },
+    })
+    stage.dispose()
+
+    const mounted = await mountModel(1)
+    await expect(
+      mounted.model.expression('smile', { fadeInMs: 250 }),
+    )
+      .rejects
+      .toMatchObject({
+        code: 'invalid-props',
+        details: { backend: 'pixi-v6' },
+      })
+    expect(pixi.model.expression).not.toHaveBeenCalled()
+    mounted.model.dispose()
+    mounted.stage.dispose()
   })
 })

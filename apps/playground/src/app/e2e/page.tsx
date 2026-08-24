@@ -17,6 +17,11 @@ declare global {
       abortLoad: () => Promise<string>
       cycle: (count: number) => Promise<{ canvases: number, mouth: number }>
       expressionFixture: () => Promise<number>
+      expressionFadeFixture: () => Promise<{
+        defaultAfterInstant: number
+        instant: number
+        slow: number
+      }>
       motionFadeFixture: () => Promise<{
         defaultAfterInstant: number
         instant: number
@@ -36,6 +41,7 @@ declare global {
       fit: (fit: 'full' | 'upper-body') => void
       focus: (x: number, y: number) => void
       hitTest: (x: number, y: number) => string[]
+      idleWeightFixture: () => Promise<{ canvases: number, firstOnly: number }>
       loseContext: () => void
       motion: () => Promise<{
         code: string
@@ -172,6 +178,46 @@ export default function E2EHarness() {
         instance.dispose()
         host.remove()
         return value
+      },
+      async expressionFadeFixture() {
+        const createFixture = async () => {
+          const host = document.createElement('div')
+          host.style.height = '320px'
+          host.style.width = '240px'
+          document.body.appendChild(host)
+          const instance = await createLive2D({
+            container: host,
+            coreUrl: CORE_URL,
+            fit: 'full',
+            idleMotion: false,
+            pauseWhenOffscreen: false,
+            src: '/e2e-expression.model3.json',
+          })
+          return { host, instance }
+        }
+        const sample = async (fadeInMs: number) => {
+          const { host, instance } = await createFixture()
+          await instance.expression('positive', { fadeInMs })
+          await nextFrame()
+          const value = instance.getParameter('ParamAngleX')
+          instance.dispose()
+          host.remove()
+          return value
+        }
+        const instant = await sample(0)
+        const slow = await sample(1_000)
+
+        const { host, instance } = await createFixture()
+        await instance.expression('positive', { fadeInMs: 0 })
+        await nextFrame()
+        instance.clearExpression()
+        await nextFrame()
+        await instance.expression('positive')
+        await nextFrame()
+        const defaultAfterInstant = instance.getParameter('ParamAngleX')
+        instance.dispose()
+        host.remove()
+        return { defaultAfterInstant, instant, slow }
       },
       async motionFadeFixture() {
         const createFixture = async () => {
@@ -331,6 +377,30 @@ export default function E2EHarness() {
       fit: fit => character?.setFit(fit),
       focus: (x, y) => character?.focus(x, y),
       hitTest: (x, y) => character?.hitTest(x, y) ?? [],
+      async idleWeightFixture() {
+        const host = document.createElement('div')
+        host.style.height = '320px'
+        host.style.width = '240px'
+        document.body.appendChild(host)
+        const instance = await createLive2D({
+          container: host,
+          coreUrl: CORE_URL,
+          fit: 'full',
+          idleMotion: { group: 'Fade', weights: [1, 0] },
+          pauseWhenOffscreen: false,
+          src: '/e2e-motion.model3.json',
+        })
+        while (!instance.isMotionPlaying())
+          await nextFrame()
+        for (let frame = 0; frame < 20; frame++)
+          await nextFrame()
+        const firstOnly = instance.getParameter('ParamAngleX')
+        instance.dispose()
+        await nextFrame()
+        const canvases = host.querySelectorAll('canvas').length
+        host.remove()
+        return { canvases, firstOnly }
+      },
       loseContext() {
         container.querySelector('canvas')
           ?.getContext('webgl2')

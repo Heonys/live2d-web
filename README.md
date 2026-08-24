@@ -89,14 +89,22 @@ await character.motion('Tap@Body') // random index within the group
 await character.motion('Tap@Body', 1) // specific index
 await character.motion('Idle', 0, { priority: 'normal' }) // do not interrupt
 await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
+const result = await character.playMotion('Tap@Body')
+// { status: 'completed' | 'interrupted' | 'skipped' | 'disposed' }
+await character.sequence([
+  { group: 'Tap@Body', index: 0 },
+  { group: 'Tap@Body', index: 1, options: { fadeInMs: 250 } },
+])
 
-await character.expression('smile')
+await character.expression('smile', { fadeInMs: 250, fadeOutMs: 400 })
 character.clearExpression()
 ```
 
 `motion()` resolves when playback finishes, so sequencing works with plain
-`await`. If another motion interrupts, the promise resolves at that point;
-after a render error such as WebGL context loss it rejects instead.
+`await` and keeps its existing `Promise<void>` contract. Use `playMotion()`
+when the ending reason matters. `sequence()` pre-validates every step, runs in
+order and stops on the first non-completed result. Render and asset errors
+reject instead of becoming statuses.
 
 `fadeInMs` and `fadeOutMs` override the model's motion-wide fade for that
 playback only. Values are finite, non-negative milliseconds; `0` makes the
@@ -104,10 +112,13 @@ corresponding fade instant. Omitted values keep the model3/motion3 defaults,
 and parameter-specific fades authored in motion3 stay unchanged.
 
 Idle playback runs automatically from the model's `Idle` group; use
-`idleMotion` to pick a different group, or `false` to turn it off. Priorities
-are `'idle' | 'normal' | 'force'`, and the default `'force'` interrupts the
-current motion. Unknown group or expression names reject with an error listing
-the valid names.
+`idleMotion` to pick a different group, `false` to turn it off, or
+`{ group: 'Idle', weights: [5, 2, 1] }` for weighted random selection. Weights
+must match the group's motion count; zero-weight motions are never selected.
+Priorities are `'idle' | 'normal' | 'force'`, and the default `'force'`
+interrupts the current motion. Expression fades use the same non-negative
+millisecond rules as motion fades; omitted values keep exp3/Framework defaults,
+while `clearExpression()` remains immediate.
 
 ## Pointer tracking and taps
 

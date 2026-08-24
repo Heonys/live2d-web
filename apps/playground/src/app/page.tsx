@@ -1,6 +1,13 @@
 'use client'
 
-import type { ModelFit, ModelInfo, MotionOptions, VolumeLipSyncDriver } from 'live2d-web'
+import type {
+  ExpressionOptions,
+  IdleMotion,
+  ModelFit,
+  ModelInfo,
+  MotionOptions,
+  VolumeLipSyncDriver,
+} from 'live2d-web'
 import type { Live2DModelController } from 'live2d-web/react'
 import type { AssetManifest } from '../lib/assetManifest'
 import { createVolumeLipSync } from 'live2d-web'
@@ -23,8 +30,18 @@ interface MotionOption {
 }
 
 type MotionFadePreset = '500' | 'instant' | 'model'
+type IdlePreset = 'first' | 'uniform'
 
 function optionsForFadePreset(preset: MotionFadePreset): MotionOptions | undefined {
+  if (preset === 'model')
+    return undefined
+  const milliseconds = preset === 'instant' ? 0 : 500
+  return { fadeInMs: milliseconds, fadeOutMs: milliseconds }
+}
+
+function expressionOptionsForFadePreset(
+  preset: MotionFadePreset,
+): ExpressionOptions | undefined {
   if (preset === 'model')
     return undefined
   const milliseconds = preset === 'instant' ? 0 : 500
@@ -138,9 +155,13 @@ export default function Home() {
   const [motionValue, setMotionValue] = useState('')
   const [motionFadePreset, setMotionFadePreset] = useState<MotionFadePreset>('model')
   const [playingMotion, setPlayingMotion] = useState<string | null>(null)
+  const [motionResult, setMotionResult] = useState('')
   const playGenerationRef = useRef(0)
   const codeSampleRef = useRef<HTMLDetailsElement>(null)
   const [expression, setExpression] = useState('')
+  const [expressionFadePreset, setExpressionFadePreset]
+    = useState<MotionFadePreset>('model')
+  const [idlePreset, setIdlePreset] = useState<IdlePreset>('uniform')
   const [hitReadout, setHitReadout] = useState('')
   const [mouthOpen, setMouthOpen] = useState(0)
   const [micActive, setMicActive] = useState(false)
@@ -360,6 +381,18 @@ export default function Home() {
       Array.from({ length: count }, (_, index) => ({ group, index })))
   }, [modelInfo])
 
+  const idleMotion = useMemo<IdleMotion>(() => {
+    if (idlePreset === 'uniform')
+      return 'Idle'
+    const count = modelInfo?.motions.Idle ?? 0
+    if (count === 0)
+      return 'Idle'
+    return {
+      group: 'Idle',
+      weights: Array.from({ length: count }, (_, index) => index === 0 ? 1 : 0),
+    }
+  }, [idlePreset, modelInfo?.motions.Idle])
+
   const handleLoad = useCallback((nextController: Live2DModelController) => {
     setController(nextController)
     const info = nextController.getModelInfo()
@@ -372,16 +405,24 @@ export default function Home() {
     setExpression(info.expressions[0] ?? '')
   }, [])
 
-  // motion() resolves when playback finishes, so the demo can show exactly
-  // when the requested motion starts and ends.
+  // playMotion() also explains why playback ended, so the demo can distinguish
+  // a natural finish from replacement or model cleanup.
   const runMotion = useCallback((group: string, index?: number) => {
     if (!controller)
       return
     const generation = ++playGenerationRef.current
     setPlayingMotion(index === undefined ? group : `${group} ${index + 1}`)
+    setMotionResult('')
     void controller
-      .motion(group, index, optionsForFadePreset(motionFadePreset))
-      .catch(() => {})
+      .playMotion(group, index, optionsForFadePreset(motionFadePreset))
+      .then((result) => {
+        if (playGenerationRef.current === generation)
+          setMotionResult(result.status)
+      })
+      .catch((error: unknown) => {
+        if (playGenerationRef.current === generation)
+          setMotionResult(error instanceof Error ? error.message : String(error))
+      })
       .finally(() => {
         if (playGenerationRef.current === generation)
           setPlayingMotion(null)
@@ -405,6 +446,35 @@ export default function Home() {
     runMotion(motionValue.slice(0, separator), Number(motionValue.slice(separator + 1)))
   }, [motionValue, runMotion])
 
+  const playSequence = useCallback(() => {
+    if (!controller || motionOptions.length === 0)
+      return
+    const preferred = motionOptions.filter(option => option.group !== 'Idle')
+    const candidates = preferred.length > 0 ? preferred : motionOptions
+    const selected = candidates.slice(0, 2)
+    if (selected.length === 1)
+      selected.push(selected[0])
+    const generation = ++playGenerationRef.current
+    setPlayingMotion('sequence')
+    setMotionResult('')
+    void controller.sequence(selected.map(step => ({
+      ...step,
+      options: optionsForFadePreset(motionFadePreset),
+    }))).then((result) => {
+      if (playGenerationRef.current === generation) {
+        setMotionResult(
+          `${result.status} (${result.completedSteps}/${selected.length})`,
+        )
+      }
+    }).catch((error: unknown) => {
+      if (playGenerationRef.current === generation)
+        setMotionResult(error instanceof Error ? error.message : String(error))
+    }).finally(() => {
+      if (playGenerationRef.current === generation)
+        setPlayingMotion(null)
+    })
+  }, [controller, motionFadePreset, motionOptions])
+
   const stage = manifest && mounted
     ? (
         <Live2DCanvas
@@ -418,6 +488,7 @@ export default function Home() {
           <Live2DModel
             fit={fit}
             followPointer
+            idleMotion={idleMotion}
             src={manifest.model3}
             onLoad={handleLoad}
             onTap={handleTap}
@@ -512,6 +583,13 @@ export default function Home() {
               {playingMotion}
             </output>
           )}
+          {motionResult && (
+            <output className="note" data-testid="motion-result">
+              Result:
+              {' '}
+              {motionResult}
+            </output>
+          )}
 
           {modelInfo?.expressions.length
             ? (
@@ -531,7 +609,10 @@ export default function Home() {
                   <button
                     type="button"
                     disabled={!controller || !expression}
-                    onClick={() => void controller?.expression(expression).catch(() => {})}
+                    onClick={() => void controller?.expression(
+                      expression,
+                      expressionOptionsForFadePreset(expressionFadePreset),
+                    ).catch(() => {})}
                   >
                     Apply expression
                   </button>
@@ -602,6 +683,41 @@ export default function Home() {
                   aria-label="Motion fade"
                   value={motionFadePreset}
                   onChange={event => setMotionFadePreset(event.target.value as MotionFadePreset)}
+                >
+                  <option value="model">Model default</option>
+                  <option value="instant">Instant</option>
+                  <option value="500">500 ms</option>
+                </select>
+              </label>
+
+              <button
+                type="button"
+                disabled={!controller || motionOptions.length === 0 || playingMotion !== null}
+                onClick={playSequence}
+              >
+                Play sequence
+              </button>
+
+              <label>
+                Idle selection
+                <select
+                  aria-label="Idle selection"
+                  value={idlePreset}
+                  onChange={event => setIdlePreset(event.target.value as IdlePreset)}
+                >
+                  <option value="uniform">Uniform</option>
+                  <option value="first">First only</option>
+                </select>
+              </label>
+
+              <label>
+                Expression fade
+                <select
+                  aria-label="Expression fade"
+                  value={expressionFadePreset}
+                  onChange={event => setExpressionFadePreset(
+                    event.target.value as MotionFadePreset,
+                  )}
                 >
                   <option value="model">Model default</option>
                   <option value="instant">Instant</option>

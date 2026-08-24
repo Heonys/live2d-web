@@ -12,6 +12,7 @@ import { BatchRenderer } from '@pixi/core'
 import { extensions } from '@pixi/extensions'
 import { Ticker, TickerPlugin } from '@pixi/ticker'
 import { Live2DError } from '../../core/errors'
+import { resolveExpressionFade } from '../../core/expression-options'
 import {
   hasMotionFadeOverride,
   resolveMotionFade,
@@ -256,6 +257,13 @@ async function loadModel(
       { details: { backend: 'pixi-v6' } },
     )
   }
+  if (options.idleMotion && typeof options.idleMotion === 'object') {
+    throw new Live2DError(
+      'invalid-props',
+      'The repository-only pixi-v6 backend does not support weighted idle motion.',
+      { details: { backend: 'pixi-v6' } },
+    )
+  }
   if (typeof url !== 'string' || url.trim() === '') {
     throw new Live2DError(
       'invalid-props',
@@ -449,7 +457,15 @@ async function loadModel(
       manualParameters.delete(id)
     },
     dispose,
-    async expression(id) {
+    async expression(id, options) {
+      const fade = resolveExpressionFade(options)
+      if (fade.fadeInSeconds !== undefined || fade.fadeOutSeconds !== undefined) {
+        throw new Live2DError(
+          'invalid-props',
+          'The repository-only pixi-v6 backend does not support expression fade overrides.',
+          { details: { backend: 'pixi-v6' } },
+        )
+      }
       if (!disposed)
         await model.expression(id)
     },

@@ -1,6 +1,9 @@
 'use client'
 
 export type {
+  ExpressionOptions,
+  IdleMotion,
+  IdleMotionOptions,
   Live2DAssetResolver,
   Live2DBackend,
   LoadModelOptions,

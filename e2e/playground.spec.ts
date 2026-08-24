@@ -17,6 +17,18 @@ const fadeMotion = readFileSync(
   new URL('./fixtures/cubism-webgl/fade.motion3.json', import.meta.url),
   'utf8',
 )
+const fadeNegativeMotion = readFileSync(
+  new URL('./fixtures/cubism-webgl/fade-negative.motion3.json', import.meta.url),
+  'utf8',
+)
+const positiveExpression = readFileSync(
+  new URL('./fixtures/cubism-webgl/angle-positive.exp3.json', import.meta.url),
+  'utf8',
+)
+const negativeExpression = readFileSync(
+  new URL('./fixtures/cubism-webgl/angle-negative.exp3.json', import.meta.url),
+  'utf8',
+)
 
 // PIXI destroys and loses every context, but Playwright WebKit defers removing
 // rapidly replaced contexts from its per-page budget. Keep 20 cycles while
@@ -90,6 +102,17 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
     await expect(page.getByTestId('stage-status')).toContainText('ready')
     await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
   }
+
+  await page.getByRole('button', { name: 'Play sequence' }).click()
+  await expect(page.getByTestId('playing-motion')).toContainText('sequence')
+  await page.getByRole('button', { name: 'Unmount canvas' }).click()
+  await expect(page.getByTestId('motion-result')).toContainText('disposed')
+  await page.getByRole('button', { name: 'Mount canvas' }).click()
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await page.getByLabel('Idle selection').selectOption('first')
+  await page.getByLabel('Expression fade').selectOption('500')
+  await page.waitForTimeout(250)
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
 
   expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
 })
@@ -317,12 +340,24 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
     body: mouthExpression,
     contentType: 'application/json',
   }))
+  await page.route('**/e2e-fixtures/angle-positive.exp3.json', route => route.fulfill({
+    body: positiveExpression,
+    contentType: 'application/json',
+  }))
+  await page.route('**/e2e-fixtures/angle-negative.exp3.json', route => route.fulfill({
+    body: negativeExpression,
+    contentType: 'application/json',
+  }))
   await page.route('**/e2e-motion.model3.json', route => route.fulfill({
     body: motionModel,
     contentType: 'application/json',
   }))
   await page.route('**/e2e-fixtures/fade.motion3.json', route => route.fulfill({
     body: fadeMotion,
+    contentType: 'application/json',
+  }))
+  await page.route('**/e2e-fixtures/fade-negative.motion3.json', route => route.fulfill({
+    body: fadeNegativeMotion,
     contentType: 'application/json',
   }))
 
@@ -380,6 +415,18 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
     .toBe('AbortError')
   expect(await page.evaluate(() => (window as any).__live2dWebE2E.expressionFixture()))
     .toBeGreaterThan(0.1)
+
+  const expressionFade = await page.evaluate(
+    () => (window as any).__live2dWebE2E.expressionFadeFixture(),
+  )
+  expect(expressionFade.instant).toBeGreaterThan(expressionFade.slow + 5)
+  expect(expressionFade.defaultAfterInstant).toBeLessThan(expressionFade.instant - 5)
+
+  const idleWeight = await page.evaluate(
+    () => (window as any).__live2dWebE2E.idleWeightFixture(),
+  )
+  expect(idleWeight.firstOnly).toBeGreaterThan(5)
+  expect(idleWeight.canvases).toBe(0)
 
   const fade = await page.evaluate(
     () => (window as any).__live2dWebE2E.motionFadeFixture(),

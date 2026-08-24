@@ -61,7 +61,7 @@ per-frame 데이터는 React state로 올리지 않는다.
   구독과 dispose
 - `ModelHandle`: intrinsic size, transform, parameter, focus, hitTest,
   모델 메타데이터(getModelInfo), motion(재생 완료 시 resolve, 우선순위),
-  expression, after-motion 구독과 dispose
+  optional 상세 motion capability, expression, after-motion 구독과 dispose
 
 이 경계 덕분에 vanilla/React API와 테스트는 renderer를 몰라도 된다.
 
@@ -79,6 +79,24 @@ per-frame 데이터는 React state로 올리지 않는다.
 옵션을 연속 호출해도 기본 캐시와 이미 재생 중인 모션을 변경하지 않는다.
 pixi-v6 비교 backend는 페이드 옵션을 지원하지 않으며 조용히 무시하지 않고
 `invalid-props`를 반환한다.
+
+상세 모션 상태는 Framework queue entry handle별 순수 tracker가 관리한다. 큐에
+들어가기 전 priority 거부·stale 요청은 `skipped`, 자연 종료는 `completed`, 새
+모션이 기존 entry를 교체하면 fade-out이 실제로 끝난 프레임에 `interrupted`,
+모델 정리는 `disposed`로 한 번만 정착한다. 렌더 오류는 기존 계약대로 reject한다.
+`motion()`은 이 결과를 버려 종전 `Promise<void>`를 유지하고, 공용 sequence
+헬퍼가 모든 step을 먼저 검증한 뒤 상세 capability를 순차 호출한다.
+
+자동 Idle 선택은 renderer와 분리된 순수 선택기가 맡는다. 문자열 그룹은 기존
+균등 난수를 사용하고, weights 객체는 모델을 읽은 뒤 모션 개수와 길이를 맞춘
+다음 누적 가중치로 인덱스를 고른다. React binding은 group과 weights 값으로
+설정을 안정화하므로 같은 inline 객체를 다시 렌더해도 모델을 다시 로드하지
+않는다.
+
+표정도 원본 `ArrayBuffer`와 exp3 기본 파싱 객체를 함께 캐시한다. 옵션 없는
+호출은 기본 객체를 재사용하고, 페이드 덮어쓰기가 있는 호출만 재생 전용 객체를
+파싱해 Framework queue의 `autoDelete`로 소유권을 넘긴다. stale·dispose·시작
+실패처럼 queue에 들어가지 못한 객체는 backend가 한 번만 해제한다.
 
 ## 프레임 순서
 

@@ -190,6 +190,30 @@ describe('createLive2D', () => {
     instance.dispose()
   })
 
+  it('keeps detailed motion optional for custom backends', async () => {
+    const harness = createRuntimeHarness()
+    const loadModel = harness.backend.loadModel
+    harness.backend.loadModel = async (stage, url, options) => {
+      const model = await loadModel(stage, url, options)
+      delete model.playMotion
+      return model
+    }
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/custom.model3.json',
+    })
+
+    await expect(instance.motion('Tap', 0)).resolves.toBeUndefined()
+    await expect(instance.playMotion('Tap', 0)).rejects.toMatchObject({
+      code: 'adapter-error',
+    })
+    await expect(instance.sequence([{ group: 'Tap', index: 0 }]))
+      .rejects
+      .toMatchObject({ code: 'adapter-error' })
+    instance.dispose()
+  })
+
   it('returns ParamMouthOpenY to motion after the lip-sync handoff', async () => {
     const harness = createRuntimeHarness()
     const instance = await createLive2D({

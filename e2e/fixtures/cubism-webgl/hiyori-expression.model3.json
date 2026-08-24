@@ -10,6 +10,14 @@
       {
         "Name": "fixture",
         "File": "/e2e-fixtures/mouth-open.exp3.json"
+      },
+      {
+        "Name": "positive",
+        "File": "/e2e-fixtures/angle-positive.exp3.json"
+      },
+      {
+        "Name": "negative",
+        "File": "/e2e-fixtures/angle-negative.exp3.json"
       }
     ]
   }

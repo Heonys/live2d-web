@@ -1,5 +1,7 @@
 import type { LipSyncProfileInput } from '../features/lipsync/source'
 import type {
+  ExpressionOptions,
+  IdleMotion,
   Live2DAssetResolver,
   Live2DBackend,
   ModelHandle,
@@ -23,6 +25,7 @@ import { createSourceLipSync } from '../features/lipsync/source'
 import { ensureCubismCore } from './ensureCubismCore'
 import { Live2DError } from './errors'
 import { fitModel } from './fit'
+import { validateIdleMotion } from './idle-motion'
 import { playMotionSequence } from './motion-sequence'
 import {
   isMobileViewport,
@@ -74,7 +77,7 @@ interface BaseCreateLive2DOptions {
   /** Make the model look toward the pointer while it is over the container. Default false. */
   followPointer?: boolean
   /** Idle motion group name (default 'Idle'), or false to disable automatic idle playback. */
-  idleMotion?: string | false
+  idleMotion?: IdleMotion
   /** Frame-rate cap. Omit for the display refresh rate. */
   maxFps?: number
   /** Pause rendering while the container is outside the viewport. Default true. */
@@ -130,7 +133,7 @@ export interface Live2DInstance {
   /** True while any motion (including idle) is playing. */
   isMotionPlaying: () => boolean
   /** Applies an expression by name, or a random one when omitted. */
-  expression: (id?: string) => Promise<void>
+  expression: (id?: string, options?: ExpressionOptions) => Promise<void>
   /** Returns the model to its default (no expression) state. */
   clearExpression: () => void
   /** Motion groups, expressions and hit areas declared by the model. */
@@ -268,16 +271,7 @@ function assertOptions(options: CreateLive2DOptions) {
       'followPointer must be a boolean.',
     )
   }
-  if (
-    options.idleMotion !== undefined
-    && options.idleMotion !== false
-    && (typeof options.idleMotion !== 'string' || options.idleMotion.trim() === '')
-  ) {
-    throw new Live2DError(
-      'invalid-props',
-      'idleMotion must be a non-empty motion group name or false.',
-    )
-  }
+  validateIdleMotion(options.idleMotion)
 }
 
 function wait(ms: number, signal: AbortSignal) {
@@ -692,7 +686,7 @@ export class Live2DRuntime implements Live2DInstance {
     return this.requireModel().motion(group, index, options)
   }
 
-  playMotion(group: string, index?: number, options?: MotionOptions) {
+  async playMotion(group: string, index?: number, options?: MotionOptions) {
     const model = this.requireModel()
     if (!model.playMotion) {
       throw new Live2DError(
@@ -703,7 +697,7 @@ export class Live2DRuntime implements Live2DInstance {
     return model.playMotion(group, index, options)
   }
 
-  sequence(steps: readonly MotionSequenceStep[]) {
+  async sequence(steps: readonly MotionSequenceStep[]) {
     const model = this.requireModel()
     if (!model.playMotion) {
       throw new Live2DError(
@@ -722,8 +716,8 @@ export class Live2DRuntime implements Live2DInstance {
     return this.model?.isMotionPlaying() ?? false
   }
 
-  expression(id?: string) {
-    return this.requireModel().expression(id)
+  expression(id?: string, options?: ExpressionOptions) {
+    return this.requireModel().expression(id, options)
   }
 
   clearExpression() {

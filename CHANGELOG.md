@@ -12,6 +12,15 @@
   default cubism-webgl backend without mutating the model's cached motion or
   parameter-specific motion3 fades. Invalid values and the unsupported
   repository-only pixi-v6 path fail explicitly with `invalid-props`.
+- `playMotion()` reports natural completion, interruption, skipped playback or
+  model disposal without changing the existing `motion(): Promise<void>`
+  contract. `sequence()` pre-validates and plays ordered steps until the first
+  non-completed result. Custom backends can adopt the detailed capability
+  without breaking their existing `ModelHandle` implementation.
+- Automatic idle playback accepts validated per-motion weights, including zero
+  weights that exclude entries. Expression calls accept isolated per-playback
+  `fadeInMs` and `fadeOutMs` overrides while preserving authored exp3 defaults
+  and the immediate `clearExpression()` behaviour.
 
 ## 0.3.1 - 2026-08-21
 

@@ -26,7 +26,7 @@ type CreateLive2DOptions = {
   coreUrl?: string
   fit?: ModelFit
   followPointer?: boolean
-  idleMotion?: string | false
+  idleMotion?: IdleMotion
   maxFps?: number
   pauseWhenOffscreen?: boolean
   retries?: number
@@ -41,8 +41,14 @@ interface Live2DInstance {
   getState(): Live2DRuntimeState
   subscribe(listener: () => void): () => void
   motion(group: string, index?: number, options?: MotionOptions): Promise<void>
+  playMotion(
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ): Promise<MotionPlaybackResult>
+  sequence(steps: readonly MotionSequenceStep[]): Promise<MotionSequenceResult>
   isMotionPlaying(): boolean
-  expression(id?: string): Promise<void>
+  expression(id?: string, options?: ExpressionOptions): Promise<void>
   clearExpression(): void
   getModelInfo(): ModelInfo
   focus(x: number, y: number): void
@@ -66,6 +72,42 @@ interface MotionOptions {
   fadeOutMs?: number
 }
 
+type MotionPlaybackStatus =
+  | 'completed'
+  | 'interrupted'
+  | 'skipped'
+  | 'disposed'
+
+interface MotionPlaybackResult {
+  status: MotionPlaybackStatus
+}
+
+interface MotionSequenceStep {
+  group: string
+  index?: number
+  options?: MotionOptions
+}
+
+type MotionSequenceResult =
+  | { status: 'completed'; completedSteps: number }
+  | {
+      status: 'interrupted' | 'skipped' | 'disposed'
+      completedSteps: number
+      stepIndex: number
+    }
+
+interface IdleMotionOptions {
+  group: string
+  weights: readonly number[]
+}
+
+type IdleMotion = string | false | IdleMotionOptions
+
+interface ExpressionOptions {
+  fadeInMs?: number
+  fadeOutMs?: number
+}
+
 interface ModelInfo {
   expressions: string[]
   hitAreas: string[]
@@ -79,6 +121,21 @@ a render error (such as WebGL context loss) stops the frame loop; motions
 started after that error reject immediately. `focusAt`/`hitTest` take viewport
 client coordinates; `focus` takes stage-local CSS pixels.
 
+`playMotion()` preserves the same error behaviour but returns the reason a
+non-error playback ended. `completed` means natural completion;
+`interrupted` settles after a replacement motion's fade-out no longer affects
+the model; `skipped` means the request never started because of priority or a
+newer request; and `disposed` means model cleanup ended it. Custom backends may
+omit the detailed capability from `ModelHandle`; calling `playMotion()` or
+`sequence()` then rejects with `adapter-error`, while the original `motion()`
+contract remains compatible.
+
+`sequence()` validates every group, index and option before starting the first
+step, then calls `playMotion()` in order. It stops at the first non-`completed`
+result and reports its `stepIndex`; an empty sequence completes with zero
+steps. Playback errors reject. Repetition, delay, parallel steps and
+`AbortSignal` are not part of this contract.
+
 `fadeInMs` and `fadeOutMs` are optional, finite, non-negative millisecond
 overrides for one playback. `0` disables that motion-wide fade; omitting a
 field keeps the authored value. Resolution order is the call option, the
@@ -86,6 +143,20 @@ model3 motion entry, motion3 `Meta`, then the Framework default. A motion3
 parameter curve's own fade remains in force for that parameter. `fadeOutMs`
 applies both at natural completion and when another motion interrupts it.
 Invalid values reject with `invalid-props`.
+
+Automatic idle playback accepts a group string for the existing uniform random
+selection, `false`, or `{ group, weights }`. Weighted configuration is checked
+after model metadata loads: its length must equal the group's motion count,
+every value must be finite and non-negative, and at least one must be positive.
+A zero-weight entry is never selected.
+
+Expression `fadeInMs` and `fadeOutMs` use the same finite, non-negative
+millisecond validation. A call override wins over the exp3 value, which wins
+over the Framework default. `fadeOutMs` is used when the next expression
+replaces this one. `clearExpression()` keeps its existing immediate-reset
+behaviour. The default backend isolates option-bearing expression instances so
+one call cannot mutate the cached authored expression. Weighted multi-
+expression blending is not exposed.
 
 The default `cubism-webgl` backend implements these overrides. The
 repository-only `pixi-v6` comparison backend rejects a supplied fade option
@@ -214,8 +285,14 @@ never does.
 ```ts
 interface Live2DModelController {
   motion(group: string, index?: number, options?: MotionOptions): Promise<void>
+  playMotion(
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ): Promise<MotionPlaybackResult>
+  sequence(steps: readonly MotionSequenceStep[]): Promise<MotionSequenceResult>
   isMotionPlaying(): boolean
-  expression(id?: string): Promise<void>
+  expression(id?: string, options?: ExpressionOptions): Promise<void>
   clearExpression(): void
   getModelInfo(): ModelInfo
   focus(x: number, y: number): void

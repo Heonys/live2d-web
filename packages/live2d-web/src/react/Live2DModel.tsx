@@ -1,13 +1,14 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { Live2DAssetResolver, ModelHandle } from '../core/contract'
+import type { IdleMotion, Live2DAssetResolver, ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { ModelFit } from '../core/fit'
 import type { CreateLive2DOptions } from '../core/runtime'
 import type { Live2DModelController } from './controller'
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
+import { idleMotionIdentity } from '../core/idle-motion'
 import { LifecycleScope } from '../core/lifecycle'
 import { Live2DRuntime } from '../core/runtime'
 import { ModelContext, RuntimeHostContext, StageContext } from './context'
@@ -26,7 +27,7 @@ export interface Live2DModelProps {
   /** Make the model look toward the pointer while it is over the canvas. */
   followPointer?: boolean
   /** Idle motion group name (default 'Idle'), or false to disable idle playback. */
-  idleMotion?: string | false
+  idleMotion?: IdleMotion
   /** Pauses rendering declaratively (e.g. while a modal is open). */
   paused?: boolean
   /** Retries after the initial attempt. */
@@ -97,6 +98,21 @@ export function Live2DModel({
   onTapRef.current = onTap
   fitRef.current = fit
   const hasOnTap = onTap != null
+  const idleIdentity = idleMotionIdentity(idleMotion)
+  const idleMotionRef = useRef<{
+    identity: string
+    value: IdleMotion | undefined
+  } | undefined>(undefined)
+  if (!idleMotionRef.current || idleMotionRef.current.identity !== idleIdentity) {
+    const value: IdleMotion | undefined = idleMotion && typeof idleMotion === 'object'
+      ? {
+          group: idleMotion.group,
+          weights: [...idleMotion.weights],
+        }
+      : idleMotion
+    idleMotionRef.current = { identity: idleIdentity, value }
+  }
+  const stableIdleMotion = idleMotionRef.current.value
 
   // The runtime reports a failed start and rejects start() with the same
   // error object, so identity is enough to keep this callback single-fire.
@@ -132,7 +148,7 @@ export function Live2DModel({
       container,
       coreUrl: currentRuntimeHost.coreUrl,
       fit: fitRef.current,
-      idleMotion,
+      idleMotion: stableIdleMotion,
       maxFps: currentRuntimeHost.maxFps,
       // Without this the model never hears about context loss, render errors
       // or lip-sync failures, which the runtime reports after ready.
@@ -203,7 +219,7 @@ export function Live2DModel({
   }, [
     currentRuntimeHost,
     currentStageStore,
-    idleMotion,
+    stableIdleMotion,
     lifecycle,
     modelStore,
     owner,
@@ -230,7 +246,7 @@ export function Live2DModel({
   }, [
     currentRuntimeHost,
     currentStageStore,
-    idleMotion,
+    stableIdleMotion,
     lifecycle,
     modelStore,
     owner,

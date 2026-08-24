@@ -65,7 +65,7 @@ export interface ModelHandle {
     options?: MotionOptions,
   ) => Promise<MotionPlaybackResult>
   isMotionPlaying: () => boolean
-  expression: (id?: string) => Promise<void>
+  expression: (id?: string, options?: ExpressionOptions) => Promise<void>
   clearExpression: () => void
   /**
    * Runs after the SDK motion manager has written its values, before render.
@@ -83,6 +83,13 @@ export interface MotionOptions {
   /** Overrides the motion-wide fade-in duration in milliseconds. */
   fadeInMs?: number
   /** Overrides natural and interruption fade-out in milliseconds. */
+  fadeOutMs?: number
+}
+
+export interface ExpressionOptions {
+  /** Overrides the expression fade-in duration in milliseconds. */
+  fadeInMs?: number
+  /** Overrides replacement fade-out duration in milliseconds. */
   fadeOutMs?: number
 }
 
@@ -128,9 +135,16 @@ export type Live2DAssetResolver = (
   signal?: AbortSignal,
 ) => Promise<Blob | ArrayBuffer | undefined> | Blob | ArrayBuffer | undefined
 
+export interface IdleMotionOptions {
+  group: string
+  weights: readonly number[]
+}
+
+export type IdleMotion = string | false | IdleMotionOptions
+
 export interface LoadModelOptions {
-  /** Idle motion group name, or false to disable automatic idle playback. */
-  idleMotion?: string | false
+  /** Idle group, weighted group selection, or false to disable automatic idle playback. */
+  idleMotion?: IdleMotion
   /**
    * Loads the model's files instead of fetching them. With a resolver, `src`
    * is a path inside the source rather than a URL.

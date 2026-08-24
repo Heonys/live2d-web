@@ -1,4 +1,5 @@
 import type {
+  ExpressionOptions,
   ModelHandle,
   ModelInfo,
   MotionOptions,
@@ -19,7 +20,7 @@ export interface Live2DModelController {
   ) => Promise<MotionPlaybackResult>
   sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>
   isMotionPlaying: () => boolean
-  expression: (id?: string) => Promise<void>
+  expression: (id?: string, options?: ExpressionOptions) => Promise<void>
   clearExpression: () => void
   getModelInfo: () => ModelInfo
   focus: (x: number, y: number) => void
@@ -49,7 +50,8 @@ export function createLive2DModelController(
     controller: Object.freeze({
       clearExpression: () => requireActive().clearExpression(),
       clearParameter: (id: string) => requireActive().clearParameter(id),
-      expression: async (id?: string) => requireActive().expression(id),
+      expression: async (id?: string, options?: ExpressionOptions) =>
+        requireActive().expression(id, options),
       focus: (x: number, y: number) => requireActive().focus(x, y),
       getModelInfo: () => requireActive().getModelInfo(),
       getParameter: (id: string) => requireActive().getParameter(id),

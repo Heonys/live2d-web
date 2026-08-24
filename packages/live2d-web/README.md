@@ -53,7 +53,12 @@ character.getModelInfo() // { motions: { Idle: 3, 'Tap@Body': 2 }, expressions, 
 
 await character.motion('Tap@Body') // resolves when playback finishes
 await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
-await character.expression('smile')
+const result = await character.playMotion('Tap@Body') // detailed ending status
+await character.sequence([
+  { group: 'Tap@Body', index: 0 },
+  { group: 'Tap@Body', index: 1 },
+])
+await character.expression('smile', { fadeInMs: 250, fadeOutMs: 400 })
 character.clearExpression()
 
 container.addEventListener('click', async (event) => {
@@ -65,6 +70,14 @@ container.addEventListener('click', async (event) => {
 Motion fade overrides are finite, non-negative milliseconds and affect only
 that playback. Use `0` for an instant fade; omit a field to retain the
 model3/motion3 default. Parameter-specific motion3 fades remain authored.
+`playMotion()` reports `completed`, `interrupted`, `skipped` or `disposed`;
+`sequence()` validates all steps before playing and stops at the first
+non-completed status. Expression fades follow the same millisecond rules.
+
+For weighted automatic idle selection, pass
+`idleMotion: { group: 'Idle', weights: [5, 2, 1] }` to `createLive2D()` or
+`<Live2DModel>`. Weights must match the group's motion count, and zero-weight
+entries are never selected.
 
 ## Lip sync
 
