@@ -287,6 +287,166 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ browserNa
   expect(unexpectedErrors).toEqual([])
 })
 
+test('owns microphone sampling and tracks across restart and unmount', async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== 'chromium', 'The deterministic fake microphone uses Chromium WebAudio.')
+  const unexpectedErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      unexpectedErrors.push(message.text())
+  })
+  page.on('pageerror', error => unexpectedErrors.push(error.message))
+  await page.addInitScript(() => {
+    const metrics = {
+      activeTracks: 0,
+      calls: 0,
+      samples: 0,
+      stops: 0,
+    }
+    const sources: Array<{
+      context: AudioContext
+      gain: GainNode
+      oscillator: OscillatorNode
+    }> = []
+    const state = window as typeof window & {
+      __fakeMic: typeof metrics & {
+        setGain: (value: number) => void
+      }
+    }
+    state.__fakeMic = {
+      ...metrics,
+      setGain(value) {
+        const source = sources.at(-1)
+        source?.gain.gain.setValueAtTime(value, source.context.currentTime)
+      },
+    }
+
+    const originalRead = AnalyserNode.prototype.getByteTimeDomainData
+    Object.defineProperty(AnalyserNode.prototype, 'getByteTimeDomainData', {
+      configurable: true,
+      value(this: AnalyserNode, array: Uint8Array<ArrayBuffer>) {
+        state.__fakeMic.samples++
+        return originalRead.call(this, array)
+      },
+      writable: true,
+    })
+
+    const mediaDevices = navigator.mediaDevices ?? {}
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: mediaDevices,
+    })
+    Object.defineProperty(mediaDevices, 'getUserMedia', {
+      configurable: true,
+      async value() {
+        state.__fakeMic.calls++
+        const context = new AudioContext()
+        await context.resume()
+        const oscillator = context.createOscillator()
+        const gain = context.createGain()
+        const destination = context.createMediaStreamDestination()
+        oscillator.frequency.value = 220
+        gain.gain.value = 0
+        oscillator.connect(gain)
+        gain.connect(destination)
+        oscillator.start()
+        sources.push({ context, gain, oscillator })
+
+        for (const track of destination.stream.getAudioTracks()) {
+          const stop = track.stop.bind(track)
+          let stopped = false
+          Object.defineProperty(track, 'stop', {
+            configurable: true,
+            value() {
+              if (stopped)
+                return
+              stopped = true
+              state.__fakeMic.activeTracks--
+              state.__fakeMic.stops++
+              stop()
+              try {
+                oscillator.stop()
+                oscillator.disconnect()
+                gain.disconnect()
+              }
+              catch {
+                // The page may already be tearing its AudioContext down.
+              }
+              void context.close()
+            },
+          })
+          state.__fakeMic.activeTracks++
+        }
+        return destination.stream
+      },
+    })
+  })
+
+  const readMetrics = () => page.evaluate(() => {
+    const mic = (window as typeof window & {
+      __fakeMic: {
+        activeTracks: number
+        calls: number
+        samples: number
+        stops: number
+      }
+    }).__fakeMic
+    return {
+      activeTracks: mic.activeTracks,
+      calls: mic.calls,
+      samples: mic.samples,
+      stops: mic.stops,
+    }
+  })
+  const waitFrames = (frames: number) => page.evaluate(async (count) => {
+    for (let frame = 0; frame < count; frame++)
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  }, frames)
+
+  await page.goto('/')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await page.getByRole('button', { name: 'Lip sync with microphone' }).click()
+  await expect(page.getByRole('button', { name: 'Stop microphone' })).toBeVisible()
+  await expect.poll(async () => (await readMetrics()).samples, {
+    timeout: 4_000,
+  }).toBeGreaterThan(90)
+  expect(await readMetrics()).toMatchObject({ activeTracks: 1, calls: 1 })
+
+  await page.evaluate(() => (window as typeof window & {
+    __fakeMic: { setGain: (value: number) => void }
+  }).__fakeMic.setGain(0.08))
+  const signalStart = (await readMetrics()).samples
+  await waitFrames(24)
+  expect((await readMetrics()).samples - signalStart).toBeGreaterThanOrEqual(20)
+
+  await page.getByRole('button', { name: 'Stop microphone' }).click()
+  await expect(page.getByRole('button', { name: 'Lip sync with microphone' })).toBeVisible()
+  await expect.poll(async () => (await readMetrics()).stops).toBe(1)
+  const stoppedSamples = (await readMetrics()).samples
+  await waitFrames(12)
+  expect((await readMetrics()).samples - stoppedSamples).toBeLessThanOrEqual(1)
+
+  await page.getByRole('button', { name: 'Lip sync with microphone' }).click()
+  await expect.poll(async () => (await readMetrics()).calls).toBe(2)
+  const restartSamples = (await readMetrics()).samples
+  await waitFrames(30)
+  const restartDelta = (await readMetrics()).samples - restartSamples
+  expect(restartDelta).toBeGreaterThanOrEqual(24)
+  expect(restartDelta).toBeLessThanOrEqual(36)
+
+  await page.getByText('Developer tools').click()
+  await page.getByRole('button', { name: 'Unmount canvas' }).click()
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
+  await expect.poll(async () => (await readMetrics()).stops).toBe(2)
+  expect(await readMetrics()).toMatchObject({ activeTracks: 0, calls: 2 })
+  const unmountedSamples = (await readMetrics()).samples
+  await waitFrames(12)
+  expect((await readMetrics()).samples - unmountedSamples).toBeLessThanOrEqual(1)
+  expect(unexpectedErrors).toEqual([])
+})
+
 test('surfaces WebGL context loss and recreates the stage', async ({ page, browserName }) => {
   await page.goto('/')
   await expect(page.getByTestId('stage-status')).toContainText('ready')

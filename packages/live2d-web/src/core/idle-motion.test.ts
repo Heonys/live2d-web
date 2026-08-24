@@ -47,6 +47,23 @@ describe('weighted idle motion', () => {
     )).toBe(0)
   })
 
+  it('matches a weighted distribution for evenly spaced random inputs', () => {
+    const counts = [0, 0, 0]
+    const samples = 8_000
+    for (let sample = 0; sample < samples; sample++) {
+      const random = (sample + 0.5) / samples
+      counts[selectIdleMotionIndex(3, [5, 2, 1], () => random)]++
+    }
+    expect(counts).toEqual([5_000, 2_000, 1_000])
+
+    const excluded = [0, 0, 0]
+    for (let sample = 0; sample < samples; sample++) {
+      const random = (sample + 0.5) / samples
+      excluded[selectIdleMotionIndex(3, [5, 0, 1], () => random)]++
+    }
+    expect(excluded[1]).toBe(0)
+  })
+
   it('keeps uniform selection and stable value identities', () => {
     expect(selectIdleMotionIndex(3, undefined, () => 0)).toBe(0)
     expect(selectIdleMotionIndex(3, undefined, () => 0.5)).toBe(1)
