@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-08-25
 
 Ships both roadmap scopes in one release; see the 2026-08-25 decision in
 docs/README.md. The tracking subpath is experimental until 1.0.
