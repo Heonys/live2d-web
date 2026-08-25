@@ -13,9 +13,8 @@ import type {
   StageHandle,
 } from '../../core/contract'
 import type { Live2DAssetType, Live2DErrorDetails } from '../../core/errors'
-import type { ResolvedExpressionFade } from '../../core/expression-options'
 import type { ResolvedIdleMotion } from '../../core/idle-motion'
-import type { ResolvedMotionFade } from '../../core/motion-options'
+import type { ResolvedExpressionFade, ResolvedMotionFade } from '../../core/motion-options'
 import type { CubismBenchmarkStageDiagnostics } from './diagnostics'
 import type { CachedMotionAsset, PlaybackMotion } from './motion-playback'
 import type { LayoutBounds } from './types'
@@ -46,9 +45,13 @@ import { CubismUpdateOrder } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
-import { resolveExpressionFade } from '../../core/expression-options'
 import { resolveIdleMotion, selectIdleMotionIndex } from '../../core/idle-motion'
-import { resolveMotionFade, validateMotionOptions } from '../../core/motion-options'
+import {
+  hasMotionFadeOverride,
+  resolveExpressionFade,
+  resolveMotionFade,
+  validateMotionOptions,
+} from '../../core/motion-options'
 import {
   closeTextureSource,
   fetchArrayBuffer,
@@ -541,6 +544,18 @@ class FrameworkModel extends CubismUserModel {
       })
   }
 
+  // The parsed motion is what playback needs; the raw file is only re-read
+  // when a fade override has to re-parse it, and then kept for that key.
+  private async ensureAssetBuffer<T>(asset: CachedMotionAsset<T>) {
+    asset.buffer ??= await fetchArrayBuffer(
+      asset.url,
+      asset.type,
+      this.assetController.signal,
+      this.resolveAsset,
+    )
+    return asset
+  }
+
   private async loadMotionAsset(group: string, index: number) {
     const key = `${group}:${index}`
     const cached = this.motionCache.get(key)
@@ -560,7 +575,7 @@ class FrameworkModel extends CubismUserModel {
         )
         const motion = this.parseMotion(buffer, key, group, index, motionUrl)
         this.loadedMotions.add(motion)
-        return { buffer, motion }
+        return { motion, type: 'motion', url: motionUrl } satisfies CachedMotionAsset<CubismMotion>
       }
       finally {
         if (this.pendingMotionKeys.delete(key))
@@ -658,6 +673,13 @@ class FrameworkModel extends CubismUserModel {
         return { status: 'disposed' }
       if (generation !== this.motionGeneration)
         return { status: 'skipped' }
+      if (hasMotionFadeOverride(fade)) {
+        await this.ensureAssetBuffer(asset)
+        if (this.disposed)
+          return { status: 'disposed' }
+        if (generation !== this.motionGeneration)
+          return { status: 'skipped' }
+      }
       playback = preparePlaybackMotion(
         asset,
         fade,
@@ -786,7 +808,7 @@ class FrameworkModel extends CubismUserModel {
         )
         const expression = this.parseExpression(buffer, id, expressionUrl)
         this.loadedMotions.add(expression)
-        return { buffer, motion: expression }
+        return { motion: expression, type: 'expression', url: expressionUrl } satisfies CachedMotionAsset<ACubismMotion>
       }
       finally {
         if (this.pendingExpressionKeys.delete(id))
@@ -827,6 +849,11 @@ class FrameworkModel extends CubismUserModel {
       const asset = await this.loadExpressionAsset(id, index)
       if (this.disposed || generation !== this.expressionGeneration)
         return
+      if (hasMotionFadeOverride(fade)) {
+        await this.ensureAssetBuffer(asset)
+        if (this.disposed || generation !== this.expressionGeneration)
+          return
+      }
       playback = preparePlaybackMotion(
         asset,
         fade,

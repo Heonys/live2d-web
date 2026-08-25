@@ -12,9 +12,9 @@ import { BatchRenderer } from '@pixi/core'
 import { extensions } from '@pixi/extensions'
 import { Ticker, TickerPlugin } from '@pixi/ticker'
 import { Live2DError } from '../../core/errors'
-import { resolveExpressionFade } from '../../core/expression-options'
 import {
   hasMotionFadeOverride,
+  resolveExpressionFade,
   resolveMotionFade,
   validateMotionOptions,
 } from '../../core/motion-options'
@@ -404,8 +404,8 @@ async function loadModel(
     index?: number,
     options?: MotionOptions,
   ): Promise<MotionPlaybackResult> => {
-    if (disposed)
-      return { status: 'disposed' }
+    // Reject unsupported options before consulting lifecycle, so the answer
+    // does not depend on whether the model happens to be disposed.
     validateMotionOptions(options)
     const fade = resolveMotionFade(options)
     if (hasMotionFadeOverride(fade)) {
@@ -415,6 +415,8 @@ async function loadModel(
         { details: { backend: 'pixi-v6' } },
       )
     }
+    if (disposed)
+      return { status: 'disposed' }
     const priority = { force: 3, idle: 1, normal: 2 }[options?.priority ?? 'force']
     const started = await model.motion(group, index, priority)
     if (disposed)

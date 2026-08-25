@@ -7,8 +7,15 @@ export interface MotionFadeTarget {
 }
 
 export interface CachedMotionAsset<T> {
-  buffer: ArrayBuffer
   motion: T
+  type: 'expression' | 'motion'
+  url: string
+  /**
+   * Raw file, kept only after a fade override first asked for it. Retaining
+   * it for every cached motion would pin megabytes for consumers who never
+   * override a fade.
+   */
+  buffer?: ArrayBuffer
 }
 
 export interface PlaybackMotion<T> {
@@ -47,6 +54,8 @@ export function preparePlaybackMotion<T extends MotionFadeTarget>(
     }
   }
 
+  if (!asset.buffer)
+    throw new Error('A fade override needs the motion buffer loaded before playback.')
   const motion = applyMotionFade(parse(asset.buffer), fade)
   let owned = true
   return {

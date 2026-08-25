@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasMotionFadeOverride, resolveMotionFade } from './motion-options'
+import { hasMotionFadeOverride, resolveExpressionFade, resolveMotionFade } from './motion-options'
 
 describe('motion fade options', () => {
   it('keeps omitted values unset and converts milliseconds to seconds', () => {
@@ -29,5 +29,18 @@ describe('motion fade options', () => {
   it('distinguishes model defaults from an explicit zero override', () => {
     expect(hasMotionFadeOverride(resolveMotionFade())).toBe(false)
     expect(hasMotionFadeOverride(resolveMotionFade({ fadeInMs: 0 }))).toBe(true)
+  })
+
+  it('applies the same contract to expressions', () => {
+    expect(resolveExpressionFade({ fadeInMs: 0, fadeOutMs: 500 })).toEqual({
+      fadeInSeconds: 0,
+      fadeOutSeconds: 0.5,
+    })
+    expect(() => resolveExpressionFade({ fadeInMs: -1 }))
+      .toThrowError(expect.objectContaining({ code: 'invalid-props' }))
+    expect(() => resolveExpressionFade('smile' as never))
+      .toThrowError(expect.objectContaining({ code: 'invalid-props' }))
+    expect(() => resolveMotionFade('tap' as never))
+      .toThrowError(expect.objectContaining({ code: 'invalid-props' }))
   })
 })

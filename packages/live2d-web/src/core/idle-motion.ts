@@ -51,8 +51,15 @@ export function resolveIdleMotion(
   validateIdleMotion(idleMotion)
   if (idleMotion === false)
     return false
-  if (idleMotion === undefined || typeof idleMotion === 'string')
-    return { group: idleMotion ?? 'Idle' }
+  // The implicit 'Idle' default stays lenient: many models simply have no
+  // such group. A group the caller named must exist, exactly like a weighted one.
+  if (idleMotion === undefined)
+    return { group: 'Idle' }
+  if (typeof idleMotion === 'string') {
+    if (getMotionCount(idleMotion) <= 0)
+      throw new Live2DError('invalid-props', `Unknown idle motion group: ${idleMotion}.`)
+    return { group: idleMotion }
+  }
   const count = getMotionCount(idleMotion.group)
   if (count <= 0) {
     throw new Live2DError(

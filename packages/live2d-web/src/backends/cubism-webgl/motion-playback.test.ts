@@ -23,14 +23,28 @@ function fakeMotion(fadeIn = 0.75, fadeOut = 1): FakeMotion {
   }
 }
 
+function cachedAsset<T>(motion: T, buffer?: ArrayBuffer) {
+  return { buffer, motion, type: 'motion' as const, url: '/motion.motion3.json' }
+}
+
 describe('cubism motion playback ownership', () => {
+  // The buffer is fetched lazily by the model; playback must not guess.
+  it('refuses a fade override when the buffer was never loaded', () => {
+    expect(() => preparePlaybackMotion(
+      cachedAsset(fakeMotion()),
+      { fadeInSeconds: 0.1 },
+      () => fakeMotion(),
+      () => {},
+    )).toThrow(/buffer/)
+  })
+
   it('reuses the authored cache object when no override is supplied', () => {
     const cached = fakeMotion()
     const parse = vi.fn(() => fakeMotion())
     const release = vi.fn()
 
     const playback = preparePlaybackMotion(
-      { buffer: new ArrayBuffer(1), motion: cached },
+      cachedAsset(cached, new ArrayBuffer(1)),
       {},
       parse,
       release,
@@ -51,7 +65,7 @@ describe('cubism motion playback ownership', () => {
       created.push(motion)
       return motion
     })
-    const asset = { buffer: new ArrayBuffer(1), motion: cached }
+    const asset = cachedAsset(cached, new ArrayBuffer(1))
 
     const instant = preparePlaybackMotion(
       asset,
@@ -82,7 +96,7 @@ describe('cubism motion playback ownership', () => {
   })
 
   it('releases an unstarted clone once but leaves queue-owned clones alone', () => {
-    const asset = { buffer: new ArrayBuffer(1), motion: fakeMotion() }
+    const asset = cachedAsset(fakeMotion(), new ArrayBuffer(1))
     const release = vi.fn()
     const stale = preparePlaybackMotion(
       asset,

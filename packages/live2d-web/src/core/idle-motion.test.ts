@@ -9,8 +9,15 @@ import {
 describe('weighted idle motion', () => {
   it('preserves string and disabled configurations', () => {
     expect(resolveIdleMotion(undefined, () => 0)).toEqual({ group: 'Idle' })
-    expect(resolveIdleMotion('Rest', () => 0)).toEqual({ group: 'Rest' })
+    expect(resolveIdleMotion('Rest', () => 2)).toEqual({ group: 'Rest' })
     expect(resolveIdleMotion(false, () => 0)).toBe(false)
+  })
+
+  // A typo in a named group used to disable idle silently while the same typo
+  // in weighted form failed loudly.
+  it('rejects a named group the model does not have', () => {
+    expect(() => resolveIdleMotion('Idel', () => 0))
+      .toThrowError(expect.objectContaining({ code: 'invalid-props' }))
   })
 
   it('requires exact non-negative weights with at least one positive entry', () => {

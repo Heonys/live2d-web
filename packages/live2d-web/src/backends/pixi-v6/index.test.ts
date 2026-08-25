@@ -222,6 +222,21 @@ describe('pixi-v6 contract conformance', () => {
     stage.dispose()
   })
 
+  // Expression already validated before the lifecycle check; motion answered
+  // "disposed" first, so the same bad option got two different answers.
+  it('rejects unsupported options the same way after disposal', async () => {
+    const { model, stage } = await mountModel(1)
+    model.dispose()
+
+    await expect(model.motion('Tap', 0, { fadeInMs: 250 })).rejects.toMatchObject({
+      code: 'invalid-props',
+    })
+    await expect(model.expression('smile', { fadeInMs: 250 })).rejects.toMatchObject({
+      code: 'invalid-props',
+    })
+    stage.dispose()
+  })
+
   it('reports detailed completion, interruption, skipping and disposal', async () => {
     const { model, stage } = await mountModel(1)
 
