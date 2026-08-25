@@ -112,4 +112,46 @@ describe('mediaPipe face tracking state', () => {
     const update = state.update(input(), 2_000)
     expect(update).toMatchObject({ calibrated: false, signals: undefined, status: 'calibrating' })
   })
+
+  // The delta fed to smoothing is clamped to 100ms; calibration must not be.
+  it('calibrates on wall-clock time even at a low inference rate', () => {
+    const state = new FaceTrackingState()
+    let update = state.update(input(), 0)
+    for (let timestamp = 200; timestamp <= 1_000; timestamp += 200)
+      update = state.update(input(), timestamp)
+
+    expect(update.status).toBe('tracked')
+  })
+
+  it('does not amplify frame jitter on a near-saturated neutral', () => {
+    const state = new FaceTrackingState()
+    calibrate(state, { _neutral: 0.98 })
+
+    let low = Number.POSITIVE_INFINITY
+    let high = Number.NEGATIVE_INFINITY
+    for (let step = 1; step <= 20; step++) {
+      const score = step % 2 ? 0.985 : 0.975
+      const update = state.update(input({ _neutral: score }), 1_020 + step * 34)
+      const value = update.signals?.blendshapes.get('_neutral') ?? 0
+      low = Math.min(low, value)
+      high = Math.max(high, value)
+    }
+
+    expect(high - low).toBeLessThan(0.05)
+  })
+
+  // Column-major rotation matrices. These pin the sign convention so a
+  // refactor cannot flip an axis unnoticed; whether each sign matches a real
+  // camera is a consumer check with a live face.
+  it('keeps pitch and roll signs stable', () => {
+    const c = Math.cos(Math.PI / 9)
+    const s = Math.sin(Math.PI / 9)
+    const pitch20 = [1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]
+    const roll20 = [c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+
+    expect(poseFromMatrix(pitch20).y).toBeCloseTo(-20)
+    expect(poseFromMatrix(pitch20).x).toBeCloseTo(0)
+    expect(poseFromMatrix(roll20).z).toBeCloseTo(-20)
+    expect(poseFromMatrix(roll20).x).toBeCloseTo(0)
+  })
 })

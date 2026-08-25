@@ -8,6 +8,7 @@ import type {
   MediaPipeAttachOptions,
   MediaPipeFaceTracker,
   MediaPipeFaceTrackingUpdate,
+  MediaPipeModelAsset,
   MediaPipeParameterTarget,
 } from './types'
 import { Live2DError } from '../../core/errors'
@@ -40,6 +41,15 @@ interface AttachedTarget {
 }
 
 const CHANNELS = ['pose', 'eyes', 'brows', 'mouth', 'cheeks'] as const
+
+// Synchronous inference shares the render thread. A fixed cap either starves
+// fast engines (Chromium infers in ~13ms) or stalls slow ones (headless Firefox
+// measured ~200ms), so the cap follows measured inference time instead.
+const DEFAULT_MAX_FPS = 30
+const MIN_ADAPTIVE_FPS = 10
+const INFERENCE_EMA_WEIGHT = 0.2
+const SLOW_DOWN_LOAD = 0.6
+const SPEED_UP_LOAD = 0.25
 
 function runCleanups(cleanups: Array<() => void>) {
   let firstError: unknown
@@ -84,6 +94,10 @@ function loadFileset(module: VisionModule, wasmPath: string) {
   return promise
 }
 
+function isAbort(error: unknown, signal?: AbortSignal) {
+  return Boolean(signal?.aborted) || (error instanceof Error && error.name === 'AbortError')
+}
+
 function abortError(signal: AbortSignal) {
   return signal.reason instanceof Error
     ? signal.reason
@@ -111,7 +125,7 @@ async function awaitWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Pro
   })
 }
 
-function validateOptions(options: CreateMediaPipeFaceTrackerOptions) {
+function validateOptions(options: CreateMediaPipeFaceTrackerOptions): MediaPipeModelAsset {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Live2DError(
       'browser-only',
@@ -145,6 +159,9 @@ function validateOptions(options: CreateMediaPipeFaceTrackerOptions) {
   }
   if (options.inputMirrored !== undefined && typeof options.inputMirrored !== 'boolean')
     throw new Live2DError('invalid-props', 'inputMirrored must be a boolean.')
+  return hasPath
+    ? { modelAssetPath: options.modelAssetPath! }
+    : { modelAssetBuffer: options.modelAssetBuffer! }
 }
 
 function normalizeScore(value: number) {
@@ -198,19 +215,30 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
   private attached = new Set<AttachedTarget>()
   private attachedByTarget = new WeakMap<MediaPipeParameterTarget, AttachedTarget>()
   private disposed = false
+  private inferenceEmaMs: number | undefined
   private lastInferenceTimestamp: number | undefined
+  private maxFps: number
   private signals: FaceTrackingSignals | undefined
   private state = new FaceTrackingState()
   private tracking = false
 
   constructor(
     private readonly task: FaceLandmarker,
-    private readonly maxFps: number,
+    private readonly requestedMaxFps: number,
     private readonly inputMirrored: boolean,
-  ) {}
+  ) {
+    this.maxFps = requestedMaxFps
+  }
 
   bindAbortSignal(signal: AbortSignal) {
-    const onAbort = () => this.dispose()
+    // An abort listener has no caller to receive a cleanup failure; the
+    // tracker is torn down regardless, so the error has nowhere useful to go.
+    const onAbort = () => {
+      try {
+        this.dispose()
+      }
+      catch {}
+    }
     signal.addEventListener('abort', onAbort, { once: true })
     this.abortCleanup = () => signal.removeEventListener('abort', onAbort)
   }
@@ -223,7 +251,9 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
     if (this.lastInferenceTimestamp !== undefined) {
       if (timestampMs <= this.lastInferenceTimestamp)
         return { status: 'skipped' }
-      if (timestampMs - this.lastInferenceTimestamp < 1_000 / this.maxFps)
+      // rAF stamps jitter around the display period; without slack a cap equal
+      // to the refresh rate skips every other frame.
+      if (timestampMs - this.lastInferenceTimestamp < 1_000 / this.maxFps - 1)
         return { status: 'skipped' }
     }
     this.lastInferenceTimestamp = timestampMs
@@ -236,13 +266,25 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
       throw trackingError(error, 'MediaPipe face inference failed')
     }
     const inferenceMs = Math.max(0, performance.now() - startedAt)
+    this.adaptCap(inferenceMs)
     const stateUpdate = this.state.update(
       inputFromResult(result, this.inputMirrored),
       timestampMs,
     )
     this.signals = stateUpdate.signals
     this.tracking = stateUpdate.status === 'tracked'
-    return { inferenceMs, status: stateUpdate.status }
+    return { effectiveFps: this.maxFps, inferenceMs, status: stateUpdate.status }
+  }
+
+  private adaptCap(inferenceMs: number) {
+    this.inferenceEmaMs = this.inferenceEmaMs === undefined
+      ? inferenceMs
+      : this.inferenceEmaMs * (1 - INFERENCE_EMA_WEIGHT) + inferenceMs * INFERENCE_EMA_WEIGHT
+    const load = this.inferenceEmaMs / (1_000 / this.maxFps)
+    if (load > SLOW_DOWN_LOAD && this.maxFps > MIN_ADAPTIVE_FPS)
+      this.maxFps = Math.max(MIN_ADAPTIVE_FPS, this.maxFps / 2)
+    else if (load < SPEED_UP_LOAD && this.maxFps < this.requestedMaxFps)
+      this.maxFps = Math.min(this.requestedMaxFps, this.maxFps * 2)
   }
 
   attach(target: MediaPipeParameterTarget, options: MediaPipeAttachOptions = {}) {
@@ -319,6 +361,8 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
     this.signals = undefined
     this.tracking = false
     this.lastInferenceTimestamp = undefined
+    this.inferenceEmaMs = undefined
+    this.maxFps = this.requestedMaxFps
   }
 
   isTracking() {
@@ -358,7 +402,9 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
 export async function createMediaPipeFaceTracker(
   options: CreateMediaPipeFaceTrackerOptions,
 ): Promise<MediaPipeFaceTracker> {
-  validateOptions(options)
+  const modelAsset = validateOptions(options)
+  // A buffer has no address; point failures at the path when there is one.
+  const modelAssetUrl = 'modelAssetPath' in modelAsset ? modelAsset.modelAssetPath : undefined
   const signal = options.signal
   if (signal?.aborted)
     throw abortError(signal)
@@ -367,12 +413,15 @@ export async function createMediaPipeFaceTracker(
   try {
     const module = await awaitWithAbort(loadVisionModule(), signal)
     const fileset = await awaitWithAbort(loadFileset(module, options.wasmPath), signal)
+      .catch((error) => {
+        if (isAbort(error, signal))
+          throw error
+        throw trackingError(error, 'MediaPipe WASM fileset failed to load', options.wasmPath)
+      })
     taskPromise = module.FaceLandmarker.createFromOptions(fileset, {
       baseOptions: {
         delegate: options.delegate ?? 'CPU',
-        ...('modelAssetPath' in options
-          ? { modelAssetPath: options.modelAssetPath }
-          : { modelAssetBuffer: options.modelAssetBuffer }),
+        ...modelAsset,
       },
       numFaces: 1,
       outputFaceBlendshapes: true,
@@ -382,11 +431,13 @@ export async function createMediaPipeFaceTracker(
     const task = await awaitWithAbort(taskPromise, signal).catch((error) => {
       if (signal?.aborted)
         void taskPromise?.then(lateTask => lateTask.close()).catch(() => {})
-      throw error
+      if (isAbort(error, signal))
+        throw error
+      throw trackingError(error, 'MediaPipe Face Landmarker failed to initialize', modelAssetUrl)
     })
     const tracker = new MediaPipeFaceTrackerImpl(
       task,
-      options.maxFps ?? 15,
+      options.maxFps ?? DEFAULT_MAX_FPS,
       options.inputMirrored ?? false,
     )
     if (signal?.aborted) {
@@ -398,8 +449,8 @@ export async function createMediaPipeFaceTracker(
     return tracker
   }
   catch (error) {
-    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError'))
+    if (isAbort(error, signal))
       throw error
-    throw trackingError(error, 'MediaPipe face tracker initialization failed', options.wasmPath)
+    throw trackingError(error, 'MediaPipe face tracker initialization failed')
   }
 }

@@ -35,6 +35,8 @@ export type MediaPipeFaceTrackingUpdate
     | {
       status: 'calibrating' | 'tracked' | 'lost'
       inferenceMs: number
+      /** Current inference cap. Falls below `maxFps` while inference is too slow for it. */
+      effectiveFps: number
     }
 
 export interface MediaPipeFaceTracker {

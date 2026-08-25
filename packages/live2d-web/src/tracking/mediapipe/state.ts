@@ -62,7 +62,7 @@ function emptySignals(): FaceTrackingSignals {
 export class FaceTrackingState {
   private baselineBlendshapeSums = new Map<MediaPipeBlendshape, number>()
   private baselinePoseSum = { x: 0, y: 0, z: 0 }
-  private calibrationElapsedMs = 0
+  private calibrationStartedAt: number | undefined
   private calibrationFrames = 0
   private calibrated = false
   private lastFaceTimestamp: number | undefined
@@ -75,7 +75,7 @@ export class FaceTrackingState {
   calibrate() {
     this.baselineBlendshapeSums.clear()
     this.baselinePoseSum = { x: 0, y: 0, z: 0 }
-    this.calibrationElapsedMs = 0
+    this.calibrationStartedAt = undefined
     this.calibrationFrames = 0
     this.calibrated = false
     this.lastFaceTimestamp = undefined
@@ -100,8 +100,10 @@ export class FaceTrackingState {
     this.lostSignals = undefined
     const pose = input.pose ?? poseFromMatrix(input.matrix)
     if (!this.calibrated) {
+      // Wall-clock, not summed frame deltas: the delta is clamped for smoothing,
+      // which would stretch calibration at low inference rates.
+      this.calibrationStartedAt ??= timestampMs
       this.calibrationFrames++
-      this.calibrationElapsedMs += deltaMs
       this.baselinePoseSum.x += pose.x
       this.baselinePoseSum.y += pose.y
       this.baselinePoseSum.z += pose.z
@@ -112,7 +114,7 @@ export class FaceTrackingState {
           (this.baselineBlendshapeSums.get(name) ?? 0) + score,
         )
       }
-      if (this.calibrationElapsedMs < CALIBRATION_MS) {
+      if (timestampMs - this.calibrationStartedAt < CALIBRATION_MS) {
         return { calibrated: false, signals: undefined, status: 'calibrating' }
       }
       this.finishCalibration()
@@ -122,7 +124,9 @@ export class FaceTrackingState {
     for (const name of MEDIAPIPE_BLENDSHAPES) {
       const score = clamp(input.blendshapes.get(name) ?? 0)
       const baseline = this.neutralBlendshapes.get(name) ?? 0
-      targetBlendshapes.set(name, clamp((score - baseline) / Math.max(0.01, 1 - baseline)))
+      // A near-saturated neutral (`_neutral` sits around 0.98) would otherwise
+      // turn frame jitter into full-range swings.
+      targetBlendshapes.set(name, clamp((score - baseline) / Math.max(0.2, 1 - baseline)))
     }
     const targetPose = {
       x: pose.x - this.neutralPose.x,

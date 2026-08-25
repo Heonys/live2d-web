@@ -95,6 +95,7 @@ export default function TrackingE2EPage() {
       const inferenceSamples: number[] = []
       const trackingFrames: number[] = []
       let previousFrame: number | undefined
+      let effectiveFps = 0
       let metricsRecorded = false
       const keepRunning = new URLSearchParams(window.location.search).has('soak')
       const sample = (timestamp: number) => {
@@ -107,6 +108,7 @@ export default function TrackingE2EPage() {
         if (update.status !== 'skipped') {
           setStatus(update.status)
           setInferenceMs(update.inferenceMs)
+          effectiveFps = update.effectiveFps
           if (update.status === 'tracked')
             inferenceSamples.push(update.inferenceMs)
         }
@@ -114,6 +116,7 @@ export default function TrackingE2EPage() {
           metricsRecorded = true
           const measured = {
             baselineFrameP95: percentile(baselineFrames, 0.95),
+            effectiveFps,
             inferenceP50: percentile(inferenceSamples, 0.5),
             inferenceP95: percentile(inferenceSamples, 0.95),
             trackingFrameOver33Ratio: trackingFrames.filter(value => value > 33).length

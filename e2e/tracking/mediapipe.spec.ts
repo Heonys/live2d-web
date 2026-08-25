@@ -15,6 +15,7 @@ test('runs the real Face Landmarker and releases it cleanly', async ({ page }) =
     timeout: 60_000,
   })
   const metrics = JSON.parse(await page.getByTestId('tracking-metrics').textContent()) as {
+    effectiveFps: number
     inferenceP50: number
     inferenceP95: number
     trackingFrameOver33Ratio: number
@@ -28,6 +29,8 @@ test('runs the real Face Landmarker and releases it cleanly', async ({ page }) =
   })
   expect(metrics.inferenceP50).toBeGreaterThan(0)
   expect(metrics.inferenceP95).toBeGreaterThanOrEqual(metrics.inferenceP50)
+  expect(metrics.effectiveFps).toBeGreaterThanOrEqual(10)
+  expect(metrics.effectiveFps).toBeLessThanOrEqual(30)
 
   await page.getByRole('button', { name: 'Detect blank frame' }).click()
   await expect(status).toHaveText('lost')

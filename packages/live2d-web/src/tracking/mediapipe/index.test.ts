@@ -133,17 +133,116 @@ describe('createMediaPipeFaceTracker', () => {
     tracker.dispose()
   })
 
-  it('uses the measured 15fps main-thread default', async () => {
+  // The option type allows `modelAssetPath: undefined` next to a buffer; the
+  // `in` operator saw the key and threw the buffer away.
+  it('keeps the buffer when modelAssetPath is present but undefined', async () => {
+    const modelAssetBuffer = new Uint8Array([4, 5, 6])
+    const tracker = await createMediaPipeFaceTracker({
+      modelAssetBuffer,
+      modelAssetPath: undefined,
+      wasmPath: '/undefined-path',
+    } as never)
+
+    expect(mediaPipeMocks.createFromOptions).toHaveBeenLastCalledWith(
+      { wasm: 'fileset' },
+      expect.objectContaining({
+        baseOptions: { delegate: 'CPU', modelAssetBuffer },
+      }),
+    )
+    tracker.dispose()
+  })
+
+  it('does not skip frames that arrive exactly on the capped cadence', async () => {
+    const tracker = await createMediaPipeFaceTracker({
+      maxFps: 60,
+      modelAssetPath: '/face.task',
+      wasmPath: '/cadence',
+    })
+
+    for (const timestamp of [0, 16.66, 33.33, 50, 66.66])
+      expect(tracker.update(source, timestamp).status).not.toBe('skipped')
+    expect(mediaPipeMocks.detectForVideo).toHaveBeenCalledTimes(5)
+    tracker.dispose()
+  })
+
+  it('names the asset that failed, not the one that loaded', async () => {
+    mediaPipeMocks.createFromOptions.mockRejectedValue(new Error('bad model'))
+    await expect(createMediaPipeFaceTracker({
+      modelAssetPath: '/face.task',
+      wasmPath: '/wasm-ok',
+    })).rejects.toMatchObject({ details: { url: '/face.task' } })
+
+    mediaPipeMocks.createFromOptions.mockReset()
+    mediaPipeMocks.forVisionTasks.mockRejectedValue(new Error('no wasm'))
+    await expect(createMediaPipeFaceTracker({
+      modelAssetPath: '/face.task',
+      wasmPath: '/wasm-missing',
+    })).rejects.toMatchObject({ details: { url: '/wasm-missing' } })
+  })
+
+  it('swallows cleanup failures when torn down by its abort signal', async () => {
+    const controller = new AbortController()
+    const tracker = await createMediaPipeFaceTracker({
+      modelAssetPath: '/face.task',
+      signal: controller.signal,
+      wasmPath: '/abort-cleanup-fails',
+    })
+    tracker.attach({
+      addParameterDriver: () => () => { throw new Error('cleanup failed') },
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
+    })
+
+    expect(() => controller.abort()).not.toThrow()
+    expect(mediaPipeMocks.close).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts at 30fps by default', async () => {
     const tracker = await createMediaPipeFaceTracker({
       modelAssetPath: '/face.task',
       wasmPath: '/default-rate',
     })
 
-    expect(tracker.update(source, 0).status).toBe('calibrating')
-    expect(tracker.update(source, 50)).toEqual({ status: 'skipped' })
-    expect(tracker.update(source, 67).status).toBe('calibrating')
+    expect(tracker.update(source, 0)).toMatchObject({ effectiveFps: 30, status: 'calibrating' })
+    expect(tracker.update(source, 20)).toEqual({ status: 'skipped' })
+    expect(tracker.update(source, 34).status).toBe('calibrating')
     expect(mediaPipeMocks.detectForVideo).toHaveBeenCalledTimes(2)
     tracker.dispose()
+  })
+
+  // Chromium infers in ~13ms and headless Firefox in ~200ms; one fixed cap
+  // cannot serve both, so the cap has to follow the measured cost.
+  it('lowers the cap under slow inference and recovers when it speeds up', async () => {
+    let clock = 0
+    let inferenceCost = 200
+    vi.spyOn(performance, 'now').mockImplementation(() => clock)
+    mediaPipeMocks.detectForVideo.mockImplementation(() => {
+      clock += inferenceCost
+      return result()
+    })
+    const tracker = await createMediaPipeFaceTracker({
+      modelAssetPath: '/face.task',
+      wasmPath: '/adaptive',
+    })
+
+    let timestamp = 0
+    let latest = tracker.update(source, timestamp)
+    for (let step = 0; step < 6; step++) {
+      timestamp += 101
+      latest = tracker.update(source, timestamp)
+    }
+    expect(latest).toMatchObject({ effectiveFps: 10 })
+
+    inferenceCost = 2
+    for (let step = 0; step < 40; step++) {
+      timestamp += 101
+      latest = tracker.update(source, timestamp)
+    }
+    expect(latest).toMatchObject({ effectiveFps: 30 })
+
+    tracker.calibrate()
+    expect(tracker.update(source, timestamp + 101)).toMatchObject({ effectiveFps: 30 })
+    tracker.dispose()
+    vi.restoreAllMocks()
   })
 
   it.each([
