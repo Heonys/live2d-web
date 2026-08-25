@@ -101,8 +101,8 @@ Cubism Core·Hiyori를 받아 브라우저 3종 e2e를 돌린다. 기준선은
   자동 검증한다
 - 브라우저 3종 e2e는 develop·main push와 릴리스의 차단 게이트다. 라이선스
   자산을 받을 수 없는 외부 PR에는 강제하지 않고, 병합 뒤 main 결과로
-  확인한다. MediaPipe tracking e2e는 Chromium·WebKit이 차단, Firefox는 비차단
-  (성능 기준 미달 기록, `docs/compatibility.md`)
+  확인한다. MediaPipe tracking e2e도 세 엔진 모두 차단이다. Firefox는 두 잡
+  모두 Xvfb 위 headed로 돈다(헤드리스에 WebGL2가 없다, `docs/compatibility.md`)
 - 릴리스는 태그의 정확한 커밋에 같은 게이트를 다시 적용한다
 - 120분 soak와 실제 하드웨어·모바일 측정은 비용이 큰 주기 작업으로 분리하고,
   0.6에서 정기 게이트로 성숙시킨다

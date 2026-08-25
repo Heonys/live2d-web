@@ -11,7 +11,7 @@
 - lint · typecheck · unit
 - `verify:package` (경계·크기·`.task`/`.wasm` 부재) · `verify:packed-consumers` (tarball 소비자 4종)
 - `browser-e2e` 3엔진 (Cubism Core·Hiyori, push에서만)
-- `tracking-e2e` Chromium·WebKit (Firefox는 비차단이지만 결과는 읽는다)
+- `tracking-e2e` 3엔진 (Firefox는 Xvfb headed, 적응형 상한으로 10fps)
 
 ## 2. 사람이 확인하는 것
 

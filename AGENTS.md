@@ -81,7 +81,7 @@ pnpm lint / lint:fix
 pnpm typecheck
 pnpm test
 pnpm test:e2e       # 실제 Core/Hiyori + Chromium/WebKit/Firefox
-pnpm test:tracking:e2e # MediaPipe portrait + Chromium/WebKit/Firefox (CI: Firefox 비차단)
+pnpm test:tracking:e2e # MediaPipe portrait + Chromium/WebKit/Firefox (CI: Firefox는 Xvfb headed)
 pnpm verify:package # tarball 내용물 + React 없는 소비자 번들 검증
 pnpm verify:packed-consumers # 실제 tarball 설치: vanilla/React/Next SSR + prod audit
 LIVE2D_SOAK_MINUTES=120 pnpm test:soak # 선택적인 Chromium 장시간 게이트
@@ -144,7 +144,8 @@ URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/quer
 25. **tracking e2e는 모델 없는 정지 초상이다.** CI의 `tracking-e2e`는
     Face Landmarker 초기화·52개 출력·loss·dispose만 증명한다. 카메라·video·
     모델 파라미터 반영은 검증하지 않으며 그 수치를 Live2D 프레임 예산
-    판정으로 인용하지 않는다. Firefox 프로젝트는 비차단이다.
+    판정으로 인용하지 않는다. 헤드리스 Firefox는 러너에서 WebGL2가 없어 두
+    e2e 잡 모두 Xvfb 위 headed로 돈다(`headless: !process.env.CI`).
 26. **릴리스 전 CHANGELOG 헤더.** `release.yml`은 첫 `## ` 절을 릴리스
     노트로 쓴다. `## Unreleased`를 `## <version> - <date>`로 바꾸지 않으면
     제목 없는 노트가 올라간다.

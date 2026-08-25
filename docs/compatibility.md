@@ -54,12 +54,13 @@ Webpack, Rollup 직접 구성은 현재 미검증이다.
 | 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 손으로 적은 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증. Perfect Sync는 ARKit 이름 픽스처(50개, `ParamTongueOut` 포함)로 판정·바인딩 검증 |
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
-| 메인 스레드 추론 성능 | 부분 검증 | 모델 없는 페이지 측정(2026-08-25, 적응형 상한): Chromium 30fps 유지(p95 13.4ms), WebKit 20fps로 안착(p95 15ms), Firefox headless 10fps(p95 197ms, 프레임 100% 초과). Firefox tracking e2e는 통과하지만 CI에서는 비차단 게이트. Worker 검증이 남아 있다. |
+| 메인 스레드 추론 성능 | 부분 검증 | 모델 없는 페이지 측정(2026-08-25, 적응형 상한): Chromium 30fps 유지(p95 13.4ms), WebKit 20fps로 안착(p95 15ms), Firefox 10fps(p95 197ms, 프레임 100% 초과). 세 엔진 모두 CI 차단 게이트. Worker 검증이 남아 있다. |
 | 물리 카메라·모바일 실기 | 미검증 | 권한·장치별 자연스러움은 소비자 검증이 필요하다. |
 
 트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을
-SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다.
-Chromium·WebKit은 차단, Firefox는 비차단이다. Live2D Core와
+SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다. 세
+엔진 모두 차단 게이트다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
+10fps로 내려가 통과한다(2026-08-25 러너 실측). Live2D Core와
 Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독립적이다.
 
 ## 브라우저
@@ -71,7 +72,7 @@ Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독�
 | --- | --- | --- | --- |
 | Chromium | `151.0.7922.34` | 검증 | 검증 |
 | WebKit | `26.5` | 검증 | 검증 |
-| Firefox | `153.0` | 검증(macOS 로컬). Linux 헤드리스 러너는 WebGL2가 없어 CI `browser-e2e`에서 비차단, 확인 중 | 미검증·현재 e2e skip |
+| Firefox | `153.0` | 검증. Linux 러너의 헤드리스 Firefox는 WebGL2가 없어(`webgl.force-enabled`도 무효, 2026-08-25) CI에서는 Xvfb 위에서 headed로 실행한다 | 미검증·현재 e2e skip |
 
 기본 e2e는 13개 테스트 × 3엔진 = 39개 조합이고, 그중 7개는 설계상 skip이다
 (Chromium 전용인 Hiyori 품질·마이크·MediaPipe 카메라 3건 × WebKit·Firefox,

@@ -54,8 +54,8 @@ jobs:
   # Hiyori and Cubism Core are licensed downloads: fetched fresh each run
   # against the official terms, never stored in the Actions cache or an
   # artifact. Fork PRs cannot receive them and are checked by the main run
-  # after merge instead. Firefox reports but does not block until headless
-  # WebGL2 on the Linux runner is confirmed (docs/compatibility.md).
+  # after merge instead. Firefox runs headed under Xvfb: headless Firefox on
+  # the runner has no WebGL2.
   browser-e2e:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -63,7 +63,6 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, webkit, firefox]
-    continue-on-error: ${{ matrix.browser == 'firefox' }}
     env:
       LIVE2D_ACCEPT_TERMS: '1'
     steps:
@@ -92,15 +91,14 @@ jobs:
           path: test-results
           retention-days: 7
 
-  # Firefox is measured well past the inference budget (docs/compatibility.md),
-  # so it reports but does not block until the adaptive cap proves it stable.
+  # Firefox infers an order of magnitude slower; the adaptive cap lets it pass
+  # (docs/benchmarks/2026-08-25-0.5.0-candidate.md), so it blocks like the rest.
   tracking-e2e:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, webkit, firefox]
-    continue-on-error: ${{ matrix.browser == 'firefox' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

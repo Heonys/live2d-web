@@ -131,7 +131,8 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
   파싱 결과 LRU 메모(Framework 큐가 `autoDelete`로 삭제 소유권을 가져
   재생 중 축출이 use-after-free가 된다) 대신 버퍼 지연 보관만.
 - **재검토 조건**: 발행 후 첫 소비자 채택 시 게이트 닫힘을 기록한다.
-  Firefox tracking e2e가 적응형 상한으로 안정되면 차단 게이트로 되돌린다.
+  (Firefox tracking e2e는 같은 날 러너에서 적응형 상한으로 통과해 차단
+  게이트로 올렸다. 헤드리스 Firefox의 WebGL2 부재는 Xvfb headed로 우회.)
 
 ### 2026-08-25 순서 재조정: 완성도와 발견성을 새 기능보다 앞에
 
