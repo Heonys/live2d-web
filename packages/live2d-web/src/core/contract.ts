@@ -134,6 +134,10 @@ export interface ModelInfo {
   hitAreas: string[]
   /** Motion group name to motion count within that group. */
   motions: Record<string, number>
+  /** model3.json schema version, when the backend exposes it. */
+  model3Version?: number
+  /** Core moc3 format enum, when the backend exposes it. */
+  mocVersion?: number
   /** Optional for compatibility with third-party backends written before v0.5. */
   parameters?: ModelParameterInfo[]
 }

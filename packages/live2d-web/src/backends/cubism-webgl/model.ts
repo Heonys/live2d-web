@@ -166,6 +166,7 @@ class FrameworkModel extends CubismUserModel {
     private readonly shaderSources: Readonly<Record<string, string>> | undefined,
     private readonly idleMotion: ResolvedIdleMotion | false,
     private readonly releaseFramework: () => void,
+    private readonly model3Version?: number,
     private readonly diagnostics?: CubismBenchmarkStageDiagnostics,
     private readonly resolveAsset?: Live2DAssetResolver,
   ) {
@@ -786,6 +787,8 @@ class FrameworkModel extends CubismUserModel {
         (_, index) => this.setting.getHitAreaName(index),
       ),
       motions,
+      model3Version: this.model3Version,
+      mocVersion: this._moc?.getMocVersion(),
       parameters: Array.from(
         { length: this.getModel().getParameterCount() },
         (_, index) => ({
@@ -1100,7 +1103,12 @@ export async function loadFrameworkModel(
       () => fetchArrayBuffer(modelUrl, 'model3', options.signal, options.resolveAsset),
     )
     let setting: CubismModelSettingJson
+    let model3Version: number | undefined
     try {
+      const parsed = JSON.parse(new TextDecoder().decode(modelJson)) as { Version?: unknown }
+      model3Version = typeof parsed.Version === 'number' && Number.isFinite(parsed.Version)
+        ? parsed.Version
+        : undefined
       setting = measureSync(
         diagnostics,
         'load',
@@ -1127,6 +1135,7 @@ export async function loadFrameworkModel(
       shaderSources,
       idleMotion,
       releaseFramework,
+      model3Version,
       diagnostics,
       options.resolveAsset,
     )

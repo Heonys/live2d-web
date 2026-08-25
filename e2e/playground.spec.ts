@@ -1,5 +1,48 @@
-import { readFileSync } from 'node:fs'
+import type { Buffer } from 'node:buffer'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { expect, test } from '@playwright/test'
+
+const playgroundRequire = createRequire(
+  new URL('../apps/playground/package.json', import.meta.url),
+)
+const JSZip = playgroundRequire('jszip')
+
+function modelFiles(root: URL, directory = ''): string[] {
+  return readdirSync(new URL(directory, root)).flatMap((name) => {
+    const relative = `${directory}${name}`
+    return statSync(new URL(relative, root)).isDirectory()
+      ? modelFiles(root, `${relative}/`)
+      : [relative]
+  })
+}
+
+let hiyoriZip: Promise<Buffer> | undefined
+function createHiyoriZip() {
+  hiyoriZip ??= (async () => {
+    const root = new URL(
+      '../apps/playground/public/assets/live2d/hiyori/hiyori_free/runtime/',
+      import.meta.url,
+    )
+    const zip = new JSZip()
+    for (const relative of modelFiles(root))
+      zip.file(relative, readFileSync(new URL(relative, root)))
+    return zip.generateAsync({ type: 'nodebuffer' }) as Promise<Buffer>
+  })()
+  return hiyoriZip
+}
+
+async function createInvalidExternalZip() {
+  const zip = new JSZip()
+  zip.file('external.model3.json', JSON.stringify({
+    FileReferences: {
+      Moc: 'https://assets.invalid/model.moc3',
+      Textures: [],
+    },
+    Version: 3,
+  }))
+  return zip.generateAsync({ type: 'nodebuffer' }) as Promise<Buffer>
+}
 
 const expressionModel = readFileSync(
   new URL('./fixtures/cubism-webgl/hiyori-expression.model3.json', import.meta.url),
@@ -175,7 +218,19 @@ test('obeys the mobile backing-buffer policy', async ({ page }) => {
 })
 
 test('inspects a model URL and cleans the previous canvas on replacement', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText(value: string) {
+          Object.assign(window, { __inspectorClipboard: value })
+          return Promise.resolve()
+        },
+      },
+    })
+  })
   await page.goto('/inspect')
+  await expect(page.getByTestId('inspection-report')).toContainText('compatible')
   await expect(page.getByTestId('inspector-status')).toContainText('ready')
   const canvas = page.locator('[data-live2d-canvas] canvas')
   await expect(canvas).toHaveCount(1)
@@ -195,14 +250,49 @@ test('inspects a model URL and cleans the previous canvas on replacement', async
   await expect(page.getByTestId('parameter-readback')).toContainText('0.650')
   await page.getByTestId('inspector-stage').hover({ position: { x: 450, y: 200 } })
 
+  await page.getByRole('button', { name: 'Copy JSON' }).click()
+  await expect.poll(() => page.evaluate(
+    () => (window as typeof window & { __inspectorClipboard?: string })
+      .__inspectorClipboard,
+  )).toContain('"status": "compatible"')
+
   await page.getByLabel('model3.json URL').fill('/assets/live2d/missing.model3.json')
-  await page.getByRole('button', { name: 'Load model' }).click()
-  await expect(page.locator('.error-details').first()).toContainText('model3')
-  await expect(page.locator('.error-details').first()).toContainText('404')
-  await expect(page.locator('.error-details').first()).toContainText(
-    '/assets/live2d/missing.model3.json',
-  )
+  await page.getByRole('button', { name: 'Inspect URL' }).click()
+  await expect(page.getByTestId('inspection-report')).toContainText('incompatible')
+  await expect(page.getByTestId('inspection-report')).toContainText('missing-asset')
   await expect(canvas).toHaveCount(0)
+})
+
+test('inspects a local Hiyori zip and blocks external archive references', async ({ page }) => {
+  const requested: string[] = []
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://assets.invalid/'))
+      requested.push(request.url())
+  })
+  await page.goto('/inspect')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
+
+  await page.getByRole('tab', { name: 'Local zip' }).click()
+  const chooser = page.locator('input[type="file"]')
+  await chooser.setInputFiles({
+    buffer: await createHiyoriZip(),
+    mimeType: 'application/zip',
+    name: 'hiyori.zip',
+  })
+  await expect(page.getByTestId('inspection-report')).toContainText('compatible')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Play motion' }).click()
+
+  await chooser.setInputFiles({
+    buffer: await createInvalidExternalZip(),
+    mimeType: 'application/zip',
+    name: 'external.zip',
+  })
+  await expect(page.getByTestId('inspection-report')).toContainText('incompatible')
+  await expect(page.getByTestId('inspection-report')).toContainText('external-asset')
+  await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
+  expect(requested).toEqual([])
 })
 
 test('runs and cleans up the source AudioWorklet smoke test', async ({ browserName, page }) => {

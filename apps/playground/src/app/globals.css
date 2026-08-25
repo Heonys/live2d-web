@@ -111,6 +111,148 @@ header nav {
   background: #191720;
 }
 
+.input-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.input-tabs button[aria-selected='true'] {
+  border-color: #9d92ea;
+  background: #343047;
+}
+
+.archive-picker,
+.inspection-report {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid #393548;
+  border-radius: 18px;
+  background: #191720;
+}
+
+.archive-picker {
+  display: grid;
+  gap: 14px;
+}
+
+.archive-drop {
+  display: grid;
+  min-height: 110px;
+  place-content: center;
+  border: 1px dashed #6c6583;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.archive-drop input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.note {
+  margin: 0;
+  color: #858092;
+  font-size: 0.78rem;
+}
+
+.inspection-summary,
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.inspection-summary strong,
+.inspection-summary span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #272433;
+  font-size: 0.78rem;
+}
+
+.inspection-summary strong[data-status='compatible'] {
+  color: #a8e2b5;
+}
+
+.inspection-summary strong[data-status='warning'] {
+  color: #f1d28c;
+}
+
+.inspection-summary strong[data-status='incompatible'] {
+  color: #ffc8c8;
+}
+
+.inspection-findings,
+.asset-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-findings li,
+.asset-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #211e2b;
+  font-size: 0.78rem;
+}
+
+.inspection-findings li[data-severity='error'] strong {
+  color: #ffc8c8;
+}
+
+.inspection-findings li[data-severity='warning'] strong {
+  color: #f1d28c;
+}
+
+.inspection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.inspection-grid > div {
+  padding: 12px;
+  border: 1px solid #393548;
+  border-radius: 10px;
+}
+
+.inspection-grid h2 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.inspection-grid p {
+  margin: 5px 0;
+  color: #aaa6bb;
+  font-size: 0.78rem;
+}
+
+.asset-list code {
+  overflow-wrap: anywhere;
+}
+
+.report-actions {
+  margin-top: 14px;
+}
+
+.warning-load {
+  margin: 0 0 18px;
+  border-color: #9c7d3e;
+}
+
 .stage-shell {
   position: relative;
   height: 660px;
@@ -523,6 +665,15 @@ label output {
   }
 
   .source-form {
+    grid-template-columns: 1fr;
+  }
+
+  .inspection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inspection-findings li,
+  .asset-list li {
     grid-template-columns: 1fr;
   }
 

@@ -16,6 +16,7 @@ export default defineConfig({
   // into the published dependency graph for a path almost nobody takes.
   entry: {
     'index': 'src/index.ts',
+    'inspect': 'src/inspect/index.ts',
     'react': 'src/react.ts',
     'tracking/mediapipe': 'src/tracking/mediapipe/index.ts',
     'tracking/mediapipe/worker': 'src/tracking/mediapipe/worker.ts',

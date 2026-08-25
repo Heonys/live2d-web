@@ -25,6 +25,7 @@
     "@pixi/sprite": "catalog:",
     "@pixi/ticker": "catalog:",
     "@pixi/utils": "catalog:",
+    "jszip": "catalog:",
     "live2d-web": "workspace:^",
     "next": "catalog:",
     "pixi-live2d-display": "catalog:",

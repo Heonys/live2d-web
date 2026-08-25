@@ -12,6 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageDirectory = path.join(root, 'packages/live2d-web')
 const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
+const inspectEntry = readFileSync(path.join(dist, 'inspect.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
 const cubismAdapter = readFileSync(path.join(dist, 'backends/cubism-webgl.mjs'), 'utf8')
 const mediaPipeEntry = readFileSync(path.join(dist, 'tracking/mediapipe.mjs'), 'utf8')
@@ -48,6 +49,7 @@ function collectGraph(entryFile, includeDynamic) {
 }
 
 const rootBundle = collectGraph('index.mjs', false)
+const inspectBundle = collectGraph('inspect.mjs', false)
 const cubismBundle = collectGraph('backends/cubism-webgl.mjs', true)
 const mediaPipeBundle = collectGraph('tracking/mediapipe.mjs', false)
 const mediaPipeWorkerBundle = collectGraph('tracking/mediapipe/worker.mjs', false)
@@ -85,6 +87,8 @@ if (rootBundle.includes('@mediapipe/tasks-vision') || rootBundle.includes('FaceL
   failures.push('root bundle contains MediaPipe tracking code')
 if (react.includes('@mediapipe/tasks-vision') || react.includes('FaceLandmarker'))
   failures.push('react bundle contains MediaPipe tracking code')
+if (rootBundle.includes('inspectModelSource') || react.includes('inspectModelSource'))
+  failures.push('root/react bundle contains optional model inspection code')
 if (rootBundle.includes('startMediaPipeFaceTrackerWorker'))
   failures.push('root bundle contains MediaPipe Worker code')
 if (react.includes('startMediaPipeFaceTrackerWorker'))
@@ -92,6 +96,7 @@ if (react.includes('startMediaPipeFaceTrackerWorker'))
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 enforceEntryBudget('React', react, 30_000, 8_000)
+enforceEntryBudget('Inspector', inspectEntry, 25_000, 7_000)
 enforceEntryBudget('MediaPipe main', mediaPipeEntry, 45_000, 12_000)
 enforceEntryBudget('MediaPipe Worker', mediaPipeWorkerEntry, 20_000, 6_000)
 if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
@@ -110,6 +115,15 @@ if (mediaPipeBundle.includes('vision_wasm_internal') || mediaPipeBundle.includes
   failures.push('MediaPipe entry contains a bundled WASM or model asset')
 if (mediaPipeWorkerBundle.includes('vision_wasm_internal') || mediaPipeWorkerBundle.includes('face_landmarker.task'))
   failures.push('MediaPipe Worker entry contains a bundled WASM or model asset')
+if (
+  inspectBundle.includes('jszip')
+  || inspectBundle.includes('CubismFramework')
+  || inspectBundle.includes('@mediapipe/tasks-vision')
+  || inspectBundle.includes('from "react"')
+  || inspectBundle.includes('from \'react\'')
+) {
+  failures.push('Inspector entry contains an archive, Framework, MediaPipe or React dependency')
+}
 
 const bundledAssets = readdirSync(dist, { recursive: true })
   .map(file => String(file))
@@ -184,6 +198,13 @@ catch (error) {
 }
 
 try {
+  await import(pathToFileURL(path.join(dist, 'inspect.mjs')).href)
+}
+catch (error) {
+  failures.push(`Inspector entry is not SSR-evaluation safe: ${String(error)}`)
+}
+
+try {
   await import(pathToFileURL(path.join(dist, 'tracking/mediapipe.mjs')).href)
 }
 catch (error) {
@@ -203,5 +224,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/cubism/mediapipe/worker boundaries and budgets verified')
+  console.log('[package] vanilla/react/inspect/cubism/mediapipe/worker boundaries and budgets verified')
 }

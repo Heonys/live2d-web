@@ -1,13 +1,7 @@
-export {
-  ARKIT_BLENDSHAPES,
-  PERFECT_SYNC_MINIMUM_PARAMETERS,
-  PERFECT_SYNC_PARAMETER_IDS,
-  perfectSyncParameterId,
-} from '../../core/perfect-sync'
-export type { ArkitBlendshape } from '../../core/perfect-sync'
-
-export const MEDIAPIPE_BLENDSHAPES = Object.freeze([
-  '_neutral',
+// ARKit's 52 blendshapes are a model contract, not a MediaPipe runtime
+// dependency. Keep the names in a renderer/provider-neutral module so the
+// optional inspector can assess a rig without loading tracking code.
+export const ARKIT_BLENDSHAPES = Object.freeze([
   'browDownLeft',
   'browDownRight',
   'browInnerUp',
@@ -59,6 +53,18 @@ export const MEDIAPIPE_BLENDSHAPES = Object.freeze([
   'mouthUpperUpRight',
   'noseSneerLeft',
   'noseSneerRight',
+  'tongueOut',
 ] as const)
 
-export type MediaPipeBlendshape = typeof MEDIAPIPE_BLENDSHAPES[number]
+export type ArkitBlendshape = typeof ARKIT_BLENDSHAPES[number]
+
+export function perfectSyncParameterId(name: ArkitBlendshape) {
+  return `Param${name[0].toUpperCase()}${name.slice(1)}`
+}
+
+export const PERFECT_SYNC_PARAMETER_IDS = Object.freeze(
+  ARKIT_BLENDSHAPES.map(perfectSyncParameterId),
+)
+
+/** A model is treated as Perfect Sync once it declares at least this many ARKit parameters. */
+export const PERFECT_SYNC_MINIMUM_PARAMETERS = 45

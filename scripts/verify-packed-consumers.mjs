@@ -79,7 +79,7 @@ try {
     },
   }, {
     'index.html': '<div id="app"></div><script type="module" src="/src.ts"></script>',
-    'src.ts': `import type { MotionOptions } from 'live2d-web'\nimport { createLive2D, createVolumeLipSync } from 'live2d-web'\n\nconst volume = createVolumeLipSync()\nconst motion = { fadeInMs: 250, fadeOutMs: 400 } satisfies MotionOptions\nvolume.sample(0, 0)\nvoid createLive2D\nvoid motion\n`,
+    'src.ts': `import type { MotionOptions } from 'live2d-web'\nimport { createLive2D, createVolumeLipSync } from 'live2d-web'\nimport { inspectModelCapabilities } from 'live2d-web/inspect'\n\nconst volume = createVolumeLipSync()\nconst motion = { fadeInMs: 250, fadeOutMs: 400 } satisfies MotionOptions\nconst capabilities = inspectModelCapabilities({ expressions: [], hitAreas: [], motions: {} })\nvolume.sample(0, 0)\nvoid capabilities\nvoid createLive2D\nvoid motion\n`,
     'tsconfig.json': JSON.stringify({
       compilerOptions: {
         lib: ['ES2022', 'DOM'],
@@ -93,6 +93,7 @@ try {
     }),
   }, [
     ['npm', ['run', 'build']],
+    ['node', ['-e', 'import("live2d-web/inspect")']],
     ['npm', ['audit', '--omit=dev', '--audit-level=high']],
     // The optional peer must stay optional: a plain install must not pull the
     // 12 MB MediaPipe package into a consumer that never imports tracking.
