@@ -55,7 +55,10 @@ jobs:
   # against the official terms, never stored in the Actions cache or an
   # artifact. Fork PRs cannot receive them and are checked by the main run
   # after merge instead. Firefox runs headed under Xvfb: headless Firefox on
-  # the runner has no WebGL2.
+  # the runner has no WebGL2. Nothing is uploaded on failure: a Playwright
+  # trace carries network response bodies, which would put Core and Hiyori
+  # into an artifact. Failures reach the run as annotations; reproduce a
+  # trace locally.
   browser-e2e:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -84,12 +87,6 @@ jobs:
         run: sudo apt-get install -y xvfb
       - run: pnpm -F @live2d-web/playground build
       - run: ${{ matrix.browser == 'firefox' && 'xvfb-run -a' || '' }} pnpm test:e2e --project=${{ matrix.browser }}
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: browser-e2e-results-${{ matrix.browser }}
-          path: test-results
-          retention-days: 7
 
   # Firefox infers an order of magnitude slower; the adaptive cap lets it pass
   # (docs/benchmarks/2026-08-25-0.5.0-candidate.md), so it blocks like the rest.
@@ -117,9 +114,3 @@ jobs:
         run: sudo apt-get install -y xvfb
       - run: pnpm -F @live2d-web/playground build
       - run: ${{ matrix.browser == 'firefox' && 'xvfb-run -a' || '' }} pnpm test:tracking:e2e --project=${{ matrix.browser }}
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: tracking-e2e-results-${{ matrix.browser }}
-          path: test-results
-          retention-days: 7
