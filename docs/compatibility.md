@@ -1,6 +1,7 @@
 # live2d-web 호환성
 
-상태 기준일: **2026-08-24**. 대상 라이브러리 버전은 `0.3.1`이다. 이 문서는
+상태 기준일: **2026-08-25**. 대상은 `develop`의 0.5.0 발행 후보이며, npm의
+`0.3.1`에는 MediaPipe 절이 없다. 이 문서는
 공개적으로 지원한다고 약속한 범위와 현재 저장소에서 실제 검증한 조합을
 구분한다.
 
@@ -19,7 +20,7 @@
 | --- | --- | --- |
 | Cubism Core 5.3 (`core/06`) | 지원·검증 | Framework 5-r.5와 공식 Hiyori/샘플 모델로 로드·렌더·정리를 검증한다. Core는 사용자가 공급하며 패키지에 포함하지 않는다. |
 | Cubism Web Framework 5-r.5 | 지원·검증 | 저장소에 포함된 기본 WebGL2 backend의 고정 버전이다. |
-| Cubism 4·5 `model3.json`/`.moc3` | 지원·부분 검증 | 공개 계약은 두 세대다. 현재 로컬 e2e는 공식 Hiyori를, smoke는 Mark와 Hiyori를 검증하지만 세대별 독립 fixture matrix는 아직 없다. |
+| Cubism 4·5 `model3.json`/`.moc3` | 지원·부분 검증 | 공개 계약은 두 세대다. CI·로컬 e2e는 공식 Hiyori를, smoke는 Mark와 Hiyori를 검증하지만 세대별 독립 fixture matrix는 아직 없다. |
 | Cubism 3 | 미검증 | Framework의 하위 호환 가능성과 별개로 라이브러리 지원 계약에 포함하지 않았다. |
 | Cubism 2.1 `.moc` | 비지원 | 별도 Core와 로더가 필요해 현재 범위 밖이다. |
 | Core 5.2 (`core/05`) + Framework 5-r.5 | 비지원 | 실제 Hiyori moc 로드에서 실패하며 Core 사전 검사도 5.3 기능을 요구한다. |
@@ -56,14 +57,15 @@ Webpack, Rollup 직접 구성은 현재 미검증이다.
 | 메인 스레드 추론 성능 | 부분 검증 | 모델 없는 페이지 측정(2026-08-25, 적응형 상한): Chromium 30fps 유지(p95 13.4ms), WebKit 20fps로 안착(p95 15ms), Firefox headless 10fps(p95 197ms, 프레임 100% 초과). Firefox tracking e2e는 통과하지만 CI에서는 비차단 게이트. Worker 검증이 남아 있다. |
 | 물리 카메라·모바일 실기 | 미검증 | 권한·장치별 자연스러움은 소비자 검증이 필요하다. |
 
-트래킹 전용 브라우저 게이트는 Apache-2.0 공식 모델·portrait와 npm 패키지의
-WASM을 SHA-256으로 고정해 PR/main CI에서 세 엔진 모두 실행한다. Live2D Core와
+트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을
+SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다.
+Chromium·WebKit은 차단, Firefox는 비차단이다. Live2D Core와
 Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독립적이다.
 
 ## 브라우저
 
-2026-08-24 로컬 `pnpm test:e2e`는 Playwright `1.62.0`과 다음 엔진에서
-실행했다. 공식 Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
+2026-08-25 로컬 `pnpm test:e2e`는 Playwright `1.62.0`과 다음 엔진에서
+실행했고(32 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식 Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
 
 | 엔진 | 실제 버전 | 일반 runtime·driver/value 립싱크 | wLipSync source |
 | --- | --- | --- | --- |
@@ -84,10 +86,12 @@ wLipSync source는 브라우저가 `AudioWorklet`을 제공하는 secure context
 `getUserMedia` 정책을 책임진다. 라이브러리는 전달받은 `AudioNode`를 분석하며
 마이크 권한 UI를 소유하지 않는다.
 
-Hiyori/Core를 쓰는 일반 runtime e2e는 로컬 수동 게이트다. 두 자산을
-Git·Actions cache·artifact에 넣지 않으므로 자동 CI에는 포함하지 않는다.
-MediaPipe 전용 e2e만 재배포 가능한 Apache 자산으로 자동화되어 있으며, 이 결과를
-Live2D 모델 렌더링 전체가 CI에서 검증된 것으로 확대해 해석하지 않는다.
+Hiyori/Core를 쓰는 일반 runtime e2e는 2026-08-25부터 develop·main push와
+릴리스의 자동 게이트다. 두 자산은 Git·Actions cache·artifact에 넣지 않고 매
+실행 약관 동의(`LIVE2D_ACCEPT_TERMS=1`)와 함께 공식 배포처에서 새로 받는다.
+외부 PR은 자산을 받을 수 없어 병합 뒤 main 결과로 확인한다. MediaPipe 전용
+e2e는 모델 없는 정지 초상으로 추론 경로만 검증하므로, 그 결과를 Live2D 모델
+렌더링이나 카메라 입력이 CI에서 검증된 것으로 확대해 해석하지 않는다.
 
 OBS 31 이상은 하위 제품의 호환 목표일 뿐 이 기준일에 직접 검증한 브라우저
 항목은 아니다. iOS Safari와 Android Chrome 실기기도 아직 미검증이다.

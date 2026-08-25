@@ -45,13 +45,15 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 
 - `docs/README.md` — 문서 지도 + 확정된 결정 목록
 - `docs/roadmap.md` — 성장 목표·고도화 축·버전 순서 (기능 추가 전 여기서 소비자를 확인)
+- `docs/compatibility.md` — 지원·검증·미검증·비지원의 실측 표
+- `docs/release-checklist.md` — 발행 전 사람이 확인하는 것과 태그 절차
 - `private/docs/ecosystem-survey.md` — npm 실측 + 이름 결정 기록 (로컬 전용, 미추적)
 - `docs/architecture.md` — 구현된 어댑터·프레임·생명주기·품질 계약
 - `docs/api-design.md` — 컴포넌트·훅 시그니처 + per-frame 규약 + 에러 모델
 - `private/docs/extraction-map.md` — 선행 참조 구현 이관 기록 (로컬 전용, 미추적)
 - `docs/licensing.md` — Cubism Core 비동봉 인과, 상표 고지, 선행 코드 크레딧
 - `private/docs/cubism-webgl-plan.md` — WebGL 백엔드 구현·성능 계획 (로컬 전용, 미추적)
-- `private/docs/roadmap.md` — 지나온 마일스톤 M0~M5 이력 (로컬 전용, 미추적)
+- `private/docs/roadmap.md` — 지나온 마일스톤 이력 (로컬 전용, 미추적)
 - `packages/live2d-web/src/core/contract.ts` — 백엔드 계약 타입(architecture.md의 코드화)
 - `packages/live2d-web/src/react/` — headless runtime binding, Store, hooks
 - `packages/live2d-web/src/core/runtime.ts` — 바닐라 API와 공유 생명주기 controller
@@ -64,7 +66,8 @@ Framework import나 `"use client"`가 생기면 root 계약 위반이다.
 - `apps/playground/src/app/page.tsx` — React Hiyori 데모
 - `apps/playground/src/app/vanilla/page.tsx` — `createLive2D()` Hiyori 데모
 - `apps/vanilla-consumer/` — React 없는 import/build/browser 실행 검증
-- `e2e/playground.spec.ts` — Chromium/WebKit 실제 WebGL 검증
+- `e2e/playground.spec.ts`, `e2e/hiyori-quality.spec.ts` — 실제 Core/Hiyori 3엔진 검증 (CI `browser-e2e`)
+- `e2e/tracking/mediapipe.spec.ts` — 모델 없는 정지 초상으로 Face Landmarker 경로만 검증
 - `scripts/fetch-assets.mjs` — Core + Hiyori 다운로드(멱등, sharp 없음)
 
 ## Commands
@@ -86,6 +89,8 @@ LIVE2D_TRACKING_SOAK_MINUTES=5 pnpm test:tracking:soak # 선택적인 MediaPipe 
 pnpm benchmark:backends # 기본 5분씩 cubism-webgl/pixi-v6 비교
 pnpm up             # taze 일괄 업데이트 + prune + dedupe
 ```
+
+발행 절차는 `docs/release-checklist.md`를 따른다.
 
 ## 함정 (하루씩 아끼는 지식)
 

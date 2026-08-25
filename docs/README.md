@@ -7,34 +7,35 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 
 1. [로드맵](roadmap.md) — 성장 목표·상시 품질 기준·고도화 축·버전 순서
 2. [호환성](compatibility.md) — 지원·검증·미검증 범위와 알려진 제한
-3. [아키텍처](architecture.md)
-4. [API reference](api-design.md)
-5. [라이선스와 상표](licensing.md)
-6. [벤치마크 가이드](benchmarking.md)
-7. [배포물과 개발 저장소 보안 검증](security.md)
-8. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
+3. [릴리스 체크리스트](release-checklist.md) — 자동 게이트 밖에서 사람이 확인하는 것
+4. [아키텍처](architecture.md)
+5. [API reference](api-design.md)
+6. [라이선스와 상표](licensing.md)
+7. [벤치마크 가이드](benchmarking.md)
+8. [배포물과 개발 저장소 보안 검증](security.md)
+9. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
    — 리뷰 반영 뒤 크기·적응형 추론 상한·e2e 결과
-9. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
+10. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
    — 공개 패키지·소비자·브라우저·smoke 회귀 기준
-10. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
+11. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
    — root/runtime chunk·tarball의 v0.3.1 기준선 대비 변화
-11. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
+12. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
    — root/runtime/cubism/model chunk·tarball의 v0.3.1 기준선 대비 변화
-12. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
+13. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
    — 상세 상태·시퀀스·가중 Idle·표정 페이드 뒤 chunk·tarball 변화
-13. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
+14. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
    — 선택형 tracking entry·자산 크기·브라우저 추론과 프레임 영향
-14. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+15. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-15. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+16. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-16. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-17. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-18. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-19. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-20. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-21. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-22. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+17. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+18. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+19. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+20. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+21. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+22. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+23. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
@@ -131,3 +132,21 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
   재생 중 축출이 use-after-free가 된다) 대신 버퍼 지연 보관만.
 - **재검토 조건**: 발행 후 첫 소비자 채택 시 게이트 닫힘을 기록한다.
   Firefox tracking e2e가 적응형 상한으로 안정되면 차단 게이트로 되돌린다.
+
+### 2026-08-25 순서 재조정: 완성도와 발견성을 새 기능보다 앞에
+
+- **결정문**: 0.5.0 다음을 E(성능·안정, 0.6)와 F(개발자 경험, 0.7)로 당기고
+  D(다중 모델, 0.8)와 B MotionSync(0.9)를 뒤로 보낸다. C의 `tween()`은
+  삭제하고 물리·포즈 설정은 요청 전 미착수로 낮춘다. 릴리스 체크리스트를
+  신설한다.
+- **근거**: 08-22 결정의 재검토 조건이 발동됐다. 0.5 시점 목표 외부 의존 3에
+  대해 실측 1이고 그마저 중단 중이며, VS Code·히비엔도 보류·미재개다. 활성
+  소비자가 없으면 D·MotionSync는 소비자 주도 원칙상 착수할 수 없고, 남는 일은
+  있는 것을 단단하게 하고(E) 찾기 쉽게 하는 것(F)뿐이다. 0.5 트래킹 실측은
+  동기 추론이 렌더 스레드를 막는 것을 보여줘 Worker가 기능보다 급함을
+  증명했다. README 3개 국어의 유지비는 08-24 JA 문장 유실로 이미 드러났다.
+- **포기와 대체**: 다중 모델·MotionSync 선행 착수. `tween()`은 소비자가
+  `addParameterDriver`로 직접 만든다.
+- **재검토 조건**: 히비엔 재개나 합방 데모처럼 D를 요구하는 소비자가 실제로
+  나타나면 D를 0.7 앞으로 당긴다. 외부 의존이 0.7 시점에도 1이면 F의 범위를
+  다시 본다.

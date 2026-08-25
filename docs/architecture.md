@@ -169,8 +169,9 @@ Face Landmarker 모델은 사용자 경로나 버퍼로 받으며 dist에 포함
 
 내장 backend는 `ModelInfo.parameters`에 ID·최소·최대·기본값을 제공한다.
 필드는 optional이라 기존 custom backend는 깨지지 않는다. 메타데이터가 없으면
-표준 Cubism 범위를 사용하며, 52개 Perfect Sync 자동 매핑은 모든 ID를 확인한
-경우에만 켠다. 트래커 하나는 여러 모델에 붙을 수 있고, 각 detach와 전체
+표준 Cubism 범위를 사용하며, Perfect Sync 자동 매핑은 ARKit 52개 이름 중 45개
+이상이 있을 때 켜고 모델이 가진 것만 바인딩한다(`_neutral`은 파라미터가
+아니고 `ParamTongueOut`은 MediaPipe 출력이 없어 기본값 유지). 트래커 하나는 여러 모델에 붙을 수 있고, 각 detach와 전체
 dispose는 driver를 먼저 제거한 뒤 MediaPipe task를 한 번만 닫는다.
 
 MediaPipe의 동기 추론이 메인 스레드를 막을 수 있다. 2026-08-24 reference
