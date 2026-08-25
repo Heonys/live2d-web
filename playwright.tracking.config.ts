@@ -10,7 +10,9 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
   ],
-  reporter: 'list',
+  // The github reporter turns failures into check-run annotations, which are
+  // readable without a token when the run's log is not.
+  reporter: process.env.CI ? [['list'], ['github']] : 'list',
   testDir: './e2e/tracking',
   timeout: 90_000,
   use: {

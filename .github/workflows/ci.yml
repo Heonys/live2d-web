@@ -72,6 +72,12 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm -F @live2d-web/playground build
       - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-e2e-results
+          path: test-results
+          retention-days: 7
 
   # Firefox is measured well past the inference budget (docs/compatibility.md),
   # so it reports but does not block until the adaptive cap proves it stable.
@@ -98,3 +104,9 @@ jobs:
       - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
       - run: pnpm -F @live2d-web/playground build
       - run: pnpm test:tracking:e2e --project=${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: tracking-e2e-results-${{ matrix.browser }}
+          path: test-results
+          retention-days: 7

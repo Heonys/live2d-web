@@ -20,7 +20,9 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'] },
     },
   ],
-  reporter: 'list',
+  // The github reporter turns failures into check-run annotations, which are
+  // readable without a token when the run's log is not.
+  reporter: process.env.CI ? [['list'], ['github']] : 'list',
   testDir: './e2e',
   testIgnore: ['soak.spec.ts', 'tracking/**', 'tracking-soak/**'],
   timeout: 60_000,
