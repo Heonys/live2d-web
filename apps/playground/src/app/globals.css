@@ -429,6 +429,59 @@ label output {
   object-fit: cover;
 }
 
+.pose-readout {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.pose-readout th {
+  color: #8b85a0;
+  font-weight: 500;
+  text-align: right;
+  padding-bottom: 4px;
+}
+
+.pose-readout th:first-child,
+.pose-readout td:first-child {
+  text-align: left;
+  color: #8b85a0;
+}
+
+.pose-readout td {
+  text-align: right;
+  padding-block: 2px;
+}
+
+.pose-readout th:last-child,
+.pose-readout td:last-child {
+  width: 40%;
+  padding-left: 10px;
+}
+
+.pose-readout td:last-child {
+  background-image: linear-gradient(#2f2b3d, #2f2b3d);
+  background-repeat: no-repeat;
+  background-position: 10px center;
+  background-size: calc(100% - 10px) 6px;
+}
+
+.pose-ranges {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8b85a0;
+  word-break: break-all;
+}
+
+.pose-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: #7a6ff0;
+}
+
 .benchmark-page {
   width: max-content;
   min-width: 100%;
