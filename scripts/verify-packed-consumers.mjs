@@ -147,7 +147,8 @@ try {
     },
   }, {
     'index.html': '<div id="app"></div><script type="module" src="/src.ts"></script>',
-    'src.ts': `import type { MediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'\nimport { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'\n\nlet tracker: MediaPipeFaceTracker | undefined\nvoid tracker\nvoid createMediaPipeFaceTracker\n`,
+    'face-tracking.worker.ts': `import { startMediaPipeFaceTrackerWorker } from 'live2d-web/tracking/mediapipe/worker'\n\nstartMediaPipeFaceTrackerWorker()\n`,
+    'src.ts': `import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'\n\nvoid createMediaPipeFaceTracker({\n  execution: 'worker',\n  modelAssetPath: '/face.task',\n  wasmPath: '/wasm',\n  workerFactory: () => new Worker(\n    new URL('./face-tracking.worker.ts', import.meta.url),\n    { type: 'module' },\n  ),\n})\n`,
     'tsconfig.json': JSON.stringify({
       compilerOptions: {
         lib: ['ES2022', 'DOM'],
@@ -157,7 +158,7 @@ try {
         strict: true,
         target: 'ES2022',
       },
-      include: ['src.ts'],
+      include: ['src.ts', 'face-tracking.worker.ts'],
     }),
   }, [['npm', ['run', 'build']]])
 
@@ -166,6 +167,7 @@ try {
     private: true,
     scripts: { build: 'next build' },
     dependencies: {
+      '@mediapipe/tasks-vision': versions.mediaPipe,
       'live2d-web': tarball,
       'next': versions.next,
       'react': versions.react,
@@ -178,7 +180,8 @@ try {
       'typescript': versions.typescript,
     },
   }, {
-    'app/avatar.tsx': `'use client'\n\nimport { Live2DCanvas } from 'live2d-web/react'\n\nexport function Avatar() {\n  return <Live2DCanvas coreUrl="/core.js" />\n}\n`,
+    'app/avatar.tsx': `'use client'\n\nimport { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'\nimport { Live2DCanvas } from 'live2d-web/react'\n\nexport function Avatar() {\n  void createMediaPipeFaceTracker\n  void (() => new Worker(\n    new URL('./face-tracking.worker.ts', import.meta.url),\n    { type: 'module' },\n  ))\n  return <Live2DCanvas coreUrl="/core.js" />\n}\n`,
+    'app/face-tracking.worker.ts': `import { startMediaPipeFaceTrackerWorker } from 'live2d-web/tracking/mediapipe/worker'\n\nstartMediaPipeFaceTrackerWorker()\n`,
     'app/layout.tsx': `import type { ReactNode } from 'react'\n\nexport default function Layout({ children }: { children: ReactNode }) {\n  return <html><body>{children}</body></html>\n}\n`,
     'app/page.tsx': `import { Avatar } from './avatar'\n\nexport default function Page() {\n  return <main><Avatar /></main>\n}\n`,
     'next-env.d.ts': '/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n',
@@ -203,7 +206,7 @@ try {
     }),
   }, [['npm', ['run', 'build']]])
 
-  console.log('[packed-consumers] vanilla, React, tracking Vite and Next SSR verified')
+  console.log('[packed-consumers] vanilla, React, tracking module Workers in Vite/Next and Next SSR verified')
 }
 finally {
   rmSync(temporaryRoot, { force: true, recursive: true })

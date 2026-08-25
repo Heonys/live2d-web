@@ -12,6 +12,8 @@
     "benchmark:backends": "playwright test --config benchmarks/playwright.config.ts",
     "prebenchmark:smoke": "pnpm -F @live2d-web/playground build",
     "benchmark:smoke": "LIVE2D_BENCHMARK_SUITE=smoke playwright test --config benchmarks/model.playwright.config.ts",
+    "prebenchmark:tracking": "pnpm -F @live2d-web/playground build",
+    "benchmark:tracking": "playwright test --config benchmarks/tracking.playwright.config.ts",
     "prebenchmark:startup": "pnpm -F @live2d-web/playground build",
     "benchmark:startup": "LIVE2D_BENCHMARK_SUITE=startup playwright test --config benchmarks/model.playwright.config.ts",
     "prebenchmark:matrix": "pnpm -F @live2d-web/playground build",

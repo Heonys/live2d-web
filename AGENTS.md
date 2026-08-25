@@ -14,7 +14,8 @@ package version의 일치를 검사한다. 발행은 npm Trusted Publishing(OIDC
 ## Tech Stack
 
 - pnpm workspace(catalog 버전 관리) — **npm 퍼블리시는 `live2d-web` 하나** +
-  `.`, `/react`, `/backends/cubism-webgl`, `/tracking/mediapipe` 서브패스.
+  `.`, `/react`, `/backends/cubism-webgl`, `/tracking/mediapipe`,
+  `/tracking/mediapipe/worker` 서브패스.
   pixi-v6는 workspace
   안에서만 소스로 resolve되고 발행하지 않는다(0.2.0에서 제외)
 - 퍼블리시 라이브러리 — tsdown 빌드(ESM + d.ts). 개발 중엔 소스-export + Next `transpilePackages`, 퍼블리시 시 `publishConfig.exports`가 dist로 전환
@@ -84,6 +85,7 @@ pnpm test:e2e       # 실제 Core/Hiyori + Chromium/WebKit/Firefox
 pnpm test:tracking:e2e # MediaPipe portrait + Chromium/WebKit/Firefox (CI: Firefox는 Xvfb headed)
 pnpm verify:package # tarball 내용물 + React 없는 소비자 번들 검증
 pnpm verify:packed-consumers # 실제 tarball 설치: vanilla/React/Next SSR + prod audit
+pnpm benchmark:tracking # Hiyori 렌더링 중 main/Worker를 브라우저별 3회 비교
 LIVE2D_SOAK_MINUTES=120 pnpm test:soak # 선택적인 Chromium 장시간 게이트
 LIVE2D_TRACKING_SOAK_MINUTES=5 pnpm test:tracking:soak # 선택적인 MediaPipe 안정성 smoke
 pnpm benchmark:backends # 기본 5분씩 cubism-webgl/pixi-v6 비교
@@ -158,6 +160,11 @@ URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/quer
     같은 날 `peak` 30.0을 "값이 커서 잘린다"로 읽었지만 실제로는 얼굴을 놓치는
     순간 한 프레임 튄 값이었고, 유지값은 오히려 너무 작았다. 자세를 몇 초
     유지한 상태의 값을 본다.
+29. **MediaPipe Worker는 앱 엔트리에서 시작한다.** 앱의 module Worker 파일이
+    `/tracking/mediapipe/worker`의 `startMediaPipeFaceTrackerWorker()`를 한 번
+    호출하고 factory를 넘긴다. main이 기본이며 조용한 fallback은 없다. Vite는
+    module WASM loader를 쓰지만 Next/Turbopack은 요청을 classic bootstrap으로
+    변환할 수 있어 Worker runner가 실제 환경을 감지해 loader를 고른다.
 
 ## 규칙
 

@@ -61,6 +61,9 @@ jobs:
       - run: pnpm -F @live2d-web/playground build
       - run: xvfb-run -a pnpm test:e2e
       - run: xvfb-run -a pnpm test:tracking:e2e
+      - run: xvfb-run -a pnpm test:tracking:soak
+        env:
+          LIVE2D_TRACKING_SOAK_MINUTES: '5'
 
       # pnpm packs (it resolves the catalog: protocol that npm cannot read),
       # npm publishes (pnpm has no trusted-publishing support).

@@ -12,6 +12,7 @@
 - `verify:package` (경계·크기·`.task`/`.wasm` 부재) · `verify:packed-consumers` (tarball 소비자 4종)
 - `browser-e2e` 3엔진 (Cubism Core·Hiyori, push에서만)
 - `tracking-e2e` 3엔진 (Firefox는 Xvfb headed, 적응형 상한으로 10fps)
+- `tracking:soak` Chromium Worker 5분 (릴리스 workflow 전용)
 
 ## 2. 사람이 확인하는 것
 
@@ -19,10 +20,10 @@
   고개를 위·아래·좌·우로 돌렸을 때 모델이 같은 방향으로 따라오는지, 눈을
   감으면 감기는지, 입을 벌리면 벌어지는지. CI는 정지 초상뿐이라 부호가
   뒤집혀도 잡지 못한다. Perfect Sync 모델이 있으면 같은 확인을 한 번 더.
-- **soak.** 렌더 루프·정리·캐시를 건드린 릴리스면 `LIVE2D_SOAK_MINUTES=30
-  pnpm test:soak` 1회. 힙이 계단식으로 오르면 발행하지 않는다. 30분 미만은
-  힙 단언(`heapSamples.length >= 30`)과 재생성 주기(30분)가 실행되지 않으므로
-  통과해도 아무것도 증명하지 못한다.
+- **soak.** 트래킹은 릴리스 5분, 주간 15분을 자동 실행한다. 문제 조사 때
+  `LIVE2D_TRACKING_SOAK_MINUTES=120 pnpm test:tracking:soak`를 수동 실행한다.
+  일반 Hiyori 120분 soak는 렌더 루프·정리·캐시 결함을 조사할 때만 실행하며,
+  짧은 tracking soak를 장기 누수 부재의 증명으로 해석하지 않는다.
 - **README 3종 동기화.** 새 공개 이름이 `README.md`·`README.ko.md`·
   `README.ja.md`에 모두 있는지 `grep`으로 확인한다. 08-24에 JA만 문장이
   유실된 적이 있다.

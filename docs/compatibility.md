@@ -1,7 +1,7 @@
 # live2d-web 호환성
 
-상태 기준일: **2026-08-25**. 대상은 `develop`의 0.5.0 발행 후보이며, npm의
-`0.3.1`에는 MediaPipe 절이 없다. 이 문서는
+상태 기준일: **2026-08-25**. 대상은 발행된 `0.5.0`과 `develop`의 0.6
+후속 작업이다. 이 문서는
 공개적으로 지원한다고 약속한 범위와 현재 저장소에서 실제 검증한 조합을
 구분한다.
 
@@ -33,7 +33,7 @@
 
 ## React와 소비자 빌드
 
-| 대상 | 지원 범위 | 2026-08-24 실제 검증 |
+| 대상 | 지원 범위 | 현재 실제 검증 |
 | --- | --- | --- |
 | React | `>=18.2 <20` optional peer | React/React DOM `19.2.8` |
 | Vanilla Vite | ESM root API | Vite `8.1.5`, 실제 npm tarball 설치·typecheck·production build |
@@ -47,17 +47,18 @@ Webpack, Rollup 직접 구성은 현재 미검증이다.
 
 ## MediaPipe 선택 기능
 
-| 대상 | 상태 | 2026-08-24 실제 검증 |
+| 대상 | 상태 | 현재 실제 검증 |
 | --- | --- | --- |
 | `@mediapipe/tasks-vision` | `^1.0.1` optional peer | `1.0.1`, CPU delegate와 VIDEO mode |
-| Chromium·WebKit | 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성 |
-| Firefox | 기능 검증 · **성능 미충족** | 같은 e2e를 Xvfb headed로 통과하지만 추론 한 번이 ~190ms라 상한이 10fps로 내려가도 매 추론이 프레임을 막는다. Worker 추론 전까지 실사용 권장 안 함 |
+| Chromium·WebKit | main·Worker 기능 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성. 2026-08-25 module Worker 경로도 통과 |
+| Firefox | main 성능 미충족 · Worker 기능 검증 | main 추론은 ~190ms라 실사용 비권장. 같은 portrait를 Worker에서 추론하는 기능·생명주기는 2026-08-25 통과했으며 성능 수치는 별도 benchmark로 관리 |
 | 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 손으로 적은 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증. Perfect Sync는 ARKit 이름 픽스처(50개, `ParamTongueOut` 포함)로 판정·바인딩 검증 |
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
-| 메인 스레드 추론 성능 | 부분 검증 | 모델 없는 페이지 측정(2026-08-25, 적응형 상한): Chromium 30fps 유지(p95 13.4ms), WebKit 20fps로 안착(p95 15ms), Firefox 10fps(p95 197ms, 프레임 100% 초과). 세 엔진 모두 CI 차단 게이트. Worker 검증이 남아 있다. |
+| 추론 성능 | 데스크톱 검증 | Hiyori 동시 렌더 3회 중앙값에서 Worker frame p95는 Chromium 10ms, WebKit 18ms, Firefox 9.8ms이고 33ms 초과는 모두 0%. Firefox main의 191.6ms/100% 초과를 렌더 스레드에서 분리. [상세 측정](benchmarks/2026-08-25-0.6-worker-tracking.md) |
+| Worker 안정성 | 데스크톱 검증 | Chromium 15분 soak에서 두 차례 재생성, pending 요청 정착, 최종 dispose, console/page error와 heap 증가 한계를 통과(2026-08-25) |
 | 물리 카메라 | **부분 검증** | 2026-08-25 실측에서 세 결함을 찾아 고쳤다. 얼굴을 너무 일찍 놓침(임계값 기본 0.5), 놓치면 0.55초 만에 정면 복귀, 경계 프레임의 자세 튐. 여기에 물리보다 뒤에 적용되어 머리카락이 따라오지 않던 문제까지 넷이다. |
-| 모바일 실기 | 미검증 | 장치별 자연스러움은 소비자 검증이 필요하다. |
+| 모바일 실기 | **미검증·0.6 완료 대기** | iOS Safari·Android Chrome 실기기 각 5분과 실제 전면 카메라 지표가 필요하다. 자동화·데스크톱 수치로 대체하지 않는다. |
 | 감도 기본값 | 1대 측정 | `sensitivity.pose` 기본은 **3**이다. 2026-08-25에 눈높이보다 낮은 노트북 카메라 한 대에서 자연스럽게 느껴진 값이며, 표본이 하나다. 카메라 위치에 좌우되므로 소비자는 사용자에게 노출하는 편이 낫다. |
 
 트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을

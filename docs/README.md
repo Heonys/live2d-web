@@ -1,6 +1,6 @@
 # live2d-web 문서 지도
 
-상태 기준일: **2026-08-24**. 바닐라 우선 headless runtime, React binding,
+상태 기준일: **2026-08-25**. 바닐라 우선 headless runtime, React binding,
 상호작용 API(hitTest/followPointer/모션 완료 대기), source/driver 립싱크,
 선택형 MediaPipe 얼굴 추적과 pixi-v6 비교 어댑터가 구현돼 있다. 공식
 Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
@@ -13,37 +13,40 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 6. [라이선스와 상표](licensing.md)
 7. [벤치마크 가이드](benchmarking.md)
 8. [배포물과 개발 저장소 보안 검증](security.md)
-9. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
+9. [0.6 MediaPipe Worker 추적 측정](benchmarks/2026-08-25-0.6-worker-tracking.md)
+   — Hiyori 동시 렌더 main/Worker 3회 비교와 0.6 번들 예산
+10. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
    — 리뷰 반영 뒤 크기·적응형 추론 상한·e2e 결과
-10. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
+11. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
    — 공개 패키지·소비자·브라우저·smoke 회귀 기준
-11. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
+12. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
    — root/runtime chunk·tarball의 v0.3.1 기준선 대비 변화
-12. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
+13. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
    — root/runtime/cubism/model chunk·tarball의 v0.3.1 기준선 대비 변화
-13. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
+14. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
    — 상세 상태·시퀀스·가중 Idle·표정 페이드 뒤 chunk·tarball 변화
-14. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
+15. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
    — 선택형 tracking entry·자산 크기·브라우저 추론과 프레임 영향
-15. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+16. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-16. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+17. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-17. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-18. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-19. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-20. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-21. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-22. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-23. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+18. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+19. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+20. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+21. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+22. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+23. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+24. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
 - 제품·npm 패키지, 로컬 디렉터리와 GitHub 저장소 이름은 `live2d-web`이다.
-- 현재 발행 버전은 `0.3.1`이다. 0.4 기능 개발 전에 0.3.x 기반 안정화를 거치며,
+- 현재 발행 버전은 `0.5.0`이다. 0.3.x 기반 안정화는 충족됐으며,
   `v*` 태그 푸시가 릴리스 워크플로를 실행해 npm에 발행한다. 변경 이력은
   [CHANGELOG](../CHANGELOG.md)에 기록한다.
 - npm 패키지는 하나이며 `.`, `/react`, `/tracking/mediapipe`,
+  `/tracking/mediapipe/worker`,
   `/backends/cubism-webgl`로 경계를 나눈다. pixi-v6는 저장소 안의 벤치마크
   비교 대상이며 발행하지 않는다.
 - 루트는 React와 `"use client"`가 없는 바닐라 API다. React는 optional
@@ -59,7 +62,8 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 - backend 생략 시 cubism-webgl을 동적 로딩한다. pixi-v6는 명시적
   비교·호환용으로 유지한다.
 - MediaPipe는 `/tracking/mediapipe` optional peer 경계에서만 동적 로딩하고,
-  카메라·WASM·모델과 스케줄러는 앱이 공급·소유한다.
+  카메라·WASM·모델과 스케줄러는 앱이 공급·소유한다. Worker는 앱이 factory를
+  주고 라이브러리가 task와 함께 정리한다.
 
 ### 2026-08-22 라이브러리 성장 방향
 
@@ -178,3 +182,19 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 - **재검토 조건**: 히비엔 재개나 합방 데모처럼 D를 요구하는 소비자가 실제로
   나타나면 D를 0.7 앞으로 당긴다. 외부 의존이 0.7 시점에도 1이면 F의 범위를
   다시 본다.
+
+### 2026-08-25 0.6 Worker와 단계형 안정성 게이트
+
+- **결정문**: 기존 MediaPipe main 모드의 동기 API를 기본값으로 유지하고,
+  앱이 module Worker factory를 주는 선택형 비동기 경로를 추가한다. tracking
+  soak는 릴리스 5분·주간 15분·수동 5/15/120분으로 구분한다.
+- **근거**: 0.5 실측에서 Firefox main 추론이 렌더 프레임을 직접 막았다.
+  한편 120분을 모든 변경에 반복하면 피드백이 지나치게 늦어지므로, 짧은
+  생명주기 회귀와 장기 누수 조사를 같은 게이트로 취급하지 않는다.
+- **포기와 대체**: Worker 초기화 실패의 조용한 main fallback, 프레임 큐,
+  WASM·모델 동봉, 렌더링·물리·모션 Worker 이동은 하지 않는다. busy 프레임은
+  `skipped`로 끝내고 실패는 `tracking-error`로 드러낸다. 텍스처 비활성 정책은
+  다중 모델 상태가 생기는 0.8에서 다룬다.
+- **재검토 조건**: 모바일 두 기기와 tracking benchmark에서 Worker가 33ms
+  프레임 목표를 못 맞추면 기본 FPS와 Worker 프로토콜을 다시 본다. 15분 soak가
+  반복해서 놓치는 누수가 확인될 때만 주간 시간을 늘린다.

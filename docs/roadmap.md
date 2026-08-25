@@ -1,7 +1,7 @@
 # live2d-web 로드맵
 
-상태 기준일: **2026-08-25**. 현재 발행 버전은 `0.3.1`이고 `develop`이 0.5.0
-발행 후보다. 지나온 마일스톤은 `private/docs/roadmap.md`에 이력으로 남아
+상태 기준일: **2026-08-25**. 현재 발행 버전은 `0.5.0`이고 `develop`이 0.6
+고도화를 진행한다. 지나온 마일스톤은 `private/docs/roadmap.md`에 이력으로 남아
 있고, 이 문서는 앞으로의 방향만 다룬다.
 
 ## 목표
@@ -35,15 +35,15 @@
   통과한다(2026-08-25부터 push·릴리스 자동 게이트). 게이트를 줄이지 않는다
 - AI·TTS·아카이브 해제·OAuth·서버는 라이브러리 밖이다
 
-## 현재 위치 (0.3.1)
+## 현재 위치 (0.5.0 발행, 0.6 개발)
 
-**하는 것**: 바닐라 `createLive2D()`와 React 바인딩, Cubism 4·5 모델 로드,
-모션·표정·히트테스트·시선·파라미터 드라이버, 립싱크 3모드(driver / wLipSync
-source / value), 자동 품질과 프레임 상한, 일시정지·재시도·정리, 에러 모델,
-`resolveAsset`로 메모리·저장소의 모델 로드, WebGL2 투명 배경.
+**하는 것**: 바닐라·React, Cubism 4·5 모델 로드, 상세 모션 상태·시퀀스·
+모션/표정 페이드·가중 Idle, 립싱크 3모드와 볼륨 helper, 자동 품질, 자산
+resolver, 선택형 MediaPipe 얼굴 추적. `develop`에는 main 동기 계약을 유지한
+선택형 MediaPipe Worker도 구현됐다.
 
-**못 하는 것**: 웹캠·센서 입력, 모션 간 블렌딩 제어, 표정 동시 적용, Stage당
-모델 둘 이상, Worker 오프로드, 모바일 GPU 실측 게이트, 공식 MotionSync
+**못 하는 것**: 손·전신 센서 입력, 표정 동시 가중 적용, Stage당 모델 둘 이상,
+모바일 GPU 실측 게이트, 공식 MotionSync
 립싱크, 프레임워크 문서 사이트.
 
 **소비자**: Livesona(OBS 아바타)가 1호이며 0.3.1을 통합한 채 M1 마무리
@@ -308,16 +308,19 @@ suspend 복구와 장치 변경 대응.
 
 **무엇.**
 
-- **추론 Worker**: MediaPipe 추론을 Worker로 옮겨 렌더 스레드에서 떼어낸다.
-  적응형 상한은 그 전까지의 완충이지 해결이 아니다
+- **추론 Worker**: MediaPipe 추론을 선택형 Worker로 옮겨 렌더 스레드에서
+  떼어낸다. main 동기 계약은 호환을 위해 유지한다. **구현·브라우저 기능 검증**
 - 모바일 실기기 smoke: iOS Safari·Android Chrome 각 1회, startup·frame·
   트래킹 추론을 기록하고 결과를 `docs/compatibility.md`에 승격. 정기
   게이트화는 그 결과를 보고 결정
-- soak 정기화: 120분 Chromium soak를 주간 CI로
+- soak 정기화: 릴리스 5분, 주간 15분, 수동 dispatch 5/15/120분. 로컬
+  Chromium Worker 15분은 2026-08-25 통과. 일반 120분 Hiyori soak는 결함
+  조사 때만 실행
 - 번들 예산 단언: react·tracking entry의 raw/gzip 상한을 `verify-package`에
+  적용. **구현·실측 통과**
 - Worker 오프로드 검토(물리·모션·`OffscreenCanvas`): 추론 Worker 뒤에
   측정으로 이득이 확인될 때만
-- 텍스처 메모리 정책: 비활성 모델의 텍스처 해제와 재로드
+- 텍스처 메모리 정책은 다중 모델의 비활성 상태가 생기는 0.8에서 다룬다
 
 **범위 밖.** WebGL1 폴백(WebGL2 점유율을 측정해 필요성이 증명되기 전에는
 하지 않는다), WebGPU(안정화 전).
@@ -387,8 +390,8 @@ suspend 복구와 장치 변경 대응.
 | 버전 | 내용 | 완료 조건 |
 | --- | --- | --- |
 | 0.3.x | 기반 안정화·검증 계약·호환성 기준선 | 문서와 실제 자동 게이트가 일치하고 브라우저 3종 e2e가 자동화되며 공개 API·번들·성능 기준선이 기록됨. **충족 2026-08-25** |
-| 0.5.0 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼, A 웹캠 트래킹 `/tracking/mediapipe`(experimental) | Livesona가 볼륨 헬퍼를 받아쓰고 자체 구현을 제거하며, Livesona 선택 기능 또는 VS Code 확장이 트래킹을 사용. **상태: 발행 후보, 소비자 게이트 열림** |
-| 0.6 | E 추론 Worker·모바일 smoke·soak 정기화·번들 예산 단언 | 트래킹이 Worker에서 돌고, 모바일 2종 결과가 호환성 표에 있으며, 예산이 CI 단언임 |
+| 0.5.0 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼, A 웹캠 트래킹 `/tracking/mediapipe`(experimental) | **2026-08-25 발행.** 소비자 채택·Perfect Sync 실모델 검증은 성장 게이트로 계속 추적 |
+| 0.6 | E 추론 Worker·모바일 smoke·soak 정기화·번들 예산 단언 | Worker·데스크톱 성능·번들·단계형 soak는 구현됨. **iOS/Android 실측 대기** |
 | 0.7 | F 문서 사이트·예제 갤러리·모델 검사기·기여 가이드 | 외부 기여자의 첫 PR 병합 또는 외부 의존 프로젝트 +1 |
 | 0.8 | D 다중 모델 Stage | 히비엔 또는 합방 데모가 사용 |
 | 0.9 | B 공식 MotionSync | 소비자가 볼륨 드라이버의 한계를 말한 뒤, 라이선스 확인, Livesona가 립싱크 모드로 채택 |

@@ -1,0 +1,34 @@
+name: Tracking stability
+
+on:
+  schedule:
+    - cron: '23 17 * * 1'
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Worker tracking soak duration
+        required: true
+        default: '15'
+        type: choice
+        options:
+          - '5'
+          - '15'
+          - '120'
+
+jobs:
+  worker-tracking-soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm fetch-mediapipe-assets
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:tracking:soak
+        env:
+          LIVE2D_TRACKING_SOAK_MINUTES: ${{ github.event_name == 'schedule' && '15' || inputs.minutes }}

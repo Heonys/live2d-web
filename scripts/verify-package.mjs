@@ -6,6 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { gzipSync } from 'node:zlib'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageDirectory = path.join(root, 'packages/live2d-web')
@@ -14,6 +15,7 @@ const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
 const cubismAdapter = readFileSync(path.join(dist, 'backends/cubism-webgl.mjs'), 'utf8')
 const mediaPipeEntry = readFileSync(path.join(dist, 'tracking/mediapipe.mjs'), 'utf8')
+const mediaPipeWorkerEntry = readFileSync(path.join(dist, 'tracking/mediapipe/worker.mjs'), 'utf8')
 const rootDeclaration = readFileSync(path.join(dist, 'index.d.mts'), 'utf8')
 const reactDeclaration = readFileSync(path.join(dist, 'react.d.mts'), 'utf8')
 const publicDeclarations = readdirSync(dist, { recursive: true })
@@ -48,8 +50,19 @@ function collectGraph(entryFile, includeDynamic) {
 const rootBundle = collectGraph('index.mjs', false)
 const cubismBundle = collectGraph('backends/cubism-webgl.mjs', true)
 const mediaPipeBundle = collectGraph('tracking/mediapipe.mjs', false)
-
+const mediaPipeWorkerBundle = collectGraph('tracking/mediapipe/worker.mjs', false)
 const failures = []
+
+function enforceEntryBudget(name, source, rawLimit, gzipLimit) {
+  const raw = Buffer.byteLength(source)
+  const gzip = gzipSync(source).byteLength
+  if (raw > rawLimit || gzip > gzipLimit) {
+    failures.push(
+      `${name} entry exceeds its ${rawLimit}/${gzipLimit} byte raw/gzip budget (${raw}/${gzip})`,
+    )
+  }
+}
+
 if (entry.includes('"use client"') || entry.includes('\'use client\''))
   failures.push('dist/index.mjs must stay React-free and cannot contain "use client"')
 if (rootBundle.includes('from "react"') || rootBundle.includes('from \'react\''))
@@ -72,8 +85,15 @@ if (rootBundle.includes('@mediapipe/tasks-vision') || rootBundle.includes('FaceL
   failures.push('root bundle contains MediaPipe tracking code')
 if (react.includes('@mediapipe/tasks-vision') || react.includes('FaceLandmarker'))
   failures.push('react bundle contains MediaPipe tracking code')
+if (rootBundle.includes('startMediaPipeFaceTrackerWorker'))
+  failures.push('root bundle contains MediaPipe Worker code')
+if (react.includes('startMediaPipeFaceTrackerWorker'))
+  failures.push('react bundle contains MediaPipe Worker code')
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
+enforceEntryBudget('React', react, 30_000, 8_000)
+enforceEntryBudget('MediaPipe main', mediaPipeEntry, 45_000, 12_000)
+enforceEntryBudget('MediaPipe Worker', mediaPipeWorkerEntry, 20_000, 6_000)
 if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
   failures.push('root runtime does not dynamically import the default cubism-webgl adapter')
 if (!cubismBundle.includes('CubismFramework') || !cubismBundle.includes('Live2DCubismCore'))
@@ -88,6 +108,8 @@ if (!mediaPipeEntry.includes('import("@mediapipe/tasks-vision")'))
   failures.push('MediaPipe entry must load @mediapipe/tasks-vision dynamically')
 if (mediaPipeBundle.includes('vision_wasm_internal') || mediaPipeBundle.includes('face_landmarker.task'))
   failures.push('MediaPipe entry contains a bundled WASM or model asset')
+if (mediaPipeWorkerBundle.includes('vision_wasm_internal') || mediaPipeWorkerBundle.includes('face_landmarker.task'))
+  failures.push('MediaPipe Worker entry contains a bundled WASM or model asset')
 
 const bundledAssets = readdirSync(dist, { recursive: true })
   .map(file => String(file))
@@ -109,6 +131,12 @@ const packResult = JSON.parse(execFileSync(
   { cwd: packageDirectory, encoding: 'utf8' },
 ))[0]
 const tarballFiles = packResult.files.map(file => file.path)
+if (packResult.size > 175_000)
+  failures.push(`npm tarball exceeds its 175 kB compressed budget (${packResult.size} bytes)`)
+if (packResult.unpackedSize > 800_000)
+  failures.push(`npm tarball exceeds its 800 kB unpacked budget (${packResult.unpackedSize} bytes)`)
+if (tarballFiles.length > 40)
+  failures.push(`npm tarball exceeds its 40-file budget (${tarballFiles.length} files)`)
 const forbiddenTarballFiles = tarballFiles.filter(file =>
   /benchmark|live2dcubismcore|core-compat|hiyori|profile|fixture/i.test(file),
 )
@@ -162,11 +190,18 @@ catch (error) {
   failures.push(`MediaPipe entry is not SSR-evaluation safe: ${String(error)}`)
 }
 
+try {
+  await import(pathToFileURL(path.join(dist, 'tracking/mediapipe/worker.mjs')).href)
+}
+catch (error) {
+  failures.push(`MediaPipe Worker entry is not SSR-evaluation safe: ${String(error)}`)
+}
+
 if (failures.length) {
   for (const failure of failures)
     console.error(`[package] ${failure}`)
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/cubism/mediapipe boundaries verified')
+  console.log('[package] vanilla/react/cubism/mediapipe/worker boundaries and budgets verified')
 }

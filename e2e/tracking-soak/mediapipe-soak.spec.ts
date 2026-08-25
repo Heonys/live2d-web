@@ -1,4 +1,3 @@
-import { writeFileSync } from 'node:fs'
 import process from 'node:process'
 import { expect, test } from '@playwright/test'
 
@@ -20,7 +19,7 @@ test('keeps MediaPipe inference and lifecycle stable', async ({ page }) => {
       errors.push(message.text())
   })
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/tracking-e2e?soak=1')
+  await page.goto('/tracking-e2e?execution=worker&soak=1')
   await expect(page.getByTestId('tracking-status')).toHaveText('tracked')
 
   const deadline = Date.now() + minutes * 60_000
@@ -61,10 +60,4 @@ test('keeps MediaPipe inference and lifecycle stable', async ({ page }) => {
     const last = median(heap.slice(-2))
     expect(last).toBeLessThanOrEqual(stable * 1.25)
   }
-  const artifact = test.info().outputPath('tracking-soak.json')
-  writeFileSync(artifact, `${JSON.stringify({ errors, heap, minutes, restarts }, null, 2)}\n`)
-  await test.info().attach('tracking-soak.json', {
-    contentType: 'application/json',
-    path: artifact,
-  })
 })
