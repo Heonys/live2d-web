@@ -124,7 +124,8 @@ tracker.update(video, performance.now()) // once per app-owned capture frame
 ```
 
 The tracker performs one-second neutral calibration, smoothing, face-loss
-recovery and standard/52-parameter Perfect Sync mapping. Clean up with
+recovery and standard or Perfect Sync mapping (ARKit names, 45 of 52 or
+more). Clean up with
 `detach()` and `tracker.dispose()`. Main-thread inference starts at 30fps and
 lowers its own cap (to 10fps at the lowest) while measured inference time would
 starve rendering; `maxFps` sets the starting cap.

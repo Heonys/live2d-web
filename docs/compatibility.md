@@ -50,7 +50,8 @@ Webpack, Rollup 직접 구성은 현재 미검증이다.
 | 대상 | 상태 | 2026-08-24 실제 검증 |
 | --- | --- | --- |
 | `@mediapipe/tasks-vision` | `^1.0.1` optional peer | `1.0.1`, CPU delegate와 VIDEO mode |
-| Chromium·WebKit·Firefox | 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성 |
+| Chromium·WebKit | 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성 |
+| Firefox | 기능 검증 · **성능 미충족** | 같은 e2e를 Xvfb headed로 통과하지만 추론 한 번이 ~190ms라 상한이 10fps로 내려가도 매 추론이 프레임을 막는다. Worker 추론 전까지 실사용 권장 안 함 |
 | 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 손으로 적은 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증. Perfect Sync는 ARKit 이름 픽스처(50개, `ParamTongueOut` 포함)로 판정·바인딩 검증 |
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |

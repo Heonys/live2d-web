@@ -159,6 +159,13 @@ after model metadata loads: its length must equal the group's motion count,
 every value must be finite and non-negative, and at least one must be positive.
 A zero-weight entry is never selected.
 
+A fade override re-parses the motion, so the runtime re-reads that motion's
+file the first time an override is requested and keeps it for the model's
+lifetime; motions played without an override never retain their raw buffer.
+Keep motion assets readable after load (a URL still reachable, or a
+`resolveAsset` that can answer twice). Concurrent first overrides share one
+read.
+
 Expression `fadeInMs` and `fadeOutMs` use the same finite, non-negative
 millisecond validation. A call override wins over the exp3 value, which wins
 over the Framework default. `fadeOutMs` is used when the next expression
@@ -235,7 +242,7 @@ type MediaPipeModelAsset =
 type CreateMediaPipeFaceTrackerOptions = MediaPipeModelAsset & {
   wasmPath: string
   delegate?: 'CPU' | 'GPU' // CPU
-  maxFps?: number // 15, finite 1..60
+  maxFps?: number // 30; adapts down to 10 under slow inference; finite 1..60
   inputMirrored?: boolean // false; describes input pixels, not CSS
   signal?: AbortSignal
 }
@@ -254,6 +261,7 @@ interface MediaPipeFaceTracker {
     | {
         status: 'calibrating' | 'tracked' | 'lost'
         inferenceMs: number
+        effectiveFps: number // current cap after adaptation
       }
   attach(
     target: Live2DInstance | Live2DModelController,

@@ -1,7 +1,7 @@
 import type { ModelInfo, ModelParameterInfo } from '../../core/contract'
 import type { FaceTrackingSignals } from './state'
 import { describe, expect, it } from 'vitest'
-import { MEDIAPIPE_BLENDSHAPES } from './blendshapes'
+import { MEDIAPIPE_BLENDSHAPES, PERFECT_SYNC_MINIMUM_PARAMETERS, PERFECT_SYNC_PARAMETER_IDS } from './blendshapes'
 import { createParameterBindings, hasPerfectSyncParameters } from './mapping'
 
 function info(parameters?: ModelParameterInfo[]): ModelInfo {
@@ -152,5 +152,18 @@ describe('mediaPipe Live2D mapping', () => {
     expect(eyeX.read(signals({ eyeLookInLeft: 1, eyeLookOutRight: 1 }))).toBeLessThan(0)
     expect(eyeY.read(signals({ eyeLookUpLeft: 1, eyeLookUpRight: 1 }))).toBeGreaterThan(0)
     expect(eyeY.read(signals({ eyeLookDownLeft: 1, eyeLookDownRight: 1 }))).toBeLessThan(0)
+  })
+
+  // The threshold is a heuristic chosen without a real model; pin the edge so
+  // a later retune is a deliberate change, not drift.
+  it('switches to Perfect Sync exactly at the minimum parameter count', () => {
+    const declare = (count: number) => info(
+      PERFECT_SYNC_PARAMETER_IDS.slice(0, count).map(id => ({ defaultValue: 0, id, maximum: 1, minimum: 0 })),
+    )
+
+    expect(hasPerfectSyncParameters(declare(PERFECT_SYNC_MINIMUM_PARAMETERS - 1))).toBe(false)
+    expect(hasPerfectSyncParameters(declare(PERFECT_SYNC_MINIMUM_PARAMETERS))).toBe(true)
+    expect(() => createParameterBindings(declare(PERFECT_SYNC_MINIMUM_PARAMETERS - 1), { mapping: 'perfect-sync' }))
+      .toThrow(/needs at least 45/)
   })
 })

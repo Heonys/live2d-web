@@ -228,9 +228,10 @@ requestAnimationFrame(frame)
 The application owns `getUserMedia`, the video element, permissions, tracks
 and frame scheduling. The tracker owns only inference, one-second neutral
 calibration, smoothing and parameter drivers. Call `calibrate()` for a new
-neutral pose, then `detach()` and `tracker.dispose()` on cleanup. `auto` uses
-all 52 Perfect Sync parameters when present and otherwise falls back to common
-pose, eye, brow, mouth and cheek parameters.
+neutral pose, then `detach()` and `tracker.dispose()` on cleanup. `auto` maps
+directly onto a model's ARKit-named Perfect Sync parameters when it declares at
+least 45 of the 52 (binding only the ones present) and otherwise falls back to
+common pose, eye, brow, mouth and cheek parameters.
 
 Tracking is **experimental** in 0.5.0: the API may change before 1.0, and
 real-camera behaviour on Perfect Sync models has not yet been verified outside

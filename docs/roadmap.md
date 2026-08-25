@@ -155,8 +155,10 @@ Cubism Core·Hiyori를 받아 브라우저 3종 e2e를 돌린다. 기준선은
 **왜.** 가장 큰 미개척지다. VTube Studio가 하는 일을 브라우저에서 하게 되며,
 Livesona는 선택 기능을 얻고 VS Code 확장과 히비엔도 같은 입력을 쓴다.
 외부 조건이 무르익었다: MediaPipe Face Landmarker가 브라우저에서 478개
-랜드마크와 **ARKit 호환 블렌드셰이프 52개**를 출력하고, Live2D의 Perfect Sync
-모델은 그 52개 이름과 맞닿은 파라미터를 갖는다.
+랜드마크와 블렌드셰이프 52개를 출력하고, Live2D의 Perfect Sync 모델은 ARKit
+이름의 파라미터 52개를 갖는다. **두 52개는 같지 않다.** MediaPipe는
+`_neutral`이 있고 `tongueOut`이 없어 51개만 겹친다(08-25 리뷰가 이 오해로
+생긴 차단 버그를 고쳤다).
 
 **무엇.**
 
@@ -177,8 +179,10 @@ Livesona는 선택 기능을 얻고 VS Code 확장과 히비엔도 같은 입력
 **검증.** 실제 웹캠으로 Chromium·WebKit에서 고개 회전·눈 깜빡임·입 열림이
 모델에 반영되는 것, 30분 연속 실행에서 드리프트 없음, Perfect Sync 모델과
 일반 모델 각 1종. 이 중 **자동화된 것은 정지 초상으로 추론 경로만 검증하는
-CI**(모델 없이 Face Landmarker 초기화·52개 출력·loss·dispose)이고, 실제
-카메라·모델 반영·30분·Perfect Sync 체감은 발행 후 소비자 검증으로 남긴다.
+CI**(모델 없이 Face Landmarker 초기화·52개 출력·loss·dispose)와 선택적인
+5분 Chromium smoke(`test:tracking:soak`, 생명주기·급격한 힙 증가만 잡는다)이고,
+실제 카메라·모델 반영·30분 드리프트·Perfect Sync 체감은 발행 후 소비자
+검증으로 남긴다.
 
 **의존과 리스크.** MediaPipe WASM 번들이 크다(수 MB). 동적 로드와 캐시
 전략이 먼저 정해져야 한다. AIRI의 `model-driver-mediapipe`가 참조
