@@ -1,0 +1,22 @@
+## 描画前に検査
+
+任意の inspect entry は React・Core・Framework・MediaPipe・JSZip を読み込まず model3 参照を検査します。内容の問題は findings としてまとめて返ります。
+
+```ts
+import {
+  inspectModelCapabilities,
+  inspectModelSource,
+} from 'live2d-web/inspect'
+
+const report = await inspectModelSource({
+  src: 'https://example.com/model.model3.json',
+})
+
+if (report.status === 'compatible') {
+  console.log(report.motions, report.expressions)
+}
+```
+
+## ブラウザ zip 検査
+
+/inspect は現在のタブ内だけで zip を開き、サイズ・数・path・model 参照を検査します。upload・保存・telemetry は行いません。非互換 archive は描画しません。

@@ -1,0 +1,38 @@
+## メインスレッド追跡
+
+MediaPipe は任意 peer で、この subpath からだけ読み込まれます。WASM・Face Landmarker model・video frame・schedule はアプリが渡します。tracker は正規化値だけを保持します。
+
+```ts
+import { createMediaPipeFaceTracker } from
+  'live2d-web/tracking/mediapipe'
+
+const tracker = await createMediaPipeFaceTracker({
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+  wasmPath: '/mediapipe/wasm',
+})
+const detach = tracker.attach(character, {
+  mapping: 'auto',
+  channels: { mouth: false },
+})
+
+tracker.update(video, performance.now())
+
+detach()
+tracker.dispose()
+```
+
+## 任意の Worker
+
+Worker mode は推論を描画スレッドから分離します。update() は非同期で1 frameずつ処理し、busy frame は skipped になります。起動失敗時の暗黙 fallback はありません。
+
+```ts
+const tracker = await createMediaPipeFaceTracker({
+  execution: 'worker',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+  wasmPath: '/mediapipe/wasm',
+  workerFactory: () => new Worker(
+    new URL('./face-tracking.worker.ts', import.meta.url),
+    { type: 'module' },
+  ),
+})
+```

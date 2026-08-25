@@ -1,0 +1,27 @@
+## 任意パネルのマウント
+
+必要な画面でだけ Devtools を import します。この subpath は React に依存せず、root bundle にも入りません。
+
+```ts title="devtools.ts" showLineNumbers
+import { mountLive2DDevtools } from 'live2d-web/devtools'
+
+const devtools = mountLive2DDevtools({
+  container: document.querySelector('#devtools')!,
+  target: live2d,
+})
+
+devtools.setTab('parameters')
+// このパネルが作成した UI と parameter driver だけを解放します。
+devtools.dispose()
+```
+
+## 操作できる内容
+
+- **Overview** は公開 model・runtime 情報と診断 JSON を表示します。model URL や camera data は含みません。
+- **Parameters** は現在値の検索と一時的な slider override を提供します。
+- **Motion** は priority・fade 付き motion と簡単な sequence を再生します。
+- **Expression** は表情の適用・fade・clear を行います。
+
+container の位置・サイズ・scroll はアプリが所有します。Devtools は open Shadow DOM host を1つ追加し、既存の子要素を削除しません。microphone・MediaPipe・Worker もアプリの責任です。
+
+> model または panel を unmount するときに `dispose()` を呼びます。複数回呼んでも安全です。

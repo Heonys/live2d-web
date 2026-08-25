@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next'
+import createMDX from '@next/mdx'
 
 const nextConfig: NextConfig = {
+  pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
   // live2d-web은 개발 중 소스-export — Next가 직접 컴파일한다(퍼블리시 시에만 dist)
   transpilePackages: ['live2d-web'],
   async headers() {
@@ -24,4 +26,13 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+const withMDX = createMDX({
+  options: {
+    rehypePlugins: [['rehype-pretty-code', {
+      keepBackground: false,
+      theme: 'github-dark-default',
+    }]],
+  },
+})
+
+export default withMDX(nextConfig)

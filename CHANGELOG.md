@@ -4,6 +4,15 @@
 
 ### Added
 
+- A React-free, SSR-safe `live2d-web/devtools` entry mounts isolated overview,
+  parameter, motion and expression controls for vanilla instances or React
+  controllers. Temporary parameter drivers are removed on reset, target swap
+  and dispose without touching application-owned overrides.
+- The documentation site now renders localized MDX with build-time Shiki
+  highlighting, full-text search, a desktop table of contents and accessible
+  mobile navigation. The root is a focused landing experience; the full demo
+  lives at `/playground` with a fixed canvas, scroll-contained tool panels and
+  a focus-managed code drawer.
 - A React-free, SSR-safe `live2d-web/inspect` entry reports model3 assets,
   motions, expressions, hit areas, version metadata, stable compatibility
   findings and Standard/Perfect Sync parameter coverage. The public browser

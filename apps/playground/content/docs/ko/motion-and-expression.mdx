@@ -1,0 +1,21 @@
+## 재생 결과와 페이드
+
+motion()은 단순한 Promise&lt;void&gt; 계약을 유지합니다. 완료·중단·건너뜀·dispose를 구분하려면 playMotion()을 사용하세요. sequence는 첫 비정상 결과에서 멈춥니다.
+
+```ts
+const result = await character.playMotion('TapBody', 0, {
+  fadeInMs: 250,
+  fadeOutMs: 400,
+})
+
+await character.sequence([
+  { group: 'TapBody', index: 0 },
+  { group: 'Idle', index: 0 },
+])
+
+await character.expression('smile', { fadeInMs: 500 })
+```
+
+## 제작자 기본값 유지
+
+fade 옵션을 생략하면 model3·motion3·exp3 설정을 유지합니다. motion3의 파라미터별 fade는 재생 전체 덮어쓰기보다 우선합니다.

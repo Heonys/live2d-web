@@ -11,9 +11,9 @@ import {
   useLive2DCanvas,
   useLive2DModel,
 } from 'live2d-web/react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
+import { SiteHeader } from '../../components/SiteHeader'
 import { StageLoading } from '../../components/StageLoading'
 import {
   CUBISM_CORE_URL,
@@ -114,7 +114,7 @@ function BackendComparisonContent() {
 
   return (
     <main>
-      <header>
+      <section className="page-hero">
         <div>
           <p className="eyebrow">Renderer comparison</p>
           <h1>Cubism WebGL vs Pixi v6</h1>
@@ -124,12 +124,7 @@ function BackendComparisonContent() {
           </p>
           <code className="install">npm install live2d-web</code>
         </div>
-        <nav>
-          <Link href="/">React playground</Link>
-          <Link href="/vanilla">Vanilla playground</Link>
-          <Link href="/inspect">Model inspector</Link>
-        </nav>
-      </header>
+      </section>
 
       <section className="workspace">
         <div className="stage-shell" data-testid="comparison-stage">
@@ -198,8 +193,11 @@ function BackendComparisonContent() {
 
 export default function BackendComparison() {
   return (
-    <Suspense fallback={<main>Loading comparison…</main>}>
-      <BackendComparisonContent />
-    </Suspense>
+    <>
+      <SiteHeader />
+      <Suspense fallback={<main>Loading comparison…</main>}>
+        <BackendComparisonContent />
+      </Suspense>
+    </>
   )
 }

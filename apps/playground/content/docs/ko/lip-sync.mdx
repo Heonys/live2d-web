@@ -1,0 +1,19 @@
+## 볼륨 드라이버
+
+헬퍼는 앱이 샘플링한 RMS를 안정적인 입 벌림으로 바꿉니다. 마이크 권한·AudioContext·노드·requestAnimationFrame은 앱이 계속 소유합니다.
+
+```ts
+import { createVolumeLipSync } from 'live2d-web'
+
+const driver = createVolumeLipSync()
+const detach = character.addLipSync({ driver })
+
+// The app owns AudioContext, RMS calculation and scheduling.
+driver.sample(rms, elapsedMs)
+
+detach()
+```
+
+## 입력 충돌 피하기
+
+얼굴 트래킹과 마이크 립싱크를 함께 쓸 때는 tracker의 mouth 채널을 끄세요. wLipSync는 별도 source 모드이며 브라우저 AudioWorklet 지원이 필요합니다.

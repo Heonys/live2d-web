@@ -13,7 +13,6 @@ import type { AssetManifest } from '../lib/assetManifest'
 import type { LocalModelArchive } from './archiveSource'
 import { inspectModelCapabilities, inspectModelSource } from 'live2d-web/inspect'
 import { Live2DCanvas, Live2DModel, useLive2DCanvas } from 'live2d-web/react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StageLoading } from '../components/StageLoading'
@@ -412,18 +411,13 @@ export function InspectorApp() {
 
   return (
     <main>
-      <header>
+      <section className="page-hero">
         <div>
           <p className="eyebrow">Model inspector</p>
           <h1>Validate and test your Live2D model</h1>
           <p>Inspect a CORS-enabled URL or a local zip entirely in your browser. Local files are never uploaded.</p>
         </div>
-        <nav>
-          <Link href="/">React playground</Link>
-          <Link href="/docs/en">Documentation</Link>
-          <Link href="/vanilla">Vanilla playground</Link>
-        </nav>
-      </header>
+      </section>
 
       <div className="input-tabs" role="tablist" aria-label="Model source">
         <button aria-selected={inputMode === 'url'} role="tab" type="button" onClick={() => setInputMode('url')}>Model URL</button>

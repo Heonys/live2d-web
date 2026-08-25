@@ -61,6 +61,12 @@ Documentation API JSON contains TypeScript metadata only. Core, Hiyori,
 MediaPipe models, local zip contents and Playwright traces remain excluded from
 the site artifact and repository.
 
+The optional Devtools diagnostic copies public runtime and model metadata plus
+current parameter values. It deliberately excludes model URLs, asset bytes,
+camera frames, face landmarks and audio. Devtools never starts capture,
+tracking, network requests or telemetry; applications still decide where a
+copied diagnostic is sent.
+
 `pnpm audit --prod` at the workspace root currently reports eight advisories:
 
 - `pixi-live2d-display → gh-pages` and its old glob chain: repository-only Pixi

@@ -17,7 +17,13 @@ packages:
 catalog:
   '@antfu/eslint-config': ^9.2.0
   '@eslint-react/eslint-plugin': ^5.18.0
+  '@fontsource-variable/inter': ^5.3.0
+  '@fontsource-variable/jetbrains-mono': ^5.3.0
+  '@mdx-js/loader': ^3.1.1
+  '@mdx-js/mdx': ^3.1.1
+  '@mdx-js/react': ^3.1.1
   '@mediapipe/tasks-vision': ^1.0.1
+  '@next/mdx': 16.2.12
   # pixi-v6 어댑터용 (PIXI v6 고정 — pixi-live2d-display@0.4가 v7/v8 미지원)
   '@pixi/app': ^6.5.10
   '@pixi/constants': ^6.5.10
@@ -50,6 +56,8 @@ catalog:
   pixi-live2d-display: ^0.4.0
   react: ^19.2.8
   react-dom: ^19.2.8
+  rehype-pretty-code: ^0.14.5
+  shiki: ^4.4.3
   simple-git-hooks: ^2.13.1
   taze: ^19.11.0
   # tooling
@@ -57,6 +65,7 @@ catalog:
   tsx: ^4.21.0
   typedoc: ^0.28.14
   typescript: ^5.9.3
+  unist-util-visit: ^5.1.0
   vite: ^8.1.5
   vue: ^3.5.21
   vue-tsc: ^3.0.6

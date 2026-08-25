@@ -1,0 +1,22 @@
+## 렌더링 전에 검사
+
+선택형 inspect entry는 React·Core·Framework·MediaPipe·JSZip 없이 model3 참조를 검사합니다. 콘텐츠 문제는 findings로 한 번에 반환하고 잘못된 API 인자와 abort만 reject합니다.
+
+```ts
+import {
+  inspectModelCapabilities,
+  inspectModelSource,
+} from 'live2d-web/inspect'
+
+const report = await inspectModelSource({
+  src: 'https://example.com/model.model3.json',
+})
+
+if (report.status === 'compatible') {
+  console.log(report.motions, report.expressions)
+}
+```
+
+## 브라우저 zip 검사기
+
+/inspect 도구는 현재 탭 안에서만 zip을 엽니다. 크기·개수·경로·모델 참조를 검사하며 업로드·저장·telemetry 전송을 하지 않습니다. 호환되지 않는 archive는 렌더하지 않습니다.

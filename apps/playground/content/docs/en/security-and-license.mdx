@@ -1,0 +1,12 @@
+## CSP and untrusted models
+
+Treat model3.json as an input manifest. Inspect limits, external URLs and CORS before rendering. Local archives never resolve external URLs through the library inspector.
+
+- Allow script-src for Cubism Core.
+- Allow connect-src for model, WASM and tracking assets.
+- Allow worker-src for module Worker tracking.
+- Self-host assets and configure CORS deliberately.
+
+## Licenses and privacy
+
+live2d-web is unofficial. Core, Framework, models and MediaPipe have separate terms. Face tracking runs on-device, but your application remains responsible for consent, indicators and any analytics it adds.

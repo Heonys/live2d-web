@@ -4,7 +4,7 @@ An unofficial Live2D Cubism runtime for vanilla JavaScript and React. It uses a
 WebGL2 renderer without PixiJS.
 
 **[Documentation](https://live2d-web-demo.netlify.app/docs/en)** ·
-[Playground](https://live2d-web-demo.netlify.app/) ·
+[Playground](https://live2d-web-demo.netlify.app/playground) ·
 [Model inspector](https://live2d-web-demo.netlify.app/inspect) ·
 [GitHub](https://github.com/Heonys/live2d-web)
 
@@ -56,6 +56,7 @@ is removed; React components clean up on unmount.
 - `live2d-web/tracking/mediapipe` — main/Worker face tracking; MediaPipe stays
   an optional peer and WASM/model files remain caller-supplied
 - `live2d-web/inspect` — React-free, SSR-safe model source and capability reports
+- `live2d-web/devtools` — framework-free model controls in an isolated Shadow DOM
 - `live2d-web/backends/cubism-webgl` — bundled Framework adapter loaded by the
   root runtime on demand
 

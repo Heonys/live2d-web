@@ -10,6 +10,7 @@ const packageRoot = path.join(root, 'packages/live2d-web')
 const output = path.join(root, 'apps/playground/.generated/api-reference.json')
 const entries = [
   ['Core', 'src/index.ts'],
+  ['Devtools', 'src/devtools/index.ts'],
   ['React', 'src/react.ts'],
   ['Model inspection', 'src/inspect/index.ts'],
   ['MediaPipe tracking', 'src/tracking/mediapipe/index.ts'],

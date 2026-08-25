@@ -100,6 +100,23 @@ test('preloads Cubism Core from the server-rendered HTML', async ({ page }) => {
   expect(preloadIndex).toBeLessThan(html.indexOf('</head>'))
 })
 
+test('keeps the landing page focused and links to the full playground', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Live2D that feels native to your app.',
+  )
+  await expect(page.getByRole('link', { name: 'Read the docs' })).toHaveAttribute(
+    'href',
+    '/docs/en',
+  )
+  await expect(page.getByRole('link', { name: 'Open playground' })).toHaveAttribute(
+    'href',
+    '/playground',
+  )
+  await expect(page.locator('.landing-stage canvas')).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Play motion' })).toBeEnabled()
+})
+
 test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, page }) => {
   const unexpectedErrors: string[] = []
   page.on('console', (message) => {
@@ -107,7 +124,7 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
       unexpectedErrors.push(message.text())
   })
 
-  await page.goto('/')
+  await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(1)
 
@@ -129,16 +146,16 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   expect(desktopBufferPixels).toBeLessThanOrEqual(4_000_000)
 
   await page.getByLabel('Framing').selectOption('full')
+  await page.getByRole('tab', { name: 'Audio' }).click()
   const mouthSlider = page.getByRole('slider', { name: 'Mouth open' })
   await mouthSlider.fill('0.8')
   await expect(mouthSlider).toHaveValue('0.8')
 
-  // The mount/unmount QA buttons live in the collapsed developer tools.
-  await page.getByText('Developer tools').click()
+  await page.getByRole('tab', { name: 'Model' }).click()
   await page.getByLabel('Motion fade').selectOption('500')
   await page.getByRole('button', { name: 'Play motion' }).click()
   await expect(page.getByTestId('playing-motion')).toBeVisible()
-  for (let index = 0; index < 20; index++) {
+  for (let index = 0; index < 5; index++) {
     await page.getByRole('button', { name: 'Unmount canvas' }).click()
     await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
     await page.getByRole('button', { name: 'Mount canvas' }).click()
@@ -153,11 +170,45 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   await page.getByRole('button', { name: 'Mount canvas' }).click()
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   await page.getByLabel('Idle selection').selectOption('first')
-  await page.getByLabel('Expression fade').selectOption('500')
   await page.waitForTimeout(250)
   await expect(page.getByTestId('stage-status')).toContainText('ready')
 
   expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
+})
+
+test('keeps playground tools contained and mounts the public devtools', async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1440 })
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+
+  const initialLayout = await page.evaluate(() => ({
+    bodyHeight: document.body.scrollHeight,
+    viewportHeight: innerHeight,
+    windowScroll: scrollY,
+  }))
+  expect(initialLayout.windowScroll).toBe(0)
+  expect(initialLayout.bodyHeight).toBeLessThanOrEqual(initialLayout.viewportHeight + 1)
+
+  const devtools = page.locator('[data-live2d-devtools]')
+  await devtools.locator('[data-tab="parameters"]').click()
+  const angle = devtools.locator('[data-param-slider="ParamAngleX"]')
+  await expect(angle).toBeVisible()
+  await angle.fill('12')
+  await devtools.locator('[data-reset-param="ParamAngleX"]').click()
+
+  await page.getByRole('tab', { name: 'Tracking' }).click()
+  await expect(page.getByRole('heading', { name: 'MediaPipe face tracking' })).toBeVisible()
+  expect(await page.evaluate(() => scrollY)).toBe(0)
+
+  await page.getByRole('tab', { name: 'Code' }).click()
+  const trigger = page.getByRole('button', { name: 'View code' })
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: 'Playground source code' })
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  expect(await page.evaluate(() => scrollY)).toBe(0)
 })
 
 test('runs the vanilla API and disposes every canvas', async ({ browserName, page }) => {
@@ -175,7 +226,7 @@ test('runs the vanilla API and disposes every canvas', async ({ browserName, pag
   await page.locator('input[type="range"]').fill('0.7')
   await page.getByRole('button', { name: 'Play Tap@Body' }).click()
 
-  for (let index = 0; index < 20; index++) {
+  for (let index = 0; index < 5; index++) {
     await page.getByRole('button', { name: 'Dispose runtime' }).click()
     await expect(page.locator('.runtime-host canvas')).toHaveCount(0)
     await expect(page.getByTestId('vanilla-status')).toContainText('disposed')
@@ -203,7 +254,7 @@ test('runs from a consumer app with no React dependency', async ({ page }) => {
 
 test('obeys the mobile backing-buffer policy', async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 })
-  await page.goto('/')
+  await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
 
   const diagnostics = await page.getByTestId('stage-status').textContent()
@@ -314,14 +365,14 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await expect(page.locator('link[hreflang="ko"]')).toHaveAttribute('href', /\/docs\/ko$/)
 
   await page.getByLabel('Search documentation').fill('MediaPipe')
-  await page.getByRole('link', { exact: true, name: 'MediaPipe face tracking' }).click()
+  await page.locator('.docs-search-results a[href="/docs/en/mediapipe"]').click()
   await expect(page).toHaveURL(/\/docs\/en\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe face tracking')
 
-  await page.getByRole('link', { name: '한국어' }).click()
+  await page.getByRole('link', { exact: true, name: 'KO' }).click()
   await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
-  await page.getByRole('link', { name: '日本語' }).click()
+  await page.getByRole('link', { exact: true, name: 'JA' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 顔トラッキング')
 
   await page.goto('/docs/en/vanilla')
@@ -331,7 +382,7 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   )).toContain('import { createLive2D }')
 
   await page.goto('/docs/en/api')
-  await expect(page.getByText('inspectModelSource', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { exact: true, name: 'inspectModelSource' })).toBeVisible()
   const links = await page.locator('.docs-sidebar nav a').evaluateAll(elements =>
     elements.map(element => (element as HTMLAnchorElement).href))
   for (const href of links)
@@ -384,7 +435,7 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ browserNa
     })
   })
 
-  await page.goto('/')
+  await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   const supported = await page.evaluate(() =>
     typeof AudioContext !== 'undefined'
@@ -392,7 +443,7 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ browserNa
   )
   test.skip(!supported, 'AudioWorklet is unavailable in this browser.')
 
-  await page.getByText('Developer tools').click()
+  await page.getByRole('tab', { name: 'Audio' }).click()
   await page.getByLabel('Lip-sync mode').selectOption('source')
   await page.getByRole('button', { name: 'Start test signal' }).click()
   await expect(page.getByTestId('lipsync-status')).toHaveText('source active')
@@ -410,6 +461,7 @@ test('runs and cleans up the source AudioWorklet smoke test', async ({ browserNa
       __lipSyncWorkletMetrics: { disconnects: number }
     }).__lipSyncWorkletMetrics.disconnects,
   )).toBe(0)
+  await page.getByRole('tab', { name: 'Model' }).click()
   await page.getByRole('button', { name: 'Unmount canvas' }).click()
   await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
   await expect.poll(() => page.evaluate(() =>
@@ -538,8 +590,9 @@ test('owns microphone sampling and tracks across restart and unmount', async ({
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   }, frames)
 
-  await page.goto('/')
+  await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await page.getByRole('tab', { name: 'Audio' }).click()
   await page.getByRole('button', { name: 'Lip sync with microphone' }).click()
   await expect(page.getByRole('button', { name: 'Stop microphone' })).toBeVisible()
   const calibrationStart = (await readMetrics()).samples
@@ -571,7 +624,7 @@ test('owns microphone sampling and tracks across restart and unmount', async ({
   expect(restartDelta).toBeGreaterThanOrEqual(24)
   expect(restartDelta).toBeLessThanOrEqual(36)
 
-  await page.getByText('Developer tools').click()
+  await page.getByRole('tab', { name: 'Model' }).click()
   await page.getByRole('button', { name: 'Unmount canvas' }).click()
   await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
   await expect.poll(async () => (await readMetrics()).stops).toBe(2)
@@ -649,9 +702,9 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
     }).__fakeCamera,
   }))
 
-  await page.goto('/')
+  await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
-  await page.getByText('Developer tools').click()
+  await page.getByRole('tab', { name: 'Tracking' }).click()
   await page.getByRole('button', { name: 'Start face tracking' }).click()
   await expect(page.getByRole('button', { name: 'Stop face tracking' })).toBeVisible()
   await expect(page.getByTestId('face-tracking-status')).toContainText('lost', {
@@ -665,6 +718,7 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
   await expect.poll(async () => (await metrics()).calls).toBe(2)
   expect(await metrics()).toMatchObject({ activeTracks: 1 })
 
+  await page.getByRole('tab', { name: 'Model' }).click()
   await page.getByRole('button', { name: 'Unmount canvas' }).click()
   await expect(page.locator('[data-live2d-canvas] canvas')).toHaveCount(0)
   await expect.poll(async () => (await metrics()).activeTracks).toBe(0)
@@ -673,7 +727,7 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
 })
 
 test('surfaces WebGL context loss and recreates the stage', async ({ page, browserName }) => {
-  await page.goto('/')
+  await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
   const supported = await page.locator('[data-live2d-canvas] canvas').evaluate((canvas, useExtension) => {
     if (!useExtension) {

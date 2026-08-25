@@ -1,0 +1,15 @@
+## Cubism Core
+
+Use Cubism Core 5.3 with the bundled Framework 5-r.5 adapter. The script may be preloaded by coreUrl or placed before application code. Never copy Core into npm packages or public issue attachments.
+
+```html
+<script src="/live2dcubismcore.min.js"></script>
+```
+
+## Model directory
+
+Keep the exported directory together. A model may reference moc3, textures, motions, expressions, physics, pose and user-data files.
+
+- Keep model3.json paths relative and case-correct.
+- Serve textures and motions with CORS when they use another origin.
+- Use /inspect before debugging rendering.

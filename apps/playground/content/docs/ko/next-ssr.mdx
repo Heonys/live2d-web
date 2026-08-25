@@ -1,0 +1,17 @@
+## 브라우저 코드를 use client 뒤에 두기
+
+루트와 inspect entry는 SSR 평가가 안전합니다. 렌더링과 /react는 Client Component가 필요합니다. Server Component에서는 브라우저 코드를 import하지 말고 모델 URL만 데이터로 전달하세요.
+
+```tsx
+'use client'
+
+import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
+
+export function Avatar() {
+  return (
+    <Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+      <Live2DModel src="/models/model.model3.json" />
+    </Live2DCanvas>
+  )
+}
+```

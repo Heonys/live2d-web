@@ -1,0 +1,22 @@
+## Inspect before rendering
+
+The optional inspect entry checks model3 references without importing React, Core, Framework, MediaPipe or JSZip. Content problems return together as findings; invalid API arguments and abort reject.
+
+```ts
+import {
+  inspectModelCapabilities,
+  inspectModelSource,
+} from 'live2d-web/inspect'
+
+const report = await inspectModelSource({
+  src: 'https://example.com/model.model3.json',
+})
+
+if (report.status === 'compatible') {
+  console.log(report.motions, report.expressions)
+}
+```
+
+## Browser zip inspector
+
+The /inspect tool opens a zip only in the current tab. It validates size, count, paths and model references, and never uploads, stores or sends telemetry. Incompatible archives are not rendered.

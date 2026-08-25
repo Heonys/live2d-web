@@ -1,0 +1,58 @@
+import type { ComponentType } from 'react'
+import type { DocLocale } from './manifest'
+
+interface DocModule { default: ComponentType }
+
+export const DOC_LOADERS: Record<DocLocale, Record<string, () => Promise<DocModule>>> = {
+  en: {
+    '': () => import('../../content/docs/en/index.mdx'),
+    'core-and-models': () => import('../../content/docs/en/core-and-models.mdx'),
+    'vanilla': () => import('../../content/docs/en/vanilla.mdx'),
+    'react': () => import('../../content/docs/en/react.mdx'),
+    'motion-and-expression': () => import('../../content/docs/en/motion-and-expression.mdx'),
+    'lip-sync': () => import('../../content/docs/en/lip-sync.mdx'),
+    'mediapipe': () => import('../../content/docs/en/mediapipe.mdx'),
+    'next-ssr': () => import('../../content/docs/en/next-ssr.mdx'),
+    'mobile': () => import('../../content/docs/en/mobile.mdx'),
+    'model-inspection': () => import('../../content/docs/en/model-inspection.mdx'),
+    'devtools': () => import('../../content/docs/en/devtools.mdx'),
+    'troubleshooting': () => import('../../content/docs/en/troubleshooting.mdx'),
+    'security-and-license': () => import('../../content/docs/en/security-and-license.mdx'),
+    'examples': () => import('../../content/docs/en/examples.mdx'),
+    'api': () => import('../../content/docs/en/api.mdx'),
+  },
+  ko: {
+    '': () => import('../../content/docs/ko/index.mdx'),
+    'core-and-models': () => import('../../content/docs/ko/core-and-models.mdx'),
+    'vanilla': () => import('../../content/docs/ko/vanilla.mdx'),
+    'react': () => import('../../content/docs/ko/react.mdx'),
+    'motion-and-expression': () => import('../../content/docs/ko/motion-and-expression.mdx'),
+    'lip-sync': () => import('../../content/docs/ko/lip-sync.mdx'),
+    'mediapipe': () => import('../../content/docs/ko/mediapipe.mdx'),
+    'next-ssr': () => import('../../content/docs/ko/next-ssr.mdx'),
+    'mobile': () => import('../../content/docs/ko/mobile.mdx'),
+    'model-inspection': () => import('../../content/docs/ko/model-inspection.mdx'),
+    'devtools': () => import('../../content/docs/ko/devtools.mdx'),
+    'troubleshooting': () => import('../../content/docs/ko/troubleshooting.mdx'),
+    'security-and-license': () => import('../../content/docs/ko/security-and-license.mdx'),
+    'examples': () => import('../../content/docs/ko/examples.mdx'),
+    'api': () => import('../../content/docs/ko/api.mdx'),
+  },
+  ja: {
+    '': () => import('../../content/docs/ja/index.mdx'),
+    'core-and-models': () => import('../../content/docs/ja/core-and-models.mdx'),
+    'vanilla': () => import('../../content/docs/ja/vanilla.mdx'),
+    'react': () => import('../../content/docs/ja/react.mdx'),
+    'motion-and-expression': () => import('../../content/docs/ja/motion-and-expression.mdx'),
+    'lip-sync': () => import('../../content/docs/ja/lip-sync.mdx'),
+    'mediapipe': () => import('../../content/docs/ja/mediapipe.mdx'),
+    'next-ssr': () => import('../../content/docs/ja/next-ssr.mdx'),
+    'mobile': () => import('../../content/docs/ja/mobile.mdx'),
+    'model-inspection': () => import('../../content/docs/ja/model-inspection.mdx'),
+    'devtools': () => import('../../content/docs/ja/devtools.mdx'),
+    'troubleshooting': () => import('../../content/docs/ja/troubleshooting.mdx'),
+    'security-and-license': () => import('../../content/docs/ja/security-and-license.mdx'),
+    'examples': () => import('../../content/docs/ja/examples.mdx'),
+    'api': () => import('../../content/docs/ja/api.mdx'),
+  },
+}

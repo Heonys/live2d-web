@@ -101,9 +101,8 @@ test('records and validates the Hiyori 0.4 quality candidate', async ({
       contentType: 'application/json',
     }))
 
-    await page.goto(`${baseURL}/`)
+    await page.goto(`${baseURL}/playground`)
     await expect(page.getByTestId('stage-status')).toContainText('ready')
-    await page.getByText('Developer tools').click()
     await page.getByLabel('Motion', { exact: true }).selectOption('Tap@Body:0')
     const motionScreenshots: Buffer[] = []
     for (const preset of ['model', 'instant', '500'] as const) {

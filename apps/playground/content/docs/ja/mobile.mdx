@@ -1,0 +1,8 @@
+## モバイルチェックリスト
+
+自動画質は Canvas backing buffer を制限しますが、カメラ推論は端末依存です。iOS Safari・Android Chrome 実機測定は0.6で未完了です。
+
+- カメラ・マイク権限には HTTPS を使います。
+- ページが hidden の間は capture を止めます。
+- 画面回転と background 復帰を確認します。
+- 端末で測定してから Worker tracking を検討します。

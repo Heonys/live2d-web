@@ -272,8 +272,16 @@ zip 해제는 라이브러리가 아니라 Playground 앱 책임이다. `/inspec
 수·해제 크기·경로 탈출·정규화 중복을 차단한다. archive resolver는 메모리 Blob
 맵만 읽고 외부 URL을 네트워크로 넘기지 않는다.
 
-문서 페이지는 `apps/playground/src/docs/content.ts`의 세 언어 공통 slug에서
-정적으로 생성된다. API 레퍼런스는 build 전에 TypeDoc이 공개 entry 소스를 읽어
-ignored `.generated` JSON을 만들고, Next가 이를 정적 HTML에 포함한다. 예제는
+문서 페이지는 `apps/playground/content/docs/{en|ko|ja}/*.mdx`와 작은 manifest의
+공통 slug에서 정적으로 생성된다. Shiki는 build 시점에 code token을 만들며
+브라우저 번들에는 포함되지 않는다. API 레퍼런스는 build 전에 TypeDoc이 공개
+entry 소스를 읽어 ignored `.generated` JSON을 만들고, 같은 code renderer로
+Next 정적 HTML에 포함한다. 예제는
 `examples/**`의 독립 workspace이며 문서용 가짜 snippet이 아니라 CI에서 실제
 production build되는 소비자다.
+
+`src/devtools`는 React 없는 선택형 UI 경계다. 소비자가 준 container에 open
+Shadow DOM host 하나를 추가하고 `Live2DInstance` 또는 React controller의 공개
+메서드만 사용한다. parameter sampling은 Parameters tab에서만 최대 15fps이며,
+Devtools가 만든 driver는 reset·target 교체·dispose 때만 제거한다. camera,
+AudioContext, MediaPipe와 Worker는 이 경계 밖에서 애플리케이션이 소유한다.

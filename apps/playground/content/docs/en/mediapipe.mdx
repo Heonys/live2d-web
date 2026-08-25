@@ -1,0 +1,38 @@
+## Main-thread tracking
+
+MediaPipe is an optional peer and loads only from its subpath. You supply WASM, the Face Landmarker model, video frames and scheduling. The tracker keeps normalized values, never frames or landmarks.
+
+```ts
+import { createMediaPipeFaceTracker } from
+  'live2d-web/tracking/mediapipe'
+
+const tracker = await createMediaPipeFaceTracker({
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+  wasmPath: '/mediapipe/wasm',
+})
+const detach = tracker.attach(character, {
+  mapping: 'auto',
+  channels: { mouth: false },
+})
+
+tracker.update(video, performance.now())
+
+detach()
+tracker.dispose()
+```
+
+## Optional Worker
+
+Worker mode keeps inference away from rendering. update() becomes asynchronous, accepts one frame at a time and reports busy frames as skipped. If Worker startup fails, choose main mode explicitly; there is no silent fallback.
+
+```ts
+const tracker = await createMediaPipeFaceTracker({
+  execution: 'worker',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+  wasmPath: '/mediapipe/wasm',
+  workerFactory: () => new Worker(
+    new URL('./face-tracking.worker.ts', import.meta.url),
+    { type: 'module' },
+  ),
+})
+```

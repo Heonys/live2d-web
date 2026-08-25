@@ -1,0 +1,38 @@
+## 메인 스레드 추적
+
+MediaPipe는 선택 peer이며 해당 subpath에서만 로드됩니다. WASM·Face Landmarker 모델·video frame·스케줄링은 앱이 제공합니다. 트래커는 정규화 값만 보관하고 frame·landmark는 저장하지 않습니다.
+
+```ts
+import { createMediaPipeFaceTracker } from
+  'live2d-web/tracking/mediapipe'
+
+const tracker = await createMediaPipeFaceTracker({
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+  wasmPath: '/mediapipe/wasm',
+})
+const detach = tracker.attach(character, {
+  mapping: 'auto',
+  channels: { mouth: false },
+})
+
+tracker.update(video, performance.now())
+
+detach()
+tracker.dispose()
+```
+
+## 선택형 Worker
+
+Worker 모드는 추론을 렌더링 스레드에서 분리합니다. update()는 비동기가 되고 한 번에 한 frame만 받아 busy frame은 skipped로 끝냅니다. 시작 실패 시 앱이 main을 명시적으로 선택하며 조용한 fallback은 없습니다.
+
+```ts
+const tracker = await createMediaPipeFaceTracker({
+  execution: 'worker',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+  wasmPath: '/mediapipe/wasm',
+  workerFactory: () => new Worker(
+    new URL('./face-tracking.worker.ts', import.meta.url),
+    { type: 'module' },
+  ),
+})
+```

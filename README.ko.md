@@ -6,7 +6,7 @@
 > PixiJS 없이 WebGL2로 직접 렌더링합니다.
 
 **[한국어 문서](https://live2d-web-demo.netlify.app/docs/ko)** ·
-[Playground](https://live2d-web-demo.netlify.app/) ·
+[Playground](https://live2d-web-demo.netlify.app/playground) ·
 [모델 검사기](https://live2d-web-demo.netlify.app/inspect) ·
 [예제](examples)
 
@@ -17,7 +17,7 @@
 - 모션·시퀀스·fade·가중 Idle·표정·포인터 상호작용
 - 볼륨/wLipSync와 선택형 MediaPipe main/Worker 얼굴 추적
 - 명확한 자원 정리, 안정적인 오류 코드, tarball·브라우저 검증
-- 선택형 `live2d-web/inspect` 모델 호환성 검사
+- 선택형 `live2d-web/inspect` 모델 검사와 `live2d-web/devtools` 제어 패널
 
 ## 빠른 시작
 
@@ -81,7 +81,7 @@ pnpm examples:build
 [호환성 표](docs/compatibility.md)를 확인하세요.
 
 루트 entry에는 React·Framework·MediaPipe가 들어가지 않습니다. React,
-MediaPipe main/Worker, inspect, Cubism backend는 별도 경계로 유지합니다. WASM,
+MediaPipe main/Worker, inspect, devtools, Cubism backend는 별도 경계로 유지합니다. WASM,
 추적 모델, Cubism Core와 Live2D 모델은 npm 패키지에 포함하지 않습니다.
 
 ## 라이선스와 기여

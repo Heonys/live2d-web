@@ -345,9 +345,9 @@ suspend 복구와 장치 변경 대응.
 - **모델 호환성 검사기**: Playground의 `/inspect`를 독립 도구로. zip을 넣으면
   누락 자산·외부 URL·Cubism 버전·모션 목록을 보고한다. Livesona의 importer를
   재사용하며, 리거와 개발자 모두에게 쓸모가 있다
-- opt-in 진단 정보: backend, render 크기·resolution, ready 구간과 마지막 자산
-  오류처럼 사용자가 이슈에 첨부할 수 있는 저빈도 snapshot을 검토한다. per-frame
-  데이터를 React state나 기본 telemetry로 보내지 않는다
+- opt-in 진단 정보: 선택형 `live2d-web/devtools`가 공개 runtime/model 상태와
+  현재 parameter를 복사 가능한 snapshot으로 제공한다. URL·자산·카메라·얼굴
+  데이터와 기본 telemetry는 포함하지 않는다
 - Canvas가 장식인지 상호작용 대상인지 앱이 설명할 수 있는 접근성 전달 경로,
   fallback과 `prefers-reduced-motion` 대응을 실제 소비자 요구와 함께 검토한다
 - 릴리스 체크리스트(`docs/release-checklist.md`, 2026-08-25 신설): 자동
@@ -362,14 +362,15 @@ suspend 복구와 장치 변경 대응.
 **검증.** 처음 보는 개발자가 문서만으로 10분 안에 캐릭터를 띄우는 테스트를
 분기마다 1명 이상에게 실시.
 
-**0.7 구현 상태 (2026-08-25).** Netlify Playground에 영어·한국어·일본어
-가이드 14개와 TypeDoc API, 정적 검색, canonical/hreflang, sitemap,
-`llms.txt`를 추가했다. `/inspect`는 React-free 공개 검사 API와 URL/로컬 zip
-UI를 제공하며, Vite Vanilla·Next React·Vue Vite·OBS overlay 예제는 실제
-production build된다. 세 브라우저 문서·검사 e2e와 기여 템플릿도 갖췄다.
+**0.7 구현 상태 (2026-08-25).** Netlify 사이트에 영어·한국어·일본어 MDX
+가이드 15개와 TypeDoc API, Shiki code highlight, 정적 검색,
+canonical/hreflang, sitemap, `llms.txt`를 추가했다. 루트 landing과 고정 Canvas
+`/playground`를 분리했고, React-free `live2d-web/devtools`와 `/inspect` 공개 검사
+API를 제공한다. Vite Vanilla·Next React·Vue Vite·OBS overlay 예제는 실제
+production build되며 세 브라우저 문서·검사 e2e와 기여 템플릿도 갖췄다.
 다만 완료 조건은 구현량이 아니라 외부 PR 첫 병합 또는 외부 의존 +1이므로
-**라이브러리 구현 완료, 외부 검증 대기**다. opt-in runtime snapshot과 Canvas
-접근성 API는 실제 소비자 요구 전까지 미착수로 유지한다.
+**라이브러리 구현 완료, 외부 검증 대기**다. Canvas 접근성 API는 실제 소비자
+요구 전까지 미착수로 유지한다.
 
 ### G. 신뢰와 호환성
 

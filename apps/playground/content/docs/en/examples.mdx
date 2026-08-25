@@ -1,0 +1,80 @@
+## Buildable projects
+
+The repository includes Vite Vanilla, Next React, Vue Vite and transparent OBS overlay examples. CI typechecks and production-builds all four. Each expects Core at /live2dcubismcore.min.js and a model at /models/model.model3.json.
+
+- [Complete Vite Vanilla source](https://github.com/Heonys/live2d-web/tree/main/examples/vanilla-vite)
+- [Complete Next React source](https://github.com/Heonys/live2d-web/tree/main/examples/next-react)
+- [Complete Vue Vite source](https://github.com/Heonys/live2d-web/tree/main/examples/vue-vite)
+- [Complete OBS overlay source](https://github.com/Heonys/live2d-web/tree/main/examples/obs-overlay)
+
+```bash
+pnpm install
+pnpm --filter @live2d-web/example-vanilla-vite dev
+pnpm --filter @live2d-web/example-next-react dev
+pnpm --filter @live2d-web/example-vue-vite dev
+pnpm --filter @live2d-web/example-obs-overlay dev
+```
+
+```ts title="Vite Vanilla"
+import { createLive2D } from 'live2d-web'
+
+const character = await createLive2D({
+  container: document.querySelector('#avatar'),
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+})
+
+await character.motion('TapBody', 0)
+
+// When the host view is removed:
+character.dispose()
+```
+
+```tsx title="Next React"
+'use client'
+
+import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
+
+export function Avatar() {
+  return (
+    <Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+      <Live2DModel src="/models/model.model3.json" />
+    </Live2DCanvas>
+  )
+}
+```
+
+```vue title="Vue Vite"
+<script setup lang="ts">
+import { createLive2D } from 'live2d-web'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+const host = ref<HTMLElement>()
+let character: Awaited<ReturnType<typeof createLive2D>> | undefined
+
+onMounted(async () => {
+  character = await createLive2D({
+    container: host.value!,
+    coreUrl: '/live2dcubismcore.min.js',
+    src: '/models/model.model3.json',
+  })
+})
+onBeforeUnmount(() => character?.dispose())
+</script>
+
+<template><div ref="host" class="avatar" /></template>
+```
+
+```ts title="OBS overlay"
+import { createLive2D } from 'live2d-web'
+
+const query = new URLSearchParams(location.search)
+const character = await createLive2D({
+  container: document.querySelector('#overlay')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  fit: query.get('fit') === 'full' ? 'full' : 'upper-body',
+  src: query.get('model') ?? '/models/model.model3.json',
+})
+
+addEventListener('pagehide', () => character.dispose(), { once: true })
+```

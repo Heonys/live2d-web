@@ -1,0 +1,19 @@
+## Volume driver
+
+The helper converts caller-sampled RMS into stable mouth openness. The application keeps ownership of microphone permission, AudioContext, nodes and requestAnimationFrame.
+
+```ts
+import { createVolumeLipSync } from 'live2d-web'
+
+const driver = createVolumeLipSync()
+const detach = character.addLipSync({ driver })
+
+// The app owns AudioContext, RMS calculation and scheduling.
+driver.sample(rms, elapsedMs)
+
+detach()
+```
+
+## Avoid competing mouth inputs
+
+When face tracking and microphone lip sync run together, disable the tracker mouth channel. wLipSync remains a separate source mode and requires a compatible browser AudioWorklet.

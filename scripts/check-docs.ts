@@ -1,14 +1,15 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import {
   DOC_LOCALES,
   DOC_PAGES,
   docHref,
-} from '../apps/playground/src/docs/content'
+} from '../apps/playground/src/docs/manifest'
 
 const failures: string[] = []
 const slugs = new Set<string>()
+const contentRoot = 'apps/playground/content/docs'
 
 for (const page of DOC_PAGES) {
   if (slugs.has(page.slug))
@@ -18,19 +19,30 @@ for (const page of DOC_PAGES) {
     failures.push(`invalid documentation slug: ${page.slug}`)
   for (const locale of DOC_LOCALES) {
     if (!page.title[locale].trim() || !page.summary[locale].trim())
-      failures.push(`${page.slug || '(index)'} is missing ${locale} title or summary`)
-    for (const section of page.sections) {
-      if (!section.heading[locale].trim() || !section.paragraphs[locale].length)
-        failures.push(`${page.slug || '(index)'} is missing ${locale} section content`)
-      if (section.bullets && !section.bullets[locale].length)
-        failures.push(`${page.slug || '(index)'} has an empty ${locale} bullet list`)
-      for (const link of section.links ?? []) {
-        if (!link.label[locale].trim())
-          failures.push(`${page.slug || '(index)'} has an empty ${locale} link label`)
-        if (!/^https:\/\//.test(link.href))
-          failures.push(`${page.slug || '(index)'} has an invalid link: ${link.href}`)
-      }
+      failures.push(`${page.slug || '(index)'} is missing ${locale} metadata`)
+    const filename = `${page.slug || 'index'}.mdx`
+    const sourcePath = path.join(contentRoot, locale, filename)
+    if (!existsSync(sourcePath)) {
+      failures.push(`missing localized MDX: ${locale}/${filename}`)
+      continue
     }
+    const source = readFileSync(sourcePath, 'utf8')
+    if (!source.trim())
+      failures.push(`empty localized MDX: ${locale}/${filename}`)
+    for (const match of source.matchAll(/\]\(([^)]+)\)/g)) {
+      const href = match[1]!
+      if (/^https:\/\//.test(href) || href.startsWith('#') || href.startsWith('/'))
+        continue
+      failures.push(`${locale}/${filename} has a non-root-relative link: ${href}`)
+    }
+  }
+}
+
+const expectedFiles = new Set(DOC_PAGES.map(page => `${page.slug || 'index'}.mdx`))
+for (const locale of DOC_LOCALES) {
+  for (const file of readdirSync(path.join(contentRoot, locale))) {
+    if (!expectedFiles.has(file))
+      failures.push(`unexpected ${locale} documentation file: ${file}`)
   }
 }
 
@@ -42,8 +54,9 @@ for (const page of DOC_PAGES) {
 }
 
 const generatedApi = 'apps/playground/.generated/api-reference.json'
-if (!existsSync(generatedApi)) {
-  failures.push('TypeDoc API reference was not generated')
+const generatedSearch = 'apps/playground/.generated/docs-search.json'
+if (!existsSync(generatedApi) || !existsSync(generatedSearch)) {
+  failures.push('generated API reference or search index is missing')
 }
 else {
   const api = JSON.parse(readFileSync(generatedApi, 'utf8')) as {
@@ -55,6 +68,9 @@ else {
   ) ?? 0
   if (symbols < 10)
     failures.push(`TypeDoc API reference has only ${symbols} public symbols`)
+  const search = JSON.parse(readFileSync(generatedSearch, 'utf8')) as unknown[]
+  if (search.length !== DOC_PAGES.length * DOC_LOCALES.length)
+    failures.push(`search index has ${search.length} entries instead of ${DOC_PAGES.length * DOC_LOCALES.length}`)
 }
 
 for (const example of ['vanilla-vite', 'next-react', 'vue-vite', 'obs-overlay']) {
@@ -68,5 +84,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log(`[docs] ${DOC_PAGES.length} slugs × ${DOC_LOCALES.length} locales and generated API verified`)
+  console.log(`[docs] ${DOC_PAGES.length} MDX slugs × ${DOC_LOCALES.length} locales, links, search and API verified`)
 }

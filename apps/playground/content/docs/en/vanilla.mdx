@@ -1,0 +1,18 @@
+## Create, load, dispose
+
+The vanilla runtime owns one Canvas and one model. Await loading before issuing model commands, and always dispose when its host view leaves the page.
+
+```ts
+import { createLive2D } from 'live2d-web'
+
+const character = await createLive2D({
+  container: document.querySelector('#avatar'),
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+})
+
+await character.motion('TapBody', 0)
+
+// When the host view is removed:
+character.dispose()
+```

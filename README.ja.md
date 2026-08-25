@@ -6,7 +6,7 @@
 > PixiJS を使わず WebGL2 で直接描画します。
 
 **[日本語ドキュメント](https://live2d-web-demo.netlify.app/docs/ja)** ·
-[Playground](https://live2d-web-demo.netlify.app/) ·
+[Playground](https://live2d-web-demo.netlify.app/playground) ·
 [モデル検査](https://live2d-web-demo.netlify.app/inspect) ·
 [サンプル](examples)
 
@@ -17,7 +17,7 @@
 - motion・sequence・fade・weighted Idle・表情・pointer interaction
 - 音量/wLipSync と任意の MediaPipe main/Worker 顔トラッキング
 - 明確な resource cleanup、安定した error code、tarball・browser 検証
-- 任意の `live2d-web/inspect` モデル互換性レポート
+- 任意の `live2d-web/inspect` モデル検査と `live2d-web/devtools` 操作パネル
 
 ## クイックスタート
 
@@ -81,7 +81,7 @@ pnpm examples:build
 ください。
 
 root entry に React・Framework・MediaPipe は入りません。React、MediaPipe
-main/Worker、inspect、Cubism backend は別の境界です。WASM、tracking model、
+main/Worker、inspect、devtools、Cubism backend は別の境界です。WASM、tracking model、
 Cubism Core、Live2D model は npm パッケージに含まれません。
 
 ## ライセンスとコントリビューション

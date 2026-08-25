@@ -7,13 +7,16 @@
   "scripts": {
     "prebuild": "pnpm docs:generate",
     "predev": "pnpm docs:generate",
-    "docs:generate": "node ../../scripts/generate-api-reference.mjs",
+    "docs:generate": "node ../../scripts/generate-api-reference.mjs && tsx ../../scripts/generate-doc-search.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "catalog:",
+    "@fontsource-variable/jetbrains-mono": "catalog:",
+    "@mdx-js/react": "catalog:",
     "@mediapipe/tasks-vision": "catalog:",
     "@pixi/app": "catalog:",
     "@pixi/constants": "catalog:",
@@ -33,12 +36,19 @@
     "next": "catalog:",
     "pixi-live2d-display": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "shiki": "catalog:"
   },
   "devDependencies": {
+    "@mdx-js/loader": "catalog:",
+    "@mdx-js/mdx": "catalog:",
+    "@next/mdx": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "typescript": "catalog:"
+    "rehype-pretty-code": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "unist-util-visit": "catalog:"
   }
 }

@@ -1,0 +1,12 @@
+## CSP と信頼できないモデル
+
+model3.json を入力 manifest として扱い、描画前にサイズ・外部 URL・CORS を検査します。ローカル archive 検査は外部 URL を取得しません。
+
+- Cubism Core 用の script-src を許可します。
+- model・WASM・tracking asset 用の connect-src を許可します。
+- module Worker tracking 用の worker-src を許可します。
+- asset を self-host し CORS を明示します。
+
+## ライセンスとプライバシー
+
+live2d-web は非公式です。Core・Framework・model・MediaPipe には別の規約があります。顔追跡は端末内で動きますが、同意・表示・analytics はアプリの責任です。

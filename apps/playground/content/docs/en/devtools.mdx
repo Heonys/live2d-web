@@ -1,0 +1,27 @@
+## Mount the optional panel
+
+Import Devtools only where you need it. The subpath has no React dependency and does not change the root bundle.
+
+```ts title="devtools.ts" showLineNumbers
+import { mountLive2DDevtools } from 'live2d-web/devtools'
+
+const devtools = mountLive2DDevtools({
+  container: document.querySelector('#devtools')!,
+  target: live2d,
+})
+
+devtools.setTab('parameters')
+// Later, remove only the UI and parameter drivers owned by this panel.
+devtools.dispose()
+```
+
+## What it can control
+
+- **Overview** shows public model and runtime information and copies a diagnostic JSON file without model URLs or camera data.
+- **Parameters** searches current values and creates temporary slider overrides.
+- **Motion** plays one motion or a small sequence with priority and fade options.
+- **Expression** applies, fades and clears expressions.
+
+The caller owns the container's size, position and scrolling. Devtools adds one host with an open Shadow DOM and never removes existing children. Microphones, MediaPipe and Workers remain application responsibilities.
+
+> Call `dispose()` when the model or panel unmounts. It is safe to call more than once.

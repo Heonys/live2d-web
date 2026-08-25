@@ -57,10 +57,14 @@ Webpack/Rollup 직접 구성은 현재 미검증이다.
 경로 탈출과 압축 한도를 단위 테스트로 고정한다. 실제 Inspector의 JSZip은
 Playground에서만 동적 로드되며 npm `inspect` entry에는 포함되지 않는다.
 
-`/docs/{en|ko|ja}` 42개 경로는 같은 14개 slug 집합에서 정적 생성된다. 세
+`/docs/{en|ko|ja}` 45개 경로는 같은 15개 slug 집합에서 정적 생성된다. 세
 브라우저가 `/docs` redirect, 검색, 언어 전환, code copy, canonical/hreflang,
 TypeDoc API와 내부 링크 응답을 검증한다. 문서 내용의 사람이 느끼는 명확성과
 "10분 안에 모델 표시"는 자동 테스트가 아니라 외부 사용자 확인 항목이다.
+
+`live2d-web/devtools`는 Chromium·WebKit·Firefox의 open Shadow DOM에서
+SSR evaluation, parameter driver 격리·정리, motion/sequence/expression 호출,
+target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소비자가 제공한다.
 
 ## MediaPipe 선택 기능
 

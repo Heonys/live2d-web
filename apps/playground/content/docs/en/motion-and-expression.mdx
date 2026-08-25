@@ -1,0 +1,21 @@
+## Playback results and fades
+
+motion() preserves the simple Promise&lt;void&gt; contract. Use playMotion() when completed, interrupted, skipped and disposed must be distinguished. Sequence stops at the first non-completed result.
+
+```ts
+const result = await character.playMotion('TapBody', 0, {
+  fadeInMs: 250,
+  fadeOutMs: 400,
+})
+
+await character.sequence([
+  { group: 'TapBody', index: 0 },
+  { group: 'Idle', index: 0 },
+])
+
+await character.expression('smile', { fadeInMs: 500 })
+```
+
+## Authored defaults stay intact
+
+Omit fade options to preserve model3, motion3 and exp3 settings. Per-parameter motion fades remain stronger than a playback-wide override.

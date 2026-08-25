@@ -1,0 +1,27 @@
+## 선택형 패널 마운트
+
+필요한 화면에서만 Devtools를 import하세요. 이 서브패스는 React에 의존하지 않고 루트 번들에도 들어가지 않습니다.
+
+```ts title="devtools.ts" showLineNumbers
+import { mountLive2DDevtools } from 'live2d-web/devtools'
+
+const devtools = mountLive2DDevtools({
+  container: document.querySelector('#devtools')!,
+  target: live2d,
+})
+
+devtools.setTab('parameters')
+// 나중에 패널이 만든 UI와 파라미터 driver만 정리합니다.
+devtools.dispose()
+```
+
+## 제어할 수 있는 것
+
+- **Overview**는 공개 모델·런타임 정보와 진단 JSON을 보여줍니다. 모델 URL이나 카메라 데이터는 넣지 않습니다.
+- **Parameters**는 현재값 검색과 임시 슬라이더 override를 제공합니다.
+- **Motion**은 priority·fade를 적용한 모션과 간단한 sequence를 재생합니다.
+- **Expression**은 표정을 적용하고 fade하거나 해제합니다.
+
+컨테이너의 위치·크기·스크롤은 앱이 소유합니다. Devtools는 open Shadow DOM host 하나만 추가하고 기존 자식은 지우지 않습니다. 마이크·MediaPipe·Worker 역시 앱의 책임입니다.
+
+> 모델이나 패널을 unmount할 때 `dispose()`를 호출하세요. 여러 번 호출해도 안전합니다.

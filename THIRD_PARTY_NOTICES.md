@@ -17,6 +17,11 @@ is excluded from the root static bundle.
   copyright Google LLC, Apache License 2.0. It is an optional peer loaded only
   by the MediaPipe tracking subpath. WASM, models and test images are not in the
   npm package.
+- [Inter](https://github.com/rsms/inter), copyright The Inter Project
+  Authors, SIL Open Font License 1.1. Self-hosted by the documentation site.
+- [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), copyright
+  JetBrains s.r.o., SIL Open Font License 1.1. Self-hosted by the documentation
+  site for code and technical labels.
 
 - [Cubism Web Framework 5-r.5](https://github.com/Live2D/CubismWebFramework)
   and its WebGL shaders, copyright Live2D Inc., Live2D Open Software License.

@@ -6,7 +6,7 @@
 > renders through WebGL2 without PixiJS.
 
 **[Documentation](https://live2d-web-demo.netlify.app/docs/en)** ·
-[Playground](https://live2d-web-demo.netlify.app/) ·
+[Playground](https://live2d-web-demo.netlify.app/playground) ·
 [Model inspector](https://live2d-web-demo.netlify.app/inspect) ·
 [Examples](examples)
 
@@ -17,7 +17,7 @@
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
 - Volume/wLipSync inputs and optional MediaPipe main/Worker face tracking
 - Explicit lifecycle cleanup, stable errors and real tarball/browser gates
-- Optional `live2d-web/inspect` model compatibility reports
+- Optional `live2d-web/inspect` model reports and `live2d-web/devtools` controls
 
 ## Quick start
 
@@ -85,15 +85,15 @@ Core 5.3 and Framework 5-r.5. See the [compatibility matrix](docs/compatibility.
 for verified and pending combinations.
 
 The root entry stays React-, Framework- and MediaPipe-free. React,
-`tracking/mediapipe`, its Worker entry, `inspect`, and the Cubism backend have
-separate package boundaries. WASM, tracking models, Cubism Core and Live2D
+`tracking/mediapipe`, its Worker entry, `inspect`, `devtools`, and the Cubism
+backend have separate package boundaries. WASM, tracking models, Cubism Core and Live2D
 models are never included in the npm package.
 
 ## License and trademarks
 
 live2d-web is not affiliated with or endorsed by Live2D Inc. The library,
 Cubism Framework, Cubism Core, models and MediaPipe have separate terms. Review
-[LICENSES.md](LICENSES.md), [licensing notes](docs/licensing.md), and Live2D’s
+[package licenses](packages/live2d-web/LICENSES.md), [licensing notes](docs/licensing.md), and Live2D’s
 [SDK license page](https://www.live2d.com/en/sdk/license/) before distribution.
 
 ## Contributing

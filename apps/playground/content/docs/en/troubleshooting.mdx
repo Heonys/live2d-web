@@ -1,0 +1,8 @@
+## Start with the error code
+
+Live2DError carries a stable code and, for asset failures, the URL, asset type and HTTP status. Include those fields plus browser and model export version in an issue, but do not attach licensed assets.
+
+- model-load-failed: inspect the URL, HTTP status and CORS.
+- core-load-failed: check Core URL and Core/Framework pairing.
+- invalid-props: fix the caller value; retrying does not help.
+- tracking-error: verify optional peer, WASM/model paths and Worker CSP.

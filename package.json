@@ -58,6 +58,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",
+    "@mdx-js/mdx": "catalog:",
     "@playwright/test": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
@@ -72,6 +73,7 @@
     "tsx": "catalog:",
     "typedoc": "catalog:",
     "typescript": "catalog:",
+    "unist-util-visit": "catalog:",
     "vitest": "catalog:vitest"
   },
   "simple-git-hooks": {

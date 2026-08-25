@@ -1,0 +1,17 @@
+## Keep browser code behind use client
+
+The root and inspect entries are SSR-evaluation safe. Rendering and /react still require a Client Component. Pass model URLs as data from Server Components instead of importing browser code there.
+
+```tsx
+'use client'
+
+import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
+
+export function Avatar() {
+  return (
+    <Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+      <Live2DModel src="/models/model.model3.json" />
+    </Live2DCanvas>
+  )
+}
+```

@@ -694,3 +694,39 @@ limits are 64 MiB per asset, 256 MiB total and 2,048 references.
 backends remain compatible. Standard tracking support is reported per channel.
 Perfect Sync uses the same shared ARKit 52-name set as MediaPipe mapping and is
 compatible at 45 matches.
+
+## Devtools subpath
+
+`live2d-web/devtools` is optional, React-free and SSR-safe at module evaluation.
+It accesses the DOM only when mounted.
+
+```ts
+type Live2DDevtoolsTab =
+  | 'overview'
+  | 'parameters'
+  | 'motion'
+  | 'expression'
+
+interface Live2DDevtools {
+  setTarget(target: Live2DDevtoolsTarget): void
+  setTab(tab: Live2DDevtoolsTab): void
+  dispose(): void
+}
+
+function mountLive2DDevtools(options: {
+  target: Live2DDevtoolsTarget
+  container: HTMLElement
+  initialTab?: Live2DDevtoolsTab
+}): Live2DDevtools
+```
+
+Both `Live2DInstance` and `Live2DModelController` structurally satisfy the
+target. The host uses an open Shadow DOM and leaves existing container children
+untouched. Parameter sliders attach temporary `addParameterDriver()` callbacks;
+reset, target replacement and idempotent dispose remove only those callbacks.
+The Parameters tab samples at most 15fps and stops while another tab is active,
+the document is hidden or the panel is disposed.
+
+Overview diagnostics contain public runtime/model metadata and current
+parameter values only. The panel does not own model URLs, assets, network
+requests, AudioContext, microphone capture, MediaPipe or Workers.

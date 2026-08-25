@@ -1,0 +1,17 @@
+## Client Component 境界
+
+/react は Client Component からだけ import します。Live2DCanvas が描画を、Live2DModel がモデル読み込みと unmount 時の破棄を担当します。
+
+```tsx
+'use client'
+
+import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
+
+export function Avatar() {
+  return (
+    <Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+      <Live2DModel src="/models/model.model3.json" />
+    </Live2DCanvas>
+  )
+}
+```

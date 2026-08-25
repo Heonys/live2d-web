@@ -1,0 +1,8 @@
+## error code から確認
+
+Live2DError には安定した code と asset URL・type・HTTP status があります。Issue には browser と export version も書き、ライセンス資産は添付しないでください。
+
+- model-load-failed: URL・HTTP status・CORS を確認します。
+- core-load-failed: Core URL と Core/Framework の組み合わせを確認します。
+- invalid-props: 呼び出し値を直します。retry では直りません。
+- tracking-error: optional peer・WASM/model path・Worker CSP を確認します。

@@ -1,12 +1,13 @@
 'use client'
 
-import type { DocLocale } from './content'
+import type { DocLocale } from './manifest'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 export interface DocSearchEntry {
   href: string
   summary: string
+  text: string
   title: string
 }
 
@@ -26,7 +27,7 @@ export function DocSearch({ entries, locale }: {
     if (!normalized)
       return []
     return entries.filter(entry =>
-      `${entry.title} ${entry.summary}`.toLocaleLowerCase(locale).includes(normalized))
+      `${entry.title} ${entry.summary} ${entry.text}`.toLocaleLowerCase(locale).includes(normalized))
   }, [entries, locale, query])
 
   return (
