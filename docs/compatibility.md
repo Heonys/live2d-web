@@ -56,18 +56,30 @@ Webpack, Rollup 직접 구성은 현재 미검증이다.
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
 | 메인 스레드 추론 성능 | 부분 검증 | 모델 없는 페이지 측정(2026-08-25, 적응형 상한): Chromium 30fps 유지(p95 13.4ms), WebKit 20fps로 안착(p95 15ms), Firefox 10fps(p95 197ms, 프레임 100% 초과). 세 엔진 모두 CI 차단 게이트. Worker 검증이 남아 있다. |
-| 물리 카메라·모바일 실기 | 미검증 | 권한·장치별 자연스러움은 소비자 검증이 필요하다. |
+| 물리 카메라 | **부분 검증** | 2026-08-25 실측에서 세 결함을 찾아 고쳤다. 얼굴을 너무 일찍 놓침(임계값 기본 0.5), 놓치면 0.55초 만에 정면 복귀, 경계 프레임의 자세 튐. 여기에 물리보다 뒤에 적용되어 머리카락이 따라오지 않던 문제까지 넷이다. |
+| 모바일 실기 | 미검증 | 장치별 자연스러움은 소비자 검증이 필요하다. |
+| 감도 기본값 | 1대 측정 | `sensitivity.pose` 기본은 **3**이다. 2026-08-25에 눈높이보다 낮은 노트북 카메라 한 대에서 자연스럽게 느껴진 값이며, 표본이 하나다. 카메라 위치에 좌우되므로 소비자는 사용자에게 노출하는 편이 낫다. |
 
 트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을
 SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다. 세
-엔진 모두 차단 게이트다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
+엔진 모두 차단 게이트이고, 릴리스 잡도 태그 커밋에 같은 스위트를 다시 돌린다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
 10fps로 내려가 통과한다(2026-08-25 러너 실측). Live2D Core와
 Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독립적이다.
+
+이 게이트는 **정지 초상 한 장**을 쓴다. 각도의 부호나 크기, 얼굴을 놓치는
+경계, 자세 유지는 하나도 검증하지 못한다. 2026-08-25에 발견한 결함 셋이 전부
+이 사각지대에 있었다. 부호와 스케일은 합성 행렬 단위 테스트로 잠갔지만
+(`state.test.ts`), 나머지는 실제 카메라 확인이 계속 필요하다.
+
+MediaPipe의 WASM 런타임은 시작 시 `INFO: Created TensorFlow Lite XNNPACK
+delegate for CPU.`를 `console.error`로 내보낸다. 정보성 로그이므로 콘솔 에러를
+단언하는 테스트는 이 줄을 걸러야 한다.
 
 ## 브라우저
 
 2026-08-25 로컬 `pnpm test:e2e`는 Playwright `1.62.0`과 다음 엔진에서
-실행했고(32 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식 Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
+실행했고(32 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식
+Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
 
 | 엔진 | 실제 버전 | 일반 runtime·driver/value 립싱크 | wLipSync source |
 | --- | --- | --- | --- |
@@ -78,8 +90,8 @@ Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독�
 기본 e2e는 13개 테스트 × 3엔진 = 39개 조합이고, 그중 7개는 설계상 skip이다
 (Chromium 전용인 Hiyori 품질·마이크·MediaPipe 카메라 3건 × WebKit·Firefox,
 Firefox wLipSync source 1건). 3엔진 전체 실행은 2026-08-25부터 CI
-`browser-e2e`(push)와 릴리스 잡이 담당한다. Firefox에서는 `wlipsync@1.3.0` worklet 오류가 있어 source 모드를
-지원 대상으로 승격하지 않았다. driver/value 모드는 AudioWorklet에 의존하지
+`browser-e2e`(push)와 릴리스 잡이 담당한다. Firefox에서는 `wlipsync@1.3.0`
+worklet 오류가 있어 source 모드를 지원 대상으로 승격하지 않았다. driver/value 모드는 AudioWorklet에 의존하지
 않아 세 엔진에서 검증한다.
 
 wLipSync source는 브라우저가 `AudioWorklet`을 제공하는 secure context가

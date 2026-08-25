@@ -216,6 +216,7 @@ const tracker = await createMediaPipeFaceTracker({
 const detach = tracker.attach(character, {
   mapping: 'auto',
   channels: { mouth: false }, // keep audio lip sync as the mouth writer
+  sensitivity: { pose: 2.5 }, // defaults to 3; tune to your camera
 })
 
 function frame(timestamp: number) {
@@ -232,6 +233,20 @@ neutral pose, then `detach()` and `tracker.dispose()` on cleanup. `auto` maps
 directly onto a model's ARKit-named Perfect Sync parameters when it declares at
 least 45 of the 52 (binding only the ones present) and otherwise falls back to
 common pose, eye, brow, mouth and cheek parameters.
+
+MediaPipe estimates head rotation well below what the wearer feels, and how far
+below depends on where the camera sits, so `sensitivity` scales a channel
+before the model's parameter range clamps it: raising it cannot exceed what the
+rigger allowed. At 1 a degree of real rotation becomes a degree of model
+rotation; pose defaults to 3, measured against one laptop camera. Expose this to
+your own users rather than assuming the default fits their setup.
+Losing the face holds the last pose rather than recentring the head, which
+would read as a snap when the wearer glances away; pass `onFaceLost: 'neutral'`
+to return to model defaults instead.
+
+MediaPipe's WASM runtime writes its startup line
+(`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`) to `console.error`.
+It is informational, and some dev overlays present it as an error.
 
 Tracking is **experimental** in 0.5.0: the API may change before 1.0, and
 real-camera behaviour on Perfect Sync models has not yet been verified outside

@@ -215,6 +215,7 @@ const tracker = await createMediaPipeFaceTracker({
 const detach = tracker.attach(character, {
   mapping: 'auto',
   channels: { mouth: false }, // 입은 볼륨·오디오 립싱크만 제어
+  sensitivity: { pose: 2.5 }, // 기본값 3, 카메라에 맞춰 조절
 })
 
 function frame(timestamp: number) {
@@ -230,6 +231,20 @@ requestAnimationFrame(frame)
 호출합니다. `auto`는 모델이 ARKit 이름의 Perfect Sync 파라미터 52개 중
 45개 이상을 선언하면 직접 매핑하고(있는 것만 바인딩), 아니면 일반적인
 얼굴·눈·눈썹·입·볼 파라미터로 자동 전환합니다.
+
+MediaPipe는 고개 회전을 실제 체감보다 작게 추정하고 그 정도는 카메라 위치에
+따라 달라집니다. `sensitivity`는 모델 파라미터 범위로 자르기 전에 채널을
+배율합니다. 올려도 리거가 허용한 범위를 넘지 못합니다. 1이면 실제 1도가 모델
+1도가 되고, pose는 노트북 카메라 한 대로 측정한 3이 기본입니다. 기본값이
+모두에게 맞는다고 가정하지 말고 앱 사용자에게 노출하세요. 얼굴을 놓치면
+마지막 자세를 유지합니다. 잠깐 시선을 돌렸다고 고개가 정면으로 돌아오면
+튕기는 것처럼 보이기 때문입니다. 모델 기본값으로 돌아가게 하려면
+`onFaceLost: 'neutral'`을 넘깁니다.
+
+MediaPipe의 WASM 런타임은 시작 로그
+(`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`)를
+`console.error`로 내보냅니다. 정보성 메시지이며, 일부 개발 오버레이는 이를
+에러처럼 표시합니다.
 
 트래킹은 0.5.0에서 **experimental**입니다. 1.0 전에 API가 바뀔 수 있고,
 실제 카메라와 Perfect Sync 모델의 체감은 아직 저장소 밖에서 검증되지

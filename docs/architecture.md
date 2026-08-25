@@ -103,19 +103,33 @@ pixi-v6 비교 backend는 페이드 옵션을 지원하지 않으며 조용히 �
 고정 계약은 다음과 같다.
 
 ```text
-motion / expression / eye-blink / physics / look
+motion
+→ scheduler (실행 순서 숫자로 정렬)
+   ├─ expression (200) · eye-blink (300) · look (400) · breath (500)
+   ├─ onBeforePhysicsUpdate (550) ─ phase: 'before-physics' driver
+   ├─ physics (600)
+   └─ pose (800)
+→ 수동 setParameter override 재적용
 → onAfterMotionUpdate
    ├─ LipSync
-   └─ parameter drivers
+   └─ phase: 'after-motion' driver (기본)
 → model update
 → Stage metrics callbacks
 → draw
 ```
 
-cubism-webgl은 Stage당 단일 rAF로 이 순서를 실행한다. 수동
-`setParameter()` override는 SDK update 뒤 다시 적용되고, 외부 driver와
-립싱크가 같은 프레임의 최종값을 덮어쓸 수 있다. pixi-v6에서는 단일
-`Application` ticker의 우선순위로 같은 계약을 만든다.
+cubism-webgl은 Stage당 단일 rAF로 이 순서를 실행한다. 효과들의 순서는
+Framework의 `CubismUpdateOrder` 숫자가 정한다.
+
+파라미터 driver는 두 지점 중 하나에 쓴다. 기본인 `'after-motion'`은 모든
+효과와 수동 override보다 뒤라 최종값을 쥐지만, 물리에는 닿지 못한다.
+머리 자세처럼 **물리가 반응해야 하는 값**은 `'before-physics'`를 쓴다.
+대가로 같은 파라미터의 수동 `setParameter()`가 driver를 이긴다. 트래킹은
+pose 채널만 이 단계를 쓰고 나머지는 기본을 유지한다.
+
+pixi-v6는 프레임 루프를 소유하지 않아 `onBeforePhysicsUpdate`를 구현하지
+않는다. 그 백엔드에서 `'before-physics'`는 조용히 `'after-motion'`으로
+내려간다.
 
 WebGL frame cap은 refresh 간격의 작은 나머지만 보존한다. 초기 shader 준비
 같은 긴 main-thread 정지 시간은 다음 프레임 예산으로 이월하지 않아,
@@ -161,11 +175,23 @@ WebGL frame cap은 refresh 간격의 작은 나머지만 보존한다. 초기 sh
 Face Landmarker 모델은 사용자 경로나 버퍼로 받으며 dist에 포함하지 않는다.
 
 앱은 `getUserMedia`·video·track·rAF를 소유한다. 트래커는 `detectForVideo()`의
-결과를 중립 보정 → 좌우 미러 정규화 → 시간 기반 평활화 → 모델 범위 변환
-순서로 처리하고, 결과를 기존 `addParameterDriver()` 집합으로 붙인다. 따라서
-추적 입력도 motion/effect/physics 뒤, draw 전에 적용되는 기존 프레임 계약을
-따른다. React controller는 같은 driver 등록 기능만 위임하며 추적 전용 상태를
-소유하지 않는다.
+결과를 좌우 미러 정규화 → **자세 변화율 상한** → 중립 보정 → 시간 기반
+평활화 → **채널 감도** → 모델 범위 변환 순서로 처리하고, 결과를 기존
+`addParameterDriver()` 집합으로 붙인다. React controller는 같은 driver 등록
+기능만 위임하며 추적 전용 상태를 소유하지 않는다.
+
+변화율 상한은 초당 360도다. 얼굴이 화면을 벗어나는 경계에서 자세 추정이
+무너지며 한 프레임 만에 파라미터 끝까지 튀는 것을 막는다. 넘는 프레임은
+버리지 않고 상한만큼만 이동시켜 빠른 회전 자체는 통과시킨다. 보정 구간에는
+적용하지 않는다. 기준점이 아직 없기 때문이다.
+
+pose 채널은 `'before-physics'` 단계에 쓴다. 물리가 트래킹된 고개에 반응해야
+머리카락과 몸이 따라오기 때문이다. 나머지 채널은 기본 단계를 유지하는데,
+그래야 추적된 눈 깜빡임이 자동 eye-blink를 이긴다.
+
+얼굴을 놓쳤을 때 기본 동작은 마지막 자세 **유지**다. 잠깐 시선을 돌렸다고
+캐릭터가 정면으로 튕기면 방송에서 쓸 수 없다. `onFaceLost: 'neutral'`을
+고르면 1초 유지 뒤 0.8초에 걸쳐 모델 기본값으로 돌아간다.
 
 내장 backend는 `ModelInfo.parameters`에 ID·최소·최대·기본값을 제공한다.
 필드는 optional이라 기존 custom backend는 깨지지 않는다. 메타데이터가 없으면

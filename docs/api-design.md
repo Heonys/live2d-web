@@ -244,6 +244,10 @@ type CreateMediaPipeFaceTrackerOptions = MediaPipeModelAsset & {
   delegate?: 'CPU' | 'GPU' // CPU
   maxFps?: number // 30; adapts down to 10 under slow inference; finite 1..60
   inputMirrored?: boolean // false; describes input pixels, not CSS
+  minFaceDetectionConfidence?: number // 0.4; finite 0..1
+  minFacePresenceConfidence?: number // 0.4; finite 0..1
+  minTrackingConfidence?: number // 0.3; finite 0..1
+  onFaceLost?: 'hold' | 'neutral' // hold
   signal?: AbortSignal
 }
 
@@ -252,6 +256,10 @@ interface MediaPipeAttachOptions {
   channels?: Partial<Record<
     'pose' | 'eyes' | 'brows' | 'mouth' | 'cheeks',
     boolean
+  >>
+  sensitivity?: Partial<Record<
+    'pose' | 'eyes' | 'brows' | 'mouth' | 'cheeks',
+    number // pose 3, others 1; finite 0.1..5
   >>
 }
 
@@ -280,9 +288,33 @@ timestamps return `skipped`. `dispose()` and the detach callback are
 idempotent.
 
 The tracker calibrates against one second of valid neutral face frames, then
-uses time-based smoothing (60ms facial coefficients, 100ms pose). Face loss
-holds the last value for 250ms and returns toward model defaults over 300ms.
+uses time-based smoothing (60ms facial coefficients, 100ms pose). Head pose is
+rate limited to 360 degrees per second, which discards neither the frame nor a
+genuine fast turn: an over-fast step is clamped to the limit and the rest
+arrives on later frames. The limiter is off during calibration.
 `calibrate()` clears prior neutral and smoothing state.
+
+Face loss holds the last value indefinitely by default, because recentring the
+head when the wearer glances away reads as a snap. `onFaceLost: 'neutral'`
+holds for one second and then returns toward model defaults over 800ms.
+
+The three confidence thresholds default below MediaPipe's own 0.5, which drops
+the face partway into an ordinary head turn. Tracking confidence is lowest of
+the three: keeping a face already found is what carries a profile turn.
+
+`sensitivity` scales a channel's distance from the parameter's own default, so
+it reads correctly on an inverted parameter too (`ParamEyeLOpen` rests at 1, and
+the gain lands on the blink rather than on the openness). The model's range
+still clamps, so raising it cannot push a parameter past what the rigger
+allowed. At 1 a degree of real head rotation becomes a degree of model
+rotation; pose defaults to 3 because MediaPipe estimates head rotation well
+below what the wearer feels. How far below depends on camera placement, so
+expose this to your users rather than assuming the default fits them.
+
+Pose parameters are written in the `'before-physics'` driver phase so physics
+simulates hair and body against the tracked head. Every other channel keeps the
+default late phase, which also lets a tracked blink beat the automatic
+eye-blink effect.
 
 `auto` selects direct 52-parameter Perfect Sync mapping only when all expected
 parameter IDs are present in `ModelInfo.parameters`; otherwise it uses common
@@ -512,6 +544,16 @@ motion curves regain the mouth parameter automatically.
   callbacks before manual re-application, which would have inverted the
   documented override priority. Revisit if a feature ever needs a persistent
   override on purpose.
+  - **Revisited 2026-08-25 for head pose only.** A driver written after the
+    effects is also written after physics, so a face-tracked head never drove
+    the physics simulation and the model's hair and body stayed still while
+    the head turned. Drivers now pick a phase; `'before-physics'` runs at
+    execution order 550, between breath (500) and physics (600). The rejection
+    above still stands for everything else: at 550 the manual `setParameter()`
+    replay wins over the driver, which is the inversion this entry refused, and
+    it is accepted only for pose, where physics feedback is the whole point.
+    Cosmetic channels keep `'after-motion'`, which additionally lets a tracked
+    blink beat the automatic eye-blink effect.
 - **`pauseWhenOffscreen` default true**: rendering while scrolled out of view
   wastes GPU and battery in the primary chat-page use case. Opt out per
   instance for capture or measurement scenarios. Pause reasons are a set
