@@ -86,7 +86,7 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
   expect(desktopBufferPixels).toBeLessThanOrEqual(4_000_000)
 
   await page.getByLabel('Framing').selectOption('full')
-  const mouthSlider = page.locator('input[type="range"]')
+  const mouthSlider = page.getByRole('slider', { name: 'Mouth open' })
   await mouthSlider.fill('0.8')
   await expect(mouthSlider).toHaveValue('0.8')
 

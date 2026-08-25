@@ -12,14 +12,34 @@ docs/README.md. The tracking subpath is experimental until 1.0.
   and face-loss recovery, then attaches standard or Perfect Sync drivers to
   vanilla instances and React controllers. Perfect Sync uses the ARKit 52
   parameter names (a model with at least 45 of them is mapped directly);
-  `_neutral` never becomes a parameter and `ParamTongueOut` keeps its default. Camera capture,
-  scheduling, WASM and model assets remain caller-owned and unbundled.
+  `_neutral` never becomes a parameter and `ParamTongueOut` keeps its
+  default. Camera capture, scheduling, WASM and model assets remain
+  caller-owned and unbundled.
   Main-thread inference starts at 30fps and lowers its own cap (down to 10fps)
   while measured inference time would starve the render loop; `effectiveFps`
   reports the current cap.
+- Face tracking is tuned against a real camera rather than a still portrait.
+  `sensitivity` scales any channel away from that parameter's own default
+  before the model's range clamps it (pose defaults to 3, measured against a
+  live camera; every other channel stays at 1), the
+  three MediaPipe confidence thresholds are exposed and default below
+  MediaPipe's own 0.5 so an ordinary head turn no longer drops the face, losing
+  the face holds the last pose instead of recentring the head (`onFaceLost`
+  restores the old behaviour), and head pose is rate limited to 360 degrees per
+  second so the estimate breaking down at the edge of frame cannot slam a
+  parameter to its rail for a frame.
+- `poseFromMatrix` normalizes the rotation basis. MediaPipe fits the canonical
+  face with a similarity transform, so head scale was shrinking yaw while
+  leaving pitch and roll intact.
+- Parameter drivers choose when they are written. The new `phase:
+  'before-physics'` runs between the SDK effects and physics, so a driven head
+  pose reaches the physics simulation and hair and body follow it; the default
+  `'after-motion'` is unchanged. `ModelHandle.onBeforePhysicsUpdate` is
+  optional, and backends without it fall back to the late phase.
 - Built-in backends expose optional parameter ranges through
   `ModelInfo.parameters`; custom backends remain compatible. MediaPipe
   initialization and inference failures use the new `tracking-error` code.
+
 ### Added (0.4 scope)
 
 - `createVolumeLipSync()` provides a React-free, SSR-safe driver that turns

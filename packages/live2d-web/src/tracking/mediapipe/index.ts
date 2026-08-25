@@ -6,6 +6,7 @@ import type { FaceTrackingSignals } from './state'
 import type {
   CreateMediaPipeFaceTrackerOptions,
   MediaPipeAttachOptions,
+  MediaPipeFaceLostBehaviour,
   MediaPipeFaceTracker,
   MediaPipeFaceTrackingUpdate,
   MediaPipeModelAsset,
@@ -25,6 +26,7 @@ export type {
   CreateMediaPipeFaceTrackerOptions,
   MediaPipeAttachOptions,
   MediaPipeFaceChannel,
+  MediaPipeFaceLostBehaviour,
   MediaPipeFaceTracker,
   MediaPipeFaceTrackingUpdate,
   MediaPipeMappingMode,
@@ -46,6 +48,12 @@ const CHANNELS = ['pose', 'eyes', 'brows', 'mouth', 'cheeks'] as const
 // fast engines (Chromium infers in ~13ms) or stalls slow ones (headless Firefox
 // measured ~200ms), so the cap follows measured inference time instead.
 const DEFAULT_MAX_FPS = 30
+// MediaPipe defaults all three to 0.5, which drops the face partway into an
+// ordinary head turn and snaps the model back to neutral. Tracking is lowest
+// because holding a face already found is what carries a profile turn.
+const DEFAULT_DETECTION_CONFIDENCE = 0.4
+const DEFAULT_PRESENCE_CONFIDENCE = 0.4
+const DEFAULT_TRACKING_CONFIDENCE = 0.3
 const MIN_ADAPTIVE_FPS = 10
 const INFERENCE_EMA_WEIGHT = 0.2
 const SLOW_DOWN_LOAD = 0.6
@@ -125,6 +133,11 @@ async function awaitWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Pro
   })
 }
 
+function confidence(name: string, value: number | undefined) {
+  if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1))
+    throw new Live2DError('invalid-props', `${name} must be a finite number between 0 and 1.`)
+}
+
 function validateOptions(options: CreateMediaPipeFaceTrackerOptions): MediaPipeModelAsset {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     throw new Live2DError(
@@ -159,6 +172,16 @@ function validateOptions(options: CreateMediaPipeFaceTrackerOptions): MediaPipeM
   }
   if (options.inputMirrored !== undefined && typeof options.inputMirrored !== 'boolean')
     throw new Live2DError('invalid-props', 'inputMirrored must be a boolean.')
+  confidence('minFaceDetectionConfidence', options.minFaceDetectionConfidence)
+  confidence('minFacePresenceConfidence', options.minFacePresenceConfidence)
+  confidence('minTrackingConfidence', options.minTrackingConfidence)
+  if (
+    options.onFaceLost !== undefined
+    && options.onFaceLost !== 'hold'
+    && options.onFaceLost !== 'neutral'
+  ) {
+    throw new Live2DError('invalid-props', 'onFaceLost must be hold or neutral.')
+  }
   return hasPath
     ? { modelAssetPath: options.modelAssetPath! }
     : { modelAssetBuffer: options.modelAssetBuffer! }
@@ -219,15 +242,17 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
   private lastInferenceTimestamp: number | undefined
   private maxFps: number
   private signals: FaceTrackingSignals | undefined
-  private state = new FaceTrackingState()
+  private state: FaceTrackingState
   private tracking = false
 
   constructor(
     private readonly task: FaceLandmarker,
     private readonly requestedMaxFps: number,
     private readonly inputMirrored: boolean,
+    onFaceLost: MediaPipeFaceLostBehaviour,
   ) {
     this.maxFps = requestedMaxFps
+    this.state = new FaceTrackingState({ onFaceLost })
   }
 
   bindAbortSignal(signal: AbortSignal) {
@@ -310,6 +335,19 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
         }
       }
     }
+    if (options.sensitivity !== undefined) {
+      if (!options.sensitivity || typeof options.sensitivity !== 'object')
+        throw new Live2DError('invalid-props', 'sensitivity must be an object.')
+      for (const channel of CHANNELS) {
+        const value = options.sensitivity[channel]
+        if (value !== undefined && (!Number.isFinite(value) || value < 0.1 || value > 5)) {
+          throw new Live2DError(
+            'invalid-props',
+            `sensitivity.${channel} must be a finite number between 0.1 and 5.`,
+          )
+        }
+      }
+    }
     let bindings
     try {
       bindings = createParameterBindings(target.getModelInfo(), options)
@@ -331,6 +369,10 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
       for (const binding of bindings) {
         cleanups.push(target.addParameterDriver(binding.id, {
           getValue: () => this.signals ? binding.read(this.signals) : binding.defaultValue,
+          // Head pose has to reach physics or the hair and body never follow
+          // it. The rest are cosmetic and keep the stronger late phase, which
+          // also lets tracked blinks beat the automatic eye-blink effect.
+          phase: binding.channel === 'pose' ? 'before-physics' : 'after-motion',
         }))
       }
     }
@@ -423,6 +465,11 @@ export async function createMediaPipeFaceTracker(
         delegate: options.delegate ?? 'CPU',
         ...modelAsset,
       },
+      minFaceDetectionConfidence:
+        options.minFaceDetectionConfidence ?? DEFAULT_DETECTION_CONFIDENCE,
+      minFacePresenceConfidence:
+        options.minFacePresenceConfidence ?? DEFAULT_PRESENCE_CONFIDENCE,
+      minTrackingConfidence: options.minTrackingConfidence ?? DEFAULT_TRACKING_CONFIDENCE,
       numFaces: 1,
       outputFaceBlendshapes: true,
       outputFacialTransformationMatrixes: true,
@@ -439,6 +486,7 @@ export async function createMediaPipeFaceTracker(
       task,
       options.maxFps ?? DEFAULT_MAX_FPS,
       options.inputMirrored ?? false,
+      options.onFaceLost ?? 'hold',
     )
     if (signal?.aborted) {
       tracker.dispose()

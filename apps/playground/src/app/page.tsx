@@ -12,6 +12,7 @@ import type { Live2DModelController } from 'live2d-web/react'
 import type {
   MediaPipeAttachOptions,
   MediaPipeFaceChannel,
+  MediaPipeFaceLostBehaviour,
   MediaPipeFaceTracker,
   MediaPipeMappingMode,
 } from 'live2d-web/tracking/mediapipe'
@@ -30,6 +31,15 @@ import { preload } from 'react-dom'
 import { StageLoading } from '../components/StageLoading'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../lib/assetManifest'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../lib/syntheticLipSyncProfile'
+
+const POSE_PARAMETER_IDS = [
+  'ParamAngleX',
+  'ParamAngleY',
+  'ParamAngleZ',
+  'ParamBodyAngleX',
+  'ParamBodyAngleY',
+  'ParamBodyAngleZ',
+] as const
 
 interface MotionOption {
   group: string
@@ -182,6 +192,15 @@ export default function Home() {
   const [faceTrackingStatus, setFaceTrackingStatus] = useState('idle')
   const [faceInferenceMs, setFaceInferenceMs] = useState(0)
   const [faceMapping, setFaceMapping] = useState<MediaPipeMappingMode>('auto')
+  const [facePoseSensitivity, setFacePoseSensitivity] = useState(3)
+  const [faceLostMode, setFaceLostMode] = useState<MediaPipeFaceLostBehaviour>('hold')
+  const [facePose, setFacePose] = useState({ x: 0, y: 0, z: 0 })
+  const [facePeak, setFacePeak] = useState({ x: 0, y: 0, z: 0 })
+  const [faceBody, setFaceBody] = useState({ x: 0, y: 0, z: 0 })
+  const [faceRanges, setFaceRanges] = useState('')
+  const facePeakRef = useRef({ x: 0, y: 0, z: 0 })
+  const facePoseSampledAtRef = useRef(0)
+
   const [facePreviewMirrored, setFacePreviewMirrored] = useState(true)
   const [faceChannels, setFaceChannels] = useState<Record<MediaPipeFaceChannel, boolean>>({
     brows: true,
@@ -260,16 +279,32 @@ export default function Home() {
     }
   }, [])
 
+  const resetFacePeak = useCallback(() => {
+    facePeakRef.current = { x: 0, y: 0, z: 0 }
+    setFacePeak({ x: 0, y: 0, z: 0 })
+  }, [])
+
   const startFaceTracking = useCallback(async () => {
     stopFaceTracking()
     setFaceTrackingError('')
     setFaceTrackingStatus('initializing')
+    resetFacePeak()
     const generation = ++faceGenerationRef.current
     let stream: MediaStream | undefined
     let tracker: MediaPipeFaceTracker | undefined
     try {
       if (!controller)
         throw new Error('Wait for the Live2D model to become ready.')
+      const activeController = controller
+      const modelParameters = new Map(
+        (activeController.getModelInfo().parameters ?? []).map(entry => [entry.id, entry]),
+      )
+      setFaceRanges(POSE_PARAMETER_IDS.map((id) => {
+        const entry = modelParameters.get(id)
+        return entry
+          ? `${id.replace('Param', '')} ${entry.minimum}..${entry.maximum}@${entry.defaultValue}`
+          : `${id} absent`
+      }).join('  '))
       const video = faceVideoRef.current
       if (!video)
         throw new Error('The camera preview is not mounted.')
@@ -290,6 +325,7 @@ export default function Home() {
       }
       const createdTracker = await createMediaPipeFaceTracker({
         modelAssetPath: '/assets/mediapipe/face_landmarker.task',
+        onFaceLost: faceLostMode,
         wasmPath: '/assets/mediapipe/wasm',
       })
       tracker = createdTracker
@@ -302,6 +338,7 @@ export default function Home() {
       const attachOptions: MediaPipeAttachOptions = {
         channels: faceChannels,
         mapping: faceMapping,
+        sensitivity: { pose: facePoseSensitivity },
       }
       const tracking = {
         detach: createdTracker.attach(controller, attachOptions),
@@ -319,6 +356,28 @@ export default function Home() {
             if (update.status !== 'skipped') {
               setFaceTrackingStatus(update.status)
               setFaceInferenceMs(update.inferenceMs)
+            }
+            // Read back the model rather than the tracker: this is the value that
+            // survived motions, physics and every other driver, which is what the
+            // rendered head angle actually uses.
+            const pose = {
+              x: activeController.getParameter('ParamAngleX'),
+              y: activeController.getParameter('ParamAngleY'),
+              z: activeController.getParameter('ParamAngleZ'),
+            }
+            const peak = facePeakRef.current
+            peak.x = Math.max(peak.x, Math.abs(pose.x))
+            peak.y = Math.max(peak.y, Math.abs(pose.y))
+            peak.z = Math.max(peak.z, Math.abs(pose.z))
+            if (timestamp - facePoseSampledAtRef.current >= 100) {
+              facePoseSampledAtRef.current = timestamp
+              setFacePose(pose)
+              setFacePeak({ ...peak })
+              setFaceBody({
+                x: activeController.getParameter('ParamBodyAngleX'),
+                y: activeController.getParameter('ParamBodyAngleY'),
+                z: activeController.getParameter('ParamBodyAngleZ'),
+              })
             }
           }
           catch (error) {
@@ -346,7 +405,15 @@ export default function Home() {
         setFaceTrackingStatus('error')
       }
     }
-  }, [controller, faceChannels, faceMapping, stopFaceTracking])
+  }, [
+    controller,
+    faceChannels,
+    faceLostMode,
+    faceMapping,
+    facePoseSensitivity,
+    resetFacePeak,
+    stopFaceTracking,
+  ])
 
   const startMic = useCallback(async () => {
     stopMic()
@@ -534,6 +601,7 @@ export default function Home() {
       tracking.detach = tracking.tracker.attach(controller, {
         channels: faceChannels,
         mapping: faceMapping,
+        sensitivity: { pose: facePoseSensitivity },
       })
     }
     catch (error) {
@@ -542,7 +610,18 @@ export default function Home() {
         stopFaceTracking()
       })
     }
-  }, [controller, faceChannels, faceMapping, stopFaceTracking])
+  }, [controller, faceChannels, faceMapping, facePoseSensitivity, stopFaceTracking])
+
+  // onFaceLost is fixed when the Face Landmarker is built, so re-attaching
+  // cannot pick it up: the whole tracker has to come back.
+  const faceLostModeRef = useRef(faceLostMode)
+  useEffect(() => {
+    if (faceLostModeRef.current === faceLostMode)
+      return
+    faceLostModeRef.current = faceLostMode
+    if (faceTrackingRef.current)
+      void startFaceTracking()
+  }, [faceLostMode, startFaceTracking])
 
   const motionOptions = useMemo<MotionOption[]>(() => {
     if (!modelInfo)
@@ -657,7 +736,9 @@ export default function Home() {
         >
           <Live2DModel
             fit={fit}
-            followPointer
+            // Pointer follow and face tracking both drive ParamAngle*, and the
+            // pointer wins nothing but confusion while a face is attached.
+            followPointer={!faceTrackingActive}
             idleMotion={idleMotion}
             src={manifest.model3}
             onLoad={handleLoad}
@@ -812,6 +893,7 @@ export default function Home() {
                 Mouth open
                 <output>{mouthOpen.toFixed(2)}</output>
                 <input
+                  aria-label="Mouth open"
                   disabled={micActive}
                   max="1"
                   min="0"
@@ -953,6 +1035,42 @@ export default function Home() {
                   {faceTrackingStatus}
                   {faceTrackingActive && ` · ${faceInferenceMs.toFixed(1)} ms`}
                 </output>
+                {faceTrackingActive && (
+                  <table className="pose-readout" data-testid="face-pose-readout">
+                    <thead>
+                      <tr>
+                        <th>Head angle</th>
+                        <th>now</th>
+                        <th>peak</th>
+                        <th>body</th>
+                        <th>range</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {([
+                        ['X turn', facePose.x, facePeak.x, faceBody.x],
+                        ['Y nod', facePose.y, facePeak.y, faceBody.y],
+                        ['Z tilt', facePose.z, facePeak.z, faceBody.z],
+                      ] as const).map(([label, now, peak, body]) => (
+                        <tr key={label}>
+                          <td>{label}</td>
+                          <td>{now.toFixed(1)}</td>
+                          <td>{peak.toFixed(1)}</td>
+                          <td>{body.toFixed(2)}</td>
+                          <td>
+                            <span
+                              className="pose-bar"
+                              style={{ width: `${Math.min(100, peak / 30 * 100)}%` }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {faceTrackingActive && faceRanges && (
+                  <p className="pose-ranges">{faceRanges}</p>
+                )}
                 <button
                   type="button"
                   disabled={!controller}
@@ -965,10 +1083,40 @@ export default function Home() {
                 <button
                   type="button"
                   disabled={!faceTrackingActive}
-                  onClick={() => faceTrackingRef.current?.tracker.calibrate()}
+                  onClick={() => {
+                    faceTrackingRef.current?.tracker.calibrate()
+                    resetFacePeak()
+                  }}
                 >
                   Recalibrate face
                 </button>
+                <label>
+                  Pose sensitivity
+                  <output>{facePoseSensitivity.toFixed(2)}</output>
+                  <input
+                    aria-label="Pose sensitivity"
+                    max={5}
+                    min={0.1}
+                    step={0.05}
+                    type="range"
+                    value={facePoseSensitivity}
+                    onChange={event =>
+                      setFacePoseSensitivity(Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  When the face is lost
+                  <select
+                    aria-label="Face lost behaviour"
+                    value={faceLostMode}
+                    onChange={event => setFaceLostMode(
+                      event.target.value as MediaPipeFaceLostBehaviour,
+                    )}
+                  >
+                    <option value="hold">Hold the last pose</option>
+                    <option value="neutral">Return to neutral</option>
+                  </select>
+                </label>
                 <label>
                   Mapping
                   <select

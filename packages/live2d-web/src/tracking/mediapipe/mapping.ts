@@ -69,6 +69,25 @@ function isEnabled(options: MediaPipeAttachOptions, channel: MediaPipeFaceChanne
   return options.channels?.[channel] !== false
 }
 
+/**
+ * A sensitivity of 1 maps a degree of real head rotation onto a degree of
+ * model rotation. MediaPipe estimates head rotation well below what the wearer
+ * feels, so pose defaults higher; 3 is where a live camera stopped looking
+ * understated (2026-08-25, one laptop camera below eye level). Facial
+ * coefficients already arrive normalized and need no correction.
+ */
+const DEFAULT_SENSITIVITY: Record<MediaPipeFaceChannel, number> = {
+  brows: 1,
+  cheeks: 1,
+  eyes: 1,
+  mouth: 1,
+  pose: 3,
+}
+
+function gain(options: MediaPipeAttachOptions, channel: MediaPipeFaceChannel) {
+  return options.sensitivity?.[channel] ?? DEFAULT_SENSITIVITY[channel]
+}
+
 export function missingPerfectSyncParameters(info: ModelInfo) {
   const ids = new Set(info.parameters?.map(parameter => parameter.id) ?? [])
   return PERFECT_SYNC_PARAMETER_IDS.filter(id => !ids.has(id))
@@ -114,13 +133,28 @@ export function createParameterBindings(
     const range = parameter ?? STANDARD_PARAMETERS[id]
     if (!range)
       return
+    // Sensitivity scales the distance from the parameter's own default, not the
+    // incoming signal. That reads correctly on an inverted parameter too:
+    // ParamEyeLOpen rests at 1, so the gain lands on the blink rather than on
+    // the openness. The model's range still clamps, so turning sensitivity up
+    // cannot push a parameter past what the rigger allowed.
+    const channelGain = gain(options, channel)
     bindings.push({
       channel,
       defaultValue: range.defaultValue,
       id,
-      read: signals => normalized === 'unit'
-        ? scaleUnit(read(signals), range)
-        : scaleSigned(read(signals), range),
+      read: (signals) => {
+        const scaled = normalized === 'unit'
+          ? scaleUnit(read(signals), range)
+          : scaleSigned(read(signals), range)
+        if (channelGain === 1)
+          return scaled
+        return clamp(
+          range.defaultValue + (scaled - range.defaultValue) * channelGain,
+          range.minimum,
+          range.maximum,
+        )
+      },
     })
   }
 

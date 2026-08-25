@@ -72,7 +72,10 @@ const PERFECT_SYNC_MODEL: ModelParameterInfo[] = [
 
 describe('mediaPipe Live2D mapping', () => {
   it('falls back to standard parameters when metadata is absent', () => {
-    const bindings = createParameterBindings(info(), { mapping: 'auto' })
+    const bindings = createParameterBindings(info(), {
+      mapping: 'auto',
+      sensitivity: { pose: 1 },
+    })
     const angle = bindings.find(binding => binding.id === 'ParamAngleX')!
     const mouth = bindings.find(binding => binding.id === 'ParamMouthOpenY')!
 
@@ -84,11 +87,50 @@ describe('mediaPipe Live2D mapping', () => {
     const bindings = createParameterBindings(info([
       { defaultValue: 0, id: 'ParamAngleX', maximum: 20, minimum: -20 },
       { defaultValue: 0, id: 'ParamMouthOpenY', maximum: 2, minimum: 0 },
-    ]), { mapping: 'standard' })
+    ]), { mapping: 'standard', sensitivity: { pose: 1 } })
 
     expect(bindings.map(binding => binding.id)).toEqual(['ParamAngleX', 'ParamMouthOpenY'])
     expect(bindings[0].read(signals())).toBeCloseTo(10)
     expect(bindings[1].read(signals({ jawOpen: 0.5 }))).toBeCloseTo(1)
+  })
+
+  // MediaPipe reports head rotation conservatively; the multiplier is how a
+  // consumer compensates without the library guessing their camera placement.
+  it('scales pose by its sensitivity and still clamps to the model range', () => {
+    const angleX = (pose: number) => createParameterBindings(info(), {
+      mapping: 'standard',
+      sensitivity: { pose },
+    }).find(binding => binding.id === 'ParamAngleX')!.read(signals())
+
+    expect(angleX(1)).toBeCloseTo(15)
+    expect(angleX(2)).toBeCloseTo(30)
+    // ParamAngleX tops out at 30, so a 5x request cannot exceed the rig.
+    expect(angleX(5)).toBeCloseTo(30)
+  })
+
+  // A live camera at 1 looked understated enough to read as broken, so pose
+  // ships amplified. Pin it: a retune should be a deliberate edit.
+  it('amplifies pose by default and leaves the other channels alone', () => {
+    const bindings = createParameterBindings(info(), { mapping: 'standard' })
+    const read = (id: string, scores?: Record<string, number>) =>
+      bindings.find(binding => binding.id === id)!.read(signals(scores))
+
+    expect(read('ParamAngleX')).toBeCloseTo(30) // 15 degrees, tripled, clamped
+    expect(read('ParamAngleZ')).toBeCloseTo(15) // 5 degrees, tripled
+    expect(read('ParamMouthOpenY', { jawOpen: 0.4 })).toBeCloseTo(0.4)
+  })
+
+  // ParamEyeLOpen rests at 1 and falls toward 0, so a gain on the raw signal
+  // would amplify openness instead of the blink.
+  it('scales an inverted parameter away from its own default', () => {
+    const eyes = (sensitivity: number) => createParameterBindings(info(), {
+      mapping: 'standard',
+      sensitivity: { eyes: sensitivity },
+    }).find(binding => binding.id === 'ParamEyeLOpen')!
+
+    expect(eyes(1).read(signals({ eyeBlinkLeft: 0.2 }))).toBeCloseTo(0.8)
+    expect(eyes(2).read(signals({ eyeBlinkLeft: 0.2 }))).toBeCloseTo(0.6)
+    expect(eyes(2).read(signals())).toBeCloseTo(1)
   })
 
   it('disables mouth without affecting the other channels', () => {
