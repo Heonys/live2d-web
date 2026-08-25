@@ -8,7 +8,7 @@ import type { CreateLive2DOptions } from '../core/runtime'
 import type { Live2DModelController } from './controller'
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
-import { idleMotionIdentity } from '../core/idle-motion'
+import { idleMotionIdentity, validateIdleMotion } from '../core/idle-motion'
 import { LifecycleScope } from '../core/lifecycle'
 import { Live2DRuntime } from '../core/runtime'
 import { ModelContext, RuntimeHostContext, StageContext } from './context'
@@ -98,21 +98,34 @@ export function Live2DModel({
   onTapRef.current = onTap
   fitRef.current = fit
   const hasOnTap = onTap != null
-  const idleIdentity = idleMotionIdentity(idleMotion)
+  // Validate before touching the shape: a malformed prop must surface as the
+  // same invalid-props error the vanilla API raises, not as a render crash.
+  let idleError: Live2DError | null = null
+  try {
+    validateIdleMotion(idleMotion)
+  }
+  catch (error) {
+    idleError = error as Live2DError
+  }
+  const idleIdentity = idleError ? `invalid:${idleError.message}` : idleMotionIdentity(idleMotion)
   const idleMotionRef = useRef<{
+    error: Live2DError | null
     identity: string
     value: IdleMotion | undefined
   } | undefined>(undefined)
   if (!idleMotionRef.current || idleMotionRef.current.identity !== idleIdentity) {
-    const value: IdleMotion | undefined = idleMotion && typeof idleMotion === 'object'
-      ? {
-          group: idleMotion.group,
-          weights: [...idleMotion.weights],
-        }
-      : idleMotion
-    idleMotionRef.current = { identity: idleIdentity, value }
+    const value: IdleMotion | undefined = idleError
+      ? false
+      : idleMotion && typeof idleMotion === 'object'
+        ? {
+            group: idleMotion.group,
+            weights: [...idleMotion.weights],
+          }
+        : idleMotion
+    idleMotionRef.current = { error: idleError, identity: idleIdentity, value }
   }
   const stableIdleMotion = idleMotionRef.current.value
+  const stableIdleError = idleMotionRef.current.error
 
   // The runtime reports a failed start and rejects start() with the same
   // error object, so identity is enough to keep this callback single-fire.
@@ -122,6 +135,11 @@ export function Live2DModel({
     lastErrorRef.current = error
     onErrorRef.current?.(error)
   }, [])
+
+  useEffect(() => {
+    if (stableIdleError)
+      reportError(stableIdleError)
+  }, [stableIdleError, reportError])
 
   useEffect(() => {
     if (currentStageStore.claimModel(owner))

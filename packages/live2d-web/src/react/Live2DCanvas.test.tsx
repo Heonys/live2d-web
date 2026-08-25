@@ -587,6 +587,27 @@ describe('live2DCanvas lifecycle', () => {
     expect(commits - commitsBeforeFrames).toBe(1)
   })
 
+  // The vanilla API rejects this with invalid-props; the React binding used to
+  // throw a TypeError out of render before any error handler could run.
+  it('reports a malformed idleMotion through onError instead of crashing render', async () => {
+    const harness = createFakeHarness()
+    const onError = vi.fn()
+
+    render(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel
+          idleMotion={{ group: 'Idle' } as never}
+          src="/hiyori.model3.json"
+          onError={onError}
+        />
+      </Live2DCanvas>,
+    )
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+    expect(onError.mock.calls[0][0]).toMatchObject({ code: 'invalid-props' })
+    await waitFor(() => expect(harness.stages).toHaveLength(1))
+  })
+
   it('rejects quality and resolution used together at runtime', async () => {
     const harness = createFakeHarness()
     const invalidQuality = {
