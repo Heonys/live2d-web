@@ -16,6 +16,21 @@ export interface CachedMotionAsset<T> {
    * override a fade.
    */
   buffer?: ArrayBuffer
+  /** In-flight read of `buffer`, shared so concurrent overrides fetch once. */
+  loading?: Promise<ArrayBuffer>
+}
+
+export async function ensureCachedBuffer<T>(
+  asset: CachedMotionAsset<T>,
+  load: () => Promise<ArrayBuffer>,
+) {
+  if (asset.buffer)
+    return asset.buffer
+  asset.loading ??= load().finally(() => {
+    asset.loading = undefined
+  })
+  asset.buffer = await asset.loading
+  return asset.buffer
 }
 
 export interface PlaybackMotion<T> {

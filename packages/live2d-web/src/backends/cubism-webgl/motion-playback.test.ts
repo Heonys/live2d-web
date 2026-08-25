@@ -1,5 +1,6 @@
+import type { CachedMotionAsset } from './motion-playback'
 import { describe, expect, it, vi } from 'vitest'
-import { preparePlaybackMotion } from './motion-playback'
+import { ensureCachedBuffer, preparePlaybackMotion } from './motion-playback'
 
 interface FakeMotion {
   curveFadeIn: number
@@ -23,8 +24,8 @@ function fakeMotion(fadeIn = 0.75, fadeOut = 1): FakeMotion {
   }
 }
 
-function cachedAsset<T>(motion: T, buffer?: ArrayBuffer) {
-  return { buffer, motion, type: 'motion' as const, url: '/motion.motion3.json' }
+function cachedAsset<T>(motion: T, buffer?: ArrayBuffer): CachedMotionAsset<T> {
+  return { buffer, motion, type: 'motion', url: '/motion.motion3.json' }
 }
 
 describe('cubism motion playback ownership', () => {
@@ -118,5 +119,40 @@ describe('cubism motion playback ownership', () => {
     queued.transferToQueue()
     queued.releaseBeforeStart()
     expect(release).toHaveBeenCalledTimes(1)
+  })
+
+  describe('ensureCachedBuffer', () => {
+    it('shares one read between concurrent first overrides', async () => {
+      const asset = cachedAsset(fakeMotion())
+      const load = vi.fn(async () => new ArrayBuffer(4))
+
+      const [a, b] = await Promise.all([ensureCachedBuffer(asset, load), ensureCachedBuffer(asset, load)])
+
+      expect(load).toHaveBeenCalledTimes(1)
+      expect(a).toBe(b)
+      expect(asset.buffer).toBe(a)
+      expect(asset.loading).toBeUndefined()
+    })
+
+    it('reads once and then serves the retained buffer', async () => {
+      const asset = cachedAsset(fakeMotion())
+      const load = vi.fn(async () => new ArrayBuffer(4))
+
+      await ensureCachedBuffer(asset, load)
+      await ensureCachedBuffer(asset, load)
+
+      expect(load).toHaveBeenCalledTimes(1)
+    })
+
+    it('lets a failed read be retried', async () => {
+      const asset = cachedAsset(fakeMotion())
+      const load = vi.fn()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValueOnce(new ArrayBuffer(4))
+
+      await expect(ensureCachedBuffer(asset, load)).rejects.toThrow('offline')
+      await expect(ensureCachedBuffer(asset, load)).resolves.toBeInstanceOf(ArrayBuffer)
+      expect(load).toHaveBeenCalledTimes(2)
+    })
   })
 })

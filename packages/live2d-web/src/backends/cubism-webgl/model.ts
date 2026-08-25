@@ -64,7 +64,7 @@ import { measureAsync, measureSync } from './diagnostics'
 import { parseShaderErrorDetails } from './error-details'
 import { acquireFramework } from './framework-manager'
 import { buildMvpMatrix, measureLayout } from './matrix'
-import { preparePlaybackMotion } from './motion-playback'
+import { ensureCachedBuffer, preparePlaybackMotion } from './motion-playback'
 import { MotionStateTracker } from './motion-state'
 import { getStageInternals } from './stage'
 
@@ -547,12 +547,12 @@ class FrameworkModel extends CubismUserModel {
   // The parsed motion is what playback needs; the raw file is only re-read
   // when a fade override has to re-parse it, and then kept for that key.
   private async ensureAssetBuffer<T>(asset: CachedMotionAsset<T>) {
-    asset.buffer ??= await fetchArrayBuffer(
+    await ensureCachedBuffer(asset, () => fetchArrayBuffer(
       asset.url,
       asset.type,
       this.assetController.signal,
       this.resolveAsset,
-    )
+    ))
     return asset
   }
 
