@@ -34,6 +34,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./devtools": "./src/devtools/index.ts",
     "./inspect": "./src/inspect/index.ts",
     "./react": "./src/react.ts",
     "./tracking/mediapipe": "./src/tracking/mediapipe/index.ts",
@@ -48,6 +49,10 @@
       ".": {
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
+      },
+      "./devtools": {
+        "types": "./dist/devtools.d.mts",
+        "default": "./dist/devtools.mjs"
       },
       "./inspect": {
         "types": "./dist/inspect.d.mts",

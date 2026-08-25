@@ -12,6 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageDirectory = path.join(root, 'packages/live2d-web')
 const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
+const devtoolsEntry = readFileSync(path.join(dist, 'devtools.mjs'), 'utf8')
 const inspectEntry = readFileSync(path.join(dist, 'inspect.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
 const cubismAdapter = readFileSync(path.join(dist, 'backends/cubism-webgl.mjs'), 'utf8')
@@ -49,6 +50,7 @@ function collectGraph(entryFile, includeDynamic) {
 }
 
 const rootBundle = collectGraph('index.mjs', false)
+const devtoolsBundle = collectGraph('devtools.mjs', false)
 const inspectBundle = collectGraph('inspect.mjs', false)
 const cubismBundle = collectGraph('backends/cubism-webgl.mjs', true)
 const mediaPipeBundle = collectGraph('tracking/mediapipe.mjs', false)
@@ -89,6 +91,8 @@ if (react.includes('@mediapipe/tasks-vision') || react.includes('FaceLandmarker'
   failures.push('react bundle contains MediaPipe tracking code')
 if (rootBundle.includes('inspectModelSource') || react.includes('inspectModelSource'))
   failures.push('root/react bundle contains optional model inspection code')
+if (rootBundle.includes('mountLive2DDevtools') || react.includes('mountLive2DDevtools'))
+  failures.push('root/react bundle contains optional Devtools code')
 if (rootBundle.includes('startMediaPipeFaceTrackerWorker'))
   failures.push('root bundle contains MediaPipe Worker code')
 if (react.includes('startMediaPipeFaceTrackerWorker'))
@@ -96,6 +100,7 @@ if (react.includes('startMediaPipeFaceTrackerWorker'))
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 enforceEntryBudget('React', react, 30_000, 8_000)
+enforceEntryBudget('Devtools', devtoolsEntry, 45_000, 12_000)
 enforceEntryBudget('Inspector', inspectEntry, 25_000, 7_000)
 enforceEntryBudget('MediaPipe main', mediaPipeEntry, 45_000, 12_000)
 enforceEntryBudget('MediaPipe Worker', mediaPipeWorkerEntry, 20_000, 6_000)
@@ -124,6 +129,14 @@ if (
 ) {
   failures.push('Inspector entry contains an archive, Framework, MediaPipe or React dependency')
 }
+if (
+  devtoolsBundle.includes('@mediapipe/tasks-vision')
+  || devtoolsBundle.includes('CubismFramework')
+  || devtoolsBundle.includes('from "react"')
+  || devtoolsBundle.includes('from \'react\'')
+) {
+  failures.push('Devtools entry contains Framework, MediaPipe or React runtime code')
+}
 
 const bundledAssets = readdirSync(dist, { recursive: true })
   .map(file => String(file))
@@ -149,8 +162,8 @@ if (packResult.size > 175_000)
   failures.push(`npm tarball exceeds its 175 kB compressed budget (${packResult.size} bytes)`)
 if (packResult.unpackedSize > 800_000)
   failures.push(`npm tarball exceeds its 800 kB unpacked budget (${packResult.unpackedSize} bytes)`)
-if (tarballFiles.length > 40)
-  failures.push(`npm tarball exceeds its 40-file budget (${tarballFiles.length} files)`)
+if (tarballFiles.length > 42)
+  failures.push(`npm tarball exceeds its 42-file budget (${tarballFiles.length} files)`)
 const forbiddenTarballFiles = tarballFiles.filter(file =>
   /benchmark|live2dcubismcore|core-compat|hiyori|profile|fixture/i.test(file),
 )
@@ -205,6 +218,13 @@ catch (error) {
 }
 
 try {
+  await import(pathToFileURL(path.join(dist, 'devtools.mjs')).href)
+}
+catch (error) {
+  failures.push(`Devtools entry is not SSR-evaluation safe: ${String(error)}`)
+}
+
+try {
   await import(pathToFileURL(path.join(dist, 'tracking/mediapipe.mjs')).href)
 }
 catch (error) {
@@ -224,5 +244,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/inspect/cubism/mediapipe/worker boundaries and budgets verified')
+  console.log('[package] vanilla/react/devtools/inspect/cubism/mediapipe/worker boundaries and budgets verified')
 }
