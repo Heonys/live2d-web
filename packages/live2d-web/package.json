@@ -36,6 +36,7 @@
     ".": "./src/index.ts",
     "./react": "./src/react.ts",
     "./tracking/mediapipe": "./src/tracking/mediapipe/index.ts",
+    "./tracking/mediapipe/worker": "./src/tracking/mediapipe/worker.ts",
     "./backends/cubism-webgl": "./src/backends/cubism-webgl/index.ts",
     "./backends/pixi-v6": "./src/backends/pixi-v6/index.ts"
   },
@@ -54,6 +55,10 @@
       "./tracking/mediapipe": {
         "types": "./dist/tracking/mediapipe.d.mts",
         "default": "./dist/tracking/mediapipe.mjs"
+      },
+      "./tracking/mediapipe/worker": {
+        "types": "./dist/tracking/mediapipe/worker.d.mts",
+        "default": "./dist/tracking/mediapipe/worker.mjs"
       },
       "./backends/cubism-webgl": {
         "types": "./dist/backends/cubism-webgl.d.mts",

@@ -226,6 +226,33 @@ function frame(timestamp: number) {
 requestAnimationFrame(frame)
 ```
 
+Move inference off the render thread with the optional Worker overload. The
+application provides the module Worker entry so its own bundler and CSP remain
+in control:
+
+```ts
+// face-tracking.worker.ts
+import { startMediaPipeFaceTrackerWorker } from 'live2d-web/tracking/mediapipe/worker'
+
+startMediaPipeFaceTrackerWorker()
+
+// application
+const tracker = await createMediaPipeFaceTracker({
+  execution: 'worker',
+  workerFactory: () => new Worker(
+    new URL('./face-tracking.worker.ts', import.meta.url),
+    { type: 'module' },
+  ),
+  wasmPath: '/mediapipe/wasm',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+})
+await tracker.update(video, performance.now())
+```
+
+Only one Worker inference runs at a time; calls made while it is busy resolve
+as `skipped` instead of growing a frame queue. `dispose()` closes the task and
+terminates the library-owned Worker. Main-thread mode remains the API default.
+
 The application owns `getUserMedia`, the video element, permissions, tracks
 and frame scheduling. The tracker owns only inference, one-second neutral
 calibration, smoothing and parameter drivers. Call `calibrate()` for a new
@@ -251,8 +278,8 @@ It is informational, and some dev overlays present it as an error.
 Tracking is **experimental** in 0.5.0: the API may change before 1.0, and
 real-camera behaviour on Perfect Sync models has not yet been verified outside
 this repository. Inference runs on-device, but applications must still disclose
-camera use and follow the MediaPipe privacy notice. Inference starts at 30fps on the main
-thread and lowers its own cap, down to 10fps, whenever measured inference time
+camera use and follow the MediaPipe privacy notice. Main-thread inference starts at 30fps and
+lowers its own cap, down to 10fps, whenever measured inference time
 would starve rendering; each update reports the current `effectiveFps`. Pass
 `maxFps` to set a different starting cap.
 

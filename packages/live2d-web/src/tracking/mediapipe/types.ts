@@ -25,8 +25,24 @@ export interface CreateMediaPipeFaceTrackerBaseOptions {
   signal?: AbortSignal
 }
 
+export interface CreateMediaPipeMainThreadOptions {
+  execution?: 'main'
+  workerFactory?: never
+}
+
+export interface CreateMediaPipeWorkerOptions {
+  execution: 'worker'
+  workerFactory: () => Worker
+}
+
+export type CreateMediaPipeMainThreadFaceTrackerOptions
+  = CreateMediaPipeFaceTrackerBaseOptions & MediaPipeModelAsset & CreateMediaPipeMainThreadOptions
+
+export type CreateMediaPipeWorkerFaceTrackerOptions
+  = CreateMediaPipeFaceTrackerBaseOptions & MediaPipeModelAsset & CreateMediaPipeWorkerOptions
+
 export type CreateMediaPipeFaceTrackerOptions
-  = CreateMediaPipeFaceTrackerBaseOptions & MediaPipeModelAsset
+  = CreateMediaPipeMainThreadFaceTrackerOptions | CreateMediaPipeWorkerFaceTrackerOptions
 
 export type MediaPipeFaceChannel = 'pose' | 'eyes' | 'brows' | 'mouth' | 'cheeks'
 export type MediaPipeMappingMode = 'auto' | 'standard' | 'perfect-sync'
@@ -63,6 +79,17 @@ export interface MediaPipeFaceTracker {
     target: MediaPipeParameterTarget,
     options?: MediaPipeAttachOptions,
   ) => () => void
+  calibrate: () => void
+  isTracking: () => boolean
+  dispose: () => void
+}
+
+export interface MediaPipeWorkerFaceTracker {
+  update: (
+    source: TexImageSource,
+    timestampMs: number,
+  ) => Promise<MediaPipeFaceTrackingUpdate>
+  attach: MediaPipeFaceTracker['attach']
   calibrate: () => void
   isTracking: () => boolean
   dispose: () => void

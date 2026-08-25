@@ -18,6 +18,7 @@ export default defineConfig({
     'index': 'src/index.ts',
     'react': 'src/react.ts',
     'tracking/mediapipe': 'src/tracking/mediapipe/index.ts',
+    'tracking/mediapipe/worker': 'src/tracking/mediapipe/worker.ts',
     'backends/cubism-webgl': 'src/backends/cubism-webgl/index.ts',
   },
   format: 'esm',

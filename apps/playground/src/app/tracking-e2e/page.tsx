@@ -3,6 +3,7 @@
 import type {
   MediaPipeFaceTracker,
   MediaPipeFaceTrackingUpdate,
+  MediaPipeWorkerFaceTracker,
 } from 'live2d-web/tracking/mediapipe'
 import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -15,9 +16,12 @@ interface TrackingMetrics {
   baselineFrameP95: number
   inferenceP50: number
   inferenceP95: number
+  roundTripP95: number
   trackingFrameOver33Ratio: number
   trackingFrameP95: number
 }
+
+type FaceTracker = MediaPipeFaceTracker | MediaPipeWorkerFaceTracker
 
 function percentile(values: readonly number[], ratio: number) {
   if (!values.length)
@@ -47,7 +51,7 @@ export default function TrackingE2EPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef(0)
   const generationRef = useRef(0)
-  const trackerRef = useRef<MediaPipeFaceTracker | null>(null)
+  const trackerRef = useRef<FaceTracker | null>(null)
   const [error, setError] = useState('')
   const [inferenceMs, setInferenceMs] = useState(0)
   const [metrics, setMetrics] = useState<TrackingMetrics | null>(null)
@@ -83,25 +87,40 @@ export default function TrackingE2EPage() {
       const baselineFrames = await collectFrameDeltas(60)
       if (generation !== generationRef.current)
         return
-      const tracker = await createMediaPipeFaceTracker({
-        modelAssetPath: MODEL_PATH,
-        wasmPath: WASM_PATH,
-      })
+      const execution = new URLSearchParams(window.location.search).get('execution')
+      const tracker: FaceTracker = execution === 'worker'
+        ? await createMediaPipeFaceTracker({
+            execution: 'worker',
+            modelAssetPath: MODEL_PATH,
+            wasmPath: WASM_PATH,
+            workerFactory: () => new Worker(
+              new URL('../../workers/face-tracking.worker.ts', import.meta.url),
+              { type: 'module' },
+            ),
+          })
+        : await createMediaPipeFaceTracker({
+            modelAssetPath: MODEL_PATH,
+            wasmPath: WASM_PATH,
+          })
       if (generation !== generationRef.current) {
         tracker.dispose()
         return
       }
       trackerRef.current = tracker
       const inferenceSamples: number[] = []
+      const roundTripSamples: number[] = []
       const trackingFrames: number[] = []
       let previousFrame: number | undefined
       let effectiveFps = 0
       let metricsRecorded = false
       const keepRunning = new URLSearchParams(window.location.search).has('soak')
-      const sample = (timestamp: number) => {
+      const sample = async (timestamp: number) => {
         if (generation !== generationRef.current || trackerRef.current !== tracker)
           return
-        const update = tracker.update(canvas, timestamp)
+        frameRef.current = requestAnimationFrame(nextTimestamp => void sample(nextTimestamp))
+        const roundTripStartedAt = performance.now()
+        const update = await tracker.update(canvas, timestamp)
+        const roundTripMs = Math.max(0, performance.now() - roundTripStartedAt)
         if (previousFrame !== undefined)
           trackingFrames.push(timestamp - previousFrame)
         previousFrame = timestamp
@@ -111,6 +130,8 @@ export default function TrackingE2EPage() {
           effectiveFps = update.effectiveFps
           if (update.status === 'tracked')
             inferenceSamples.push(update.inferenceMs)
+          if (update.status === 'tracked')
+            roundTripSamples.push(roundTripMs)
         }
         if (inferenceSamples.length >= 60 && !metricsRecorded) {
           metricsRecorded = true
@@ -119,6 +140,7 @@ export default function TrackingE2EPage() {
             effectiveFps,
             inferenceP50: percentile(inferenceSamples, 0.5),
             inferenceP95: percentile(inferenceSamples, 0.95),
+            roundTripP95: percentile(roundTripSamples, 0.95),
             trackingFrameOver33Ratio: trackingFrames.filter(value => value > 33).length
               / Math.max(1, trackingFrames.length),
             trackingFrameP95: percentile(trackingFrames, 0.95),
@@ -128,10 +150,10 @@ export default function TrackingE2EPage() {
               setMetrics(measured)
           })
         }
-        if (!metricsRecorded || keepRunning)
-          frameRef.current = requestAnimationFrame(sample)
+        if (metricsRecorded && !keepRunning)
+          cancelAnimationFrame(frameRef.current)
       }
-      frameRef.current = requestAnimationFrame(sample)
+      frameRef.current = requestAnimationFrame(timestamp => void sample(timestamp))
     }
     catch (cause) {
       if (generation === generationRef.current) {
@@ -147,16 +169,16 @@ export default function TrackingE2EPage() {
     if (!tracker || !canvas)
       return
     canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
-    const sample = (timestamp: number) => {
-      const update: MediaPipeFaceTrackingUpdate = tracker.update(canvas, timestamp)
+    const sample = async (timestamp: number) => {
+      const update: MediaPipeFaceTrackingUpdate = await tracker.update(canvas, timestamp)
       if (update.status === 'skipped') {
-        frameRef.current = requestAnimationFrame(sample)
+        frameRef.current = requestAnimationFrame(timestamp => void sample(timestamp))
         return
       }
       setStatus(update.status)
       setInferenceMs(update.inferenceMs)
     }
-    frameRef.current = requestAnimationFrame(sample)
+    frameRef.current = requestAnimationFrame(timestamp => void sample(timestamp))
   }, [])
 
   useEffect(() => {

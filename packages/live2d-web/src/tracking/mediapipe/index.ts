@@ -2,15 +2,24 @@ import type {
   FaceLandmarker,
   FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision'
+import type {
+  MediaPipeWorkerRequest,
+  MediaPipeWorkerResponse,
+  SerializedFaceResult,
+  WorkerTrackerOptions,
+} from './protocol'
 import type { FaceTrackingSignals } from './state'
 import type {
   CreateMediaPipeFaceTrackerOptions,
+  CreateMediaPipeMainThreadFaceTrackerOptions,
+  CreateMediaPipeWorkerFaceTrackerOptions,
   MediaPipeAttachOptions,
   MediaPipeFaceLostBehaviour,
   MediaPipeFaceTracker,
   MediaPipeFaceTrackingUpdate,
   MediaPipeModelAsset,
   MediaPipeParameterTarget,
+  MediaPipeWorkerFaceTracker,
 } from './types'
 import { Live2DError } from '../../core/errors'
 import { MEDIAPIPE_BLENDSHAPES } from './blendshapes'
@@ -24,6 +33,10 @@ export {
 export type {
   CreateMediaPipeFaceTrackerBaseOptions,
   CreateMediaPipeFaceTrackerOptions,
+  CreateMediaPipeMainThreadFaceTrackerOptions,
+  CreateMediaPipeMainThreadOptions,
+  CreateMediaPipeWorkerFaceTrackerOptions,
+  CreateMediaPipeWorkerOptions,
   MediaPipeAttachOptions,
   MediaPipeFaceChannel,
   MediaPipeFaceLostBehaviour,
@@ -32,6 +45,7 @@ export type {
   MediaPipeMappingMode,
   MediaPipeModelAsset,
   MediaPipeParameterTarget,
+  MediaPipeWorkerFaceTracker,
 } from './types'
 
 type VisionModule = typeof import('@mediapipe/tasks-vision')
@@ -161,6 +175,12 @@ function validateOptions(options: CreateMediaPipeFaceTrackerOptions): MediaPipeM
   }
   if (options.delegate !== undefined && options.delegate !== 'CPU' && options.delegate !== 'GPU')
     throw new Live2DError('invalid-props', 'delegate must be CPU or GPU.')
+  if (options.execution !== undefined && options.execution !== 'main' && options.execution !== 'worker')
+    throw new Live2DError('invalid-props', 'execution must be main or worker.')
+  if (options.execution === 'worker' && typeof options.workerFactory !== 'function')
+    throw new Live2DError('invalid-props', 'workerFactory must be provided for worker execution.')
+  if (options.execution !== 'worker' && options.workerFactory !== undefined)
+    throw new Live2DError('invalid-props', 'workerFactory requires execution: worker.')
   if (
     options.maxFps !== undefined
     && (!Number.isFinite(options.maxFps) || options.maxFps < 1 || options.maxFps > 60)
@@ -223,6 +243,27 @@ function inputFromResult(result: FaceLandmarkerResult, mirrored: boolean) {
   }
 }
 
+function inputFromSerializedResult(result: SerializedFaceResult | undefined, mirrored: boolean) {
+  if (!result || result.matrix.length < 16)
+    return undefined
+  const scores = new Map<string, number>()
+  for (const [categoryName, score] of result.blendshapes) {
+    const name = mirrored ? swapLeftRight(categoryName) : categoryName
+    scores.set(name, normalizeScore(score))
+  }
+  for (const name of MEDIAPIPE_BLENDSHAPES) {
+    if (!scores.has(name))
+      scores.set(name, 0)
+  }
+  const matrix = result.matrix.map(value => Number.isFinite(value) ? value : 0)
+  const pose = poseFromMatrix(matrix)
+  return {
+    blendshapes: scores,
+    matrix,
+    pose: mirrored ? { x: -pose.x, y: pose.y, z: -pose.z } : pose,
+  }
+}
+
 function trackingError(error: unknown, message: string, url?: string) {
   if (error instanceof Live2DError)
     return error
@@ -246,7 +287,7 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
   private tracking = false
 
   constructor(
-    private readonly task: FaceLandmarker,
+    private readonly task: FaceLandmarker | undefined,
     private readonly requestedMaxFps: number,
     private readonly inputMirrored: boolean,
     onFaceLost: MediaPipeFaceLostBehaviour,
@@ -269,19 +310,8 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
   }
 
   update(source: TexImageSource, timestampMs: number): MediaPipeFaceTrackingUpdate {
-    if (this.disposed)
+    if (!this.canUpdate(timestampMs) || !this.task)
       return { status: 'skipped' }
-    if (!Number.isFinite(timestampMs) || timestampMs < 0)
-      return { status: 'skipped' }
-    if (this.lastInferenceTimestamp !== undefined) {
-      if (timestampMs <= this.lastInferenceTimestamp)
-        return { status: 'skipped' }
-      // rAF stamps jitter around the display period; without slack a cap equal
-      // to the refresh rate skips every other frame.
-      if (timestampMs - this.lastInferenceTimestamp < 1_000 / this.maxFps - 1)
-        return { status: 'skipped' }
-    }
-    this.lastInferenceTimestamp = timestampMs
     const startedAt = performance.now()
     let result: FaceLandmarkerResult
     try {
@@ -291,11 +321,39 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
       throw trackingError(error, 'MediaPipe face inference failed')
     }
     const inferenceMs = Math.max(0, performance.now() - startedAt)
+    return this.applyResult(inputFromResult(result, this.inputMirrored), timestampMs, inferenceMs)
+  }
+
+  canUpdate(timestampMs: number) {
+    if (this.disposed || !Number.isFinite(timestampMs) || timestampMs < 0)
+      return false
+    if (this.lastInferenceTimestamp !== undefined) {
+      if (timestampMs <= this.lastInferenceTimestamp)
+        return false
+      // rAF stamps jitter around the display period; without slack a cap equal
+      // to the refresh rate skips every other frame.
+      if (timestampMs - this.lastInferenceTimestamp < 1_000 / this.maxFps - 1)
+        return false
+    }
+    this.lastInferenceTimestamp = timestampMs
+    return true
+  }
+
+  applySerializedResult(
+    result: SerializedFaceResult | undefined,
+    timestampMs: number,
+    inferenceMs: number,
+  ) {
+    return this.applyResult(inputFromSerializedResult(result, this.inputMirrored), timestampMs, inferenceMs)
+  }
+
+  private applyResult(
+    input: ReturnType<typeof inputFromResult>,
+    timestampMs: number,
+    inferenceMs: number,
+  ): MediaPipeFaceTrackingUpdate {
     this.adaptCap(inferenceMs)
-    const stateUpdate = this.state.update(
-      inputFromResult(result, this.inputMirrored),
-      timestampMs,
-    )
+    const stateUpdate = this.state.update(input, timestampMs)
     this.signals = stateUpdate.signals
     this.tracking = stateUpdate.status === 'tracked'
     return { effectiveFps: this.maxFps, inferenceMs, status: stateUpdate.status }
@@ -431,7 +489,7 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
     this.signals = undefined
     this.tracking = false
     try {
-      this.task.close()
+      this.task?.close()
     }
     catch (error) {
       firstError ??= error
@@ -441,10 +499,281 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
   }
 }
 
+interface PendingWorkerRequest {
+  generation: number
+  reject: (error: unknown) => void
+  resolve: (result: MediaPipeFaceTrackingUpdate) => void
+  timestampMs: number
+}
+
+class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
+  private abortCleanup: (() => void) | undefined
+  private busy = false
+  private disposed = false
+  private generation = 0
+  private nextId = 1
+  private pending = new Map<number, PendingWorkerRequest>()
+  private staleRequestIds = new Set<number>()
+  private terminateTimer: ReturnType<typeof setTimeout> | undefined
+
+  constructor(
+    private readonly worker: Worker,
+    private readonly core: MediaPipeFaceTrackerImpl,
+  ) {
+    worker.addEventListener('message', this.onMessage)
+    worker.addEventListener('error', this.onWorkerError)
+    worker.addEventListener('messageerror', this.onWorkerError)
+  }
+
+  bindAbortSignal(signal: AbortSignal) {
+    const onAbort = () => this.dispose()
+    signal.addEventListener('abort', onAbort, { once: true })
+    this.abortCleanup = () => signal.removeEventListener('abort', onAbort)
+  }
+
+  update(source: TexImageSource, timestampMs: number): Promise<MediaPipeFaceTrackingUpdate> {
+    if (this.disposed || this.busy || !this.core.canUpdate(timestampMs))
+      return Promise.resolve({ status: 'skipped' })
+    this.busy = true
+    const generation = this.generation
+    return createImageBitmap(source as ImageBitmapSource).catch((error) => {
+      this.busy = false
+      if (this.disposed)
+        return undefined
+      throw trackingError(error, 'MediaPipe worker frame capture failed')
+    }).then((bitmap) => {
+      if (!bitmap)
+        return { status: 'skipped' } as const
+      if (this.disposed || generation !== this.generation) {
+        bitmap.close()
+        this.busy = false
+        return { status: 'skipped' } as const
+      }
+      return new Promise<MediaPipeFaceTrackingUpdate>((resolve, reject) => {
+        const id = this.nextId++
+        this.pending.set(id, { generation, reject, resolve, timestampMs })
+        const request: MediaPipeWorkerRequest = { bitmap, id, timestampMs, type: 'detect' }
+        try {
+          this.worker.postMessage(request, [bitmap])
+        }
+        catch (error) {
+          this.pending.delete(id)
+          this.busy = false
+          bitmap.close()
+          reject(trackingError(error, 'MediaPipe worker frame transfer failed'))
+        }
+      })
+    })
+  }
+
+  attach: MediaPipeFaceTracker['attach'] = (target, options) => this.core.attach(target, options)
+
+  calibrate() {
+    if (this.disposed)
+      return
+    this.generation++
+    this.settlePendingAsSkipped(true)
+    this.core.calibrate()
+  }
+
+  isTracking() {
+    return !this.disposed && this.core.isTracking()
+  }
+
+  dispose() {
+    if (this.disposed)
+      return
+    this.disposed = true
+    this.generation++
+    this.abortCleanup?.()
+    this.abortCleanup = undefined
+    this.settlePendingAsSkipped()
+    this.core.dispose()
+    const id = this.nextId++
+    try {
+      this.worker.postMessage({ id, type: 'dispose' } satisfies MediaPipeWorkerRequest)
+      this.terminateTimer = setTimeout(() => this.terminate(), 1_000)
+    }
+    catch {
+      this.terminate()
+    }
+  }
+
+  private settlePendingAsSkipped(waitForWorker = false) {
+    for (const [id, pending] of this.pending) {
+      pending.resolve({ status: 'skipped' })
+      if (waitForWorker)
+        this.staleRequestIds.add(id)
+    }
+    this.pending.clear()
+    this.busy = waitForWorker && this.staleRequestIds.size > 0
+  }
+
+  private terminate() {
+    if (this.terminateTimer !== undefined)
+      clearTimeout(this.terminateTimer)
+    this.terminateTimer = undefined
+    this.worker.removeEventListener('message', this.onMessage)
+    this.worker.removeEventListener('error', this.onWorkerError)
+    this.worker.removeEventListener('messageerror', this.onWorkerError)
+    this.worker.terminate()
+  }
+
+  private onMessage = (event: MessageEvent<MediaPipeWorkerResponse>) => {
+    const response = event.data
+    if (response.type === 'disposed') {
+      this.terminate()
+      return
+    }
+    if (this.staleRequestIds.delete(response.id)) {
+      this.busy = false
+      return
+    }
+    const pending = this.pending.get(response.id)
+    if (!pending)
+      return
+    this.pending.delete(response.id)
+    this.busy = false
+    if (response.type === 'error') {
+      const cause = new Error(response.error.message)
+      cause.name = response.error.name ?? 'Error'
+      cause.stack = response.error.stack
+      pending.reject(trackingError(cause, 'MediaPipe worker inference failed'))
+      return
+    }
+    if (response.type !== 'result')
+      return
+    if (this.disposed || pending.generation !== this.generation) {
+      pending.resolve({ status: 'skipped' })
+      return
+    }
+    pending.resolve(this.core.applySerializedResult(
+      response.result,
+      pending.timestampMs,
+      response.inferenceMs,
+    ))
+  }
+
+  private onWorkerError = (event: ErrorEvent | MessageEvent) => {
+    if (this.disposed)
+      return
+    const cause = event instanceof ErrorEvent
+      ? event.error ?? new Error(event.message)
+      : new Error('MediaPipe worker message could not be deserialized.')
+    const error = trackingError(cause, 'MediaPipe worker crashed')
+    for (const pending of this.pending.values())
+      pending.reject(error)
+    this.pending.clear()
+    this.busy = false
+    this.disposed = true
+    this.abortCleanup?.()
+    this.abortCleanup = undefined
+    try {
+      this.core.dispose()
+    }
+    finally {
+      this.terminate()
+    }
+  }
+}
+
+function absoluteUrl(value: string) {
+  return new URL(value, document.baseURI).href
+}
+
+async function createWorkerTracker(
+  options: CreateMediaPipeWorkerFaceTrackerOptions,
+  modelAsset: MediaPipeModelAsset,
+): Promise<MediaPipeWorkerFaceTracker> {
+  let worker: Worker
+  try {
+    worker = options.workerFactory()
+  }
+  catch (error) {
+    throw trackingError(error, 'MediaPipe worker creation failed')
+  }
+  if (!worker || typeof worker.postMessage !== 'function' || typeof worker.terminate !== 'function') {
+    throw new Live2DError('invalid-props', 'workerFactory must return a Worker.')
+  }
+  const workerOptions: WorkerTrackerOptions = {
+    delegate: options.delegate ?? 'CPU',
+    minFaceDetectionConfidence: options.minFaceDetectionConfidence ?? DEFAULT_DETECTION_CONFIDENCE,
+    minFacePresenceConfidence: options.minFacePresenceConfidence ?? DEFAULT_PRESENCE_CONFIDENCE,
+    minTrackingConfidence: options.minTrackingConfidence ?? DEFAULT_TRACKING_CONFIDENCE,
+    wasmPath: absoluteUrl(options.wasmPath),
+    ...(typeof modelAsset.modelAssetPath === 'string'
+      ? { modelAssetPath: absoluteUrl(modelAsset.modelAssetPath) }
+      : { modelAssetBuffer: new Uint8Array(modelAsset.modelAssetBuffer) }),
+  }
+  const signal = options.signal
+  const initId = 0
+  try {
+    await awaitWithAbort(new Promise<void>((resolve, reject) => {
+      let cleanup = () => {}
+      const onMessage = (event: MessageEvent<MediaPipeWorkerResponse>) => {
+        if (event.data.id !== initId)
+          return
+        cleanup()
+        if (event.data.type === 'ready')
+          resolve()
+        else if (event.data.type === 'error')
+          reject(new Error(event.data.error.message))
+      }
+      const onError = (event: ErrorEvent) => {
+        cleanup()
+        reject(event.error ?? new Error(event.message))
+      }
+      const onMessageError = () => {
+        cleanup()
+        reject(new Error('MediaPipe worker initialization response was invalid.'))
+      }
+      cleanup = () => {
+        worker.removeEventListener('message', onMessage)
+        worker.removeEventListener('error', onError)
+        worker.removeEventListener('messageerror', onMessageError)
+      }
+      worker.addEventListener('message', onMessage)
+      worker.addEventListener('error', onError)
+      worker.addEventListener('messageerror', onMessageError)
+      const request: MediaPipeWorkerRequest = { id: initId, options: workerOptions, type: 'init' }
+      if (workerOptions.modelAssetBuffer) {
+        worker.postMessage(request, [workerOptions.modelAssetBuffer.buffer])
+      }
+      else {
+        worker.postMessage(request)
+      }
+    }), signal)
+  }
+  catch (error) {
+    worker.terminate()
+    if (isAbort(error, signal))
+      throw error
+    throw trackingError(error, 'MediaPipe worker failed to initialize')
+  }
+  const core = new MediaPipeFaceTrackerImpl(
+    undefined,
+    options.maxFps ?? DEFAULT_MAX_FPS,
+    options.inputMirrored ?? false,
+    options.onFaceLost ?? 'hold',
+  )
+  const tracker = new MediaPipeWorkerFaceTrackerImpl(worker, core)
+  if (signal)
+    tracker.bindAbortSignal(signal)
+  return tracker
+}
+
+export function createMediaPipeFaceTracker(
+  options: CreateMediaPipeWorkerFaceTrackerOptions,
+): Promise<MediaPipeWorkerFaceTracker>
+export function createMediaPipeFaceTracker(
+  options: CreateMediaPipeMainThreadFaceTrackerOptions,
+): Promise<MediaPipeFaceTracker>
 export async function createMediaPipeFaceTracker(
   options: CreateMediaPipeFaceTrackerOptions,
-): Promise<MediaPipeFaceTracker> {
+): Promise<MediaPipeFaceTracker | MediaPipeWorkerFaceTracker> {
   const modelAsset = validateOptions(options)
+  if (options.execution === 'worker')
+    return createWorkerTracker(options, modelAsset)
   // A buffer has no address; point failures at the path when there is one.
   const modelAssetUrl = 'modelAssetPath' in modelAsset ? modelAsset.modelAssetPath : undefined
   const signal = options.signal

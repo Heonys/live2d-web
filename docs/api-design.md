@@ -1,8 +1,7 @@
 # API Reference
 
-Status: 2026-08-25. The package is ESM-only. This document tracks `develop`,
-the `0.5.0` release candidate; `0.3.1` on npm lacks everything marked
-**(0.5.0)** below. The root entry has no React dependency;
+Status: 2026-08-25. The package is ESM-only. This document tracks `develop`
+after the published `0.5.0`. The root entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
 ## Vanilla API
@@ -222,8 +221,11 @@ and real Perfect Sync model verification are still consumer-side.
 
 ```ts
 function createMediaPipeFaceTracker(
-  options: CreateMediaPipeFaceTrackerOptions,
+  options: CreateMediaPipeMainThreadFaceTrackerOptions,
 ): Promise<MediaPipeFaceTracker>
+function createMediaPipeFaceTracker(
+  options: CreateMediaPipeWorkerFaceTrackerOptions,
+): Promise<MediaPipeWorkerFaceTracker>
 ```
 
 Perfect Sync detection uses the ARKit 52 parameter names (`ParamBrowDownLeft`
@@ -239,7 +241,7 @@ type MediaPipeModelAsset =
   | { modelAssetPath: string; modelAssetBuffer?: never }
   | { modelAssetBuffer: Uint8Array; modelAssetPath?: never }
 
-type CreateMediaPipeFaceTrackerOptions = MediaPipeModelAsset & {
+type CreateMediaPipeFaceTrackerBaseOptions = MediaPipeModelAsset & {
   wasmPath: string
   delegate?: 'CPU' | 'GPU' // CPU
   maxFps?: number // 30; adapts down to 10 under slow inference; finite 1..60
@@ -250,6 +252,18 @@ type CreateMediaPipeFaceTrackerOptions = MediaPipeModelAsset & {
   onFaceLost?: 'hold' | 'neutral' // hold
   signal?: AbortSignal
 }
+
+type CreateMediaPipeMainThreadFaceTrackerOptions
+  = CreateMediaPipeFaceTrackerBaseOptions & {
+    execution?: 'main'
+    workerFactory?: never
+  }
+
+type CreateMediaPipeWorkerFaceTrackerOptions
+  = CreateMediaPipeFaceTrackerBaseOptions & {
+    execution: 'worker'
+    workerFactory: () => Worker
+  }
 
 interface MediaPipeAttachOptions {
   mapping?: 'auto' | 'standard' | 'perfect-sync'
@@ -275,6 +289,15 @@ interface MediaPipeFaceTracker {
     target: Live2DInstance | Live2DModelController,
     options?: MediaPipeAttachOptions,
   ): () => void
+  calibrate(): void
+  isTracking(): boolean
+  dispose(): void
+}
+
+interface MediaPipeWorkerFaceTracker {
+  update(source: TexImageSource, timestampMs: number):
+    Promise<MediaPipeFaceTrackingUpdate>
+  attach: MediaPipeFaceTracker['attach']
   calibrate(): void
   isTracking(): boolean
   dispose(): void
@@ -316,13 +339,25 @@ simulates hair and body against the tracked head. Every other channel keeps the
 default late phase, which also lets a tracked blink beat the automatic
 eye-blink effect.
 
-`auto` selects direct 52-parameter Perfect Sync mapping only when all expected
+`auto` selects direct Perfect Sync mapping when at least 45 of the ARKit 52
 parameter IDs are present in `ModelInfo.parameters`; otherwise it uses common
 pose, body, eye, brow, mouth and cheek parameters. Forced Perfect Sync reports
 every missing ID with `invalid-props`. Setting `channels.mouth` to false is the
 supported way to keep volume or audio lip sync as the sole mouth writer.
 Multiple independent targets can attach to one tracker; reattaching the same
 target replaces its old driver set.
+
+Worker mode uses the separate SSR-safe
+`live2d-web/tracking/mediapipe/worker` entry. The application calls
+`startMediaPipeFaceTrackerWorker()` from its module Worker file and supplies a
+factory. The tracker owns and terminates that Worker. It transfers a cloned
+`ImageBitmap`, never mutates the caller's source, runs one inference at a time
+and reports concurrent calls as `skipped`. The Worker returns only normalized
+blendshape scores, a 4×4 transform and inference time. Calibration, smoothing,
+loss recovery and model mapping remain on the main thread. Relative WASM and
+model URLs are resolved against `document.baseURI`; model buffers are copied
+before transfer. Worker initialization errors are `tracking-error` and never
+silently fall back to main mode.
 
 ## Model sources (0.3.0)
 

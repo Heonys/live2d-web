@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Optional MediaPipe Worker execution keeps the existing synchronous main
+  tracker as the default while adding an asynchronous, one-frame-in-flight
+  tracker through an application-provided module Worker. The new
+  `live2d-web/tracking/mediapipe/worker` entry owns task startup and cleanup;
+  frames, landmarks, WASM and model assets remain unbundled.
+
 ## 0.5.0 - 2026-08-25
 
 Ships both roadmap scopes in one release; see the 2026-08-25 decision in

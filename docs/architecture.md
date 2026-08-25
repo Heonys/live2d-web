@@ -205,8 +205,17 @@ Chromium은 inference p95 14.4ms와 33ms 초과 프레임 0.16%였지만 Firefox
 headless는 p95 202ms로 임계값을 넘었다. 고정 상한 하나로는 둘을 함께 만족할
 수 없어 상한을 **적응형**으로 둔다: 30fps로 시작하고, 추론 시간 EMA가 간격의
 60%를 넘으면 절반으로(최저 10fps), 25% 아래로 내려오면 다시 두 배로 올린다.
-`update()`가 `effectiveFps`로 현재 상한을 알린다. Worker는 Firefox·저성능
-장치의 렌더 스레드를 보호하는 다음 성능 작업으로 남긴다.
+`update()`가 `effectiveFps`로 현재 상한을 알린다.
+
+0.6의 선택형 Worker 경로는 `main runner → 공용 상태·매핑` 경계를
+`Worker client/protocol → Worker runner → 공용 상태·매핑`으로 바꾼다. 앱이
+module Worker factory를 주고 라이브러리가 그 Worker를 소유한다. 메인 스레드는
+입력을 `ImageBitmap`으로 복제·transfer하고, Worker는 추론 직후 bitmap을 닫는다.
+Worker는 52개 점수·4×4 행렬·추론 시간만 돌려주며 프레임과 랜드마크는 보내지
+않는다. 보정·평활화·loss·감도·driver 매핑은 기존 공용 로직을 그대로 쓴다.
+동시 추론은 하나로 제한하고 busy 프레임을 큐에 쌓지 않는다. calibrate·abort·
+dispose generation이 늦은 결과를 무효화하며, dispose는 task close 뒤 Worker를
+종료한다. 기본 main 모드의 동기 `update()` 계약은 바뀌지 않는다.
 
 ## 오류와 정리
 

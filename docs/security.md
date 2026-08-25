@@ -10,12 +10,12 @@ dependency graphs. Security results must not combine them.
 `pnpm verify:packed-consumers` packs the exact candidate, installs it in a
 temporary vanilla project whose only production dependency is that tarball,
 and runs `npm audit --omit=dev --audit-level=high`. It then builds vanilla Vite,
-React Vite and Next SSR consumers. The 0.3.1 candidate reports zero production
+React Vite and Next SSR consumers. The 0.5.0 artifact reports zero production
 vulnerabilities.
 
 The public package contains `wlipsync` as its only direct runtime dependency,
 plus optional React and `@mediapipe/tasks-vision` peers. MediaPipe is reachable
-only from `/tracking/mediapipe` and loads dynamically. Pixi, Next and benchmark
+only from `/tracking/mediapipe` and its `/worker` entry, and loads dynamically. Pixi, Next and benchmark
 tooling are not in its published dependency graph; `verify-package.mjs` checks
 that boundary in both the root and React bundles, and rejects any `.bin`,
 `.json`, `.task` or `.wasm` file in `dist/` as well as the asset names inside
@@ -35,7 +35,11 @@ self-host them and allow their origins in `connect-src`; browsers may also
 require the CSP WebAssembly compilation directive supported by that browser
 (commonly `'wasm-unsafe-eval'` in `script-src`). Cross-origin assets need CORS.
 The package supplies no default CDN, does not fall back to another origin and
-does not bundle the model.
+does not bundle the model. Worker deployments must also allow the application
+worker URL in `worker-src` (normally `worker-src 'self'`; add `blob:` only when
+the application deliberately creates blob workers). The worker resolves
+relative WASM and model paths against the main document URL, so both resources
+still need the same CORS and CSP permissions. Prefer self-hosting them.
 
 ## Repository and Playground
 

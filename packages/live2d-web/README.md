@@ -123,6 +123,13 @@ const detach = tracker.attach(character, {
 tracker.update(video, performance.now()) // once per app-owned capture frame
 ```
 
+For optional off-thread inference, create an application Worker entry that
+calls `startMediaPipeFaceTrackerWorker()` from
+`live2d-web/tracking/mediapipe/worker`, then pass `execution: 'worker'` and a
+`workerFactory`. Worker `update()` is asynchronous, keeps at most one inference
+in flight and resolves busy frames as `skipped`; main mode remains synchronous
+and is still the default.
+
 The tracker performs one-second neutral calibration, smoothing, face-loss
 recovery and standard or Perfect Sync mapping (ARKit names, 45 of 52 or
 more). Clean up with

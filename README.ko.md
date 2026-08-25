@@ -225,6 +225,31 @@ function frame(timestamp: number) {
 requestAnimationFrame(frame)
 ```
 
+선택형 Worker 오버로드를 쓰면 추론을 렌더 스레드에서 분리할 수 있습니다. 앱이
+자기 번들러와 CSP에 맞는 module Worker 엔트리를 제공합니다.
+
+```ts
+// face-tracking.worker.ts
+import { startMediaPipeFaceTrackerWorker } from 'live2d-web/tracking/mediapipe/worker'
+
+startMediaPipeFaceTrackerWorker()
+
+const tracker = await createMediaPipeFaceTracker({
+  execution: 'worker',
+  workerFactory: () => new Worker(
+    new URL('./face-tracking.worker.ts', import.meta.url),
+    { type: 'module' },
+  ),
+  wasmPath: '/mediapipe/wasm',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+})
+await tracker.update(video, performance.now())
+```
+
+Worker 추론은 한 번에 하나만 실행합니다. 처리 중 들어온 호출은 쌓지 않고
+`skipped`로 끝납니다. `dispose()`는 task를 닫고 라이브러리가 소유한 Worker를
+종료합니다. 기본값과 기존 동기 `update()`는 main 모드 그대로입니다.
+
 카메라 권한, `getUserMedia`, video, track과 프레임 스케줄링은 앱이 소유합니다.
 트래커는 추론, 1초 중립 보정, 평활화와 파라미터 드라이버만 관리합니다. 중립
 자세를 다시 잡을 때 `calibrate()`, 정리할 때 `detach()`와 `dispose()`를
@@ -249,7 +274,7 @@ MediaPipe의 WASM 런타임은 시작 로그
 트래킹은 0.5.0에서 **experimental**입니다. 1.0 전에 API가 바뀔 수 있고,
 실제 카메라와 Perfect Sync 모델의 체감은 아직 저장소 밖에서 검증되지
 않았습니다. 추론은 기기 안에서 실행되지만 카메라 사용 고지와 MediaPipe
-개인정보 안내는 앱 책임입니다. 추론은 메인 스레드에서 30fps로 시작하고, 측정된 추론 시간이
+개인정보 안내는 앱 책임입니다. main 추론은 30fps로 시작하고, 측정된 추론 시간이
 렌더링을 굶기면 스스로 상한을 낮춥니다(최저 10fps). 매 update가 현재
 `effectiveFps`를 알려 줍니다. 시작 상한은 `maxFps`로 바꿀 수 있습니다.
 

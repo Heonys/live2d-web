@@ -15,6 +15,7 @@ import type {
   MediaPipeFaceLostBehaviour,
   MediaPipeFaceTracker,
   MediaPipeMappingMode,
+  MediaPipeWorkerFaceTracker,
 } from 'live2d-web/tracking/mediapipe'
 import type { AssetManifest } from '../lib/assetManifest'
 import { createVolumeLipSync } from 'live2d-web'
@@ -48,6 +49,8 @@ interface MotionOption {
 
 type MotionFadePreset = '500' | 'instant' | 'model'
 type IdlePreset = 'first' | 'uniform'
+type FaceTracker = MediaPipeFaceTracker | MediaPipeWorkerFaceTracker
+type FaceTrackingExecution = 'main' | 'worker'
 
 function optionsForFadePreset(preset: MotionFadePreset): MotionOptions | undefined {
   if (preset === 'model')
@@ -191,6 +194,10 @@ export default function Home() {
   const [faceTrackingError, setFaceTrackingError] = useState('')
   const [faceTrackingStatus, setFaceTrackingStatus] = useState('idle')
   const [faceInferenceMs, setFaceInferenceMs] = useState(0)
+  const [faceRoundTripMs, setFaceRoundTripMs] = useState(0)
+  const [faceEffectiveFps, setFaceEffectiveFps] = useState(0)
+  const [faceSkippedRatio, setFaceSkippedRatio] = useState(0)
+  const [faceExecution, setFaceExecution] = useState<FaceTrackingExecution>('worker')
   const [faceMapping, setFaceMapping] = useState<MediaPipeMappingMode>('auto')
   const [facePoseSensitivity, setFacePoseSensitivity] = useState(3)
   const [faceLostMode, setFaceLostMode] = useState<MediaPipeFaceLostBehaviour>('hold')
@@ -219,7 +226,7 @@ export default function Home() {
     detach: () => void
     frame: number
     stream: MediaStream
-    tracker: MediaPipeFaceTracker
+    tracker: FaceTracker
   } | null>(null)
   const micRef = useRef<{
     analyser: AnalyserNode
@@ -291,7 +298,7 @@ export default function Home() {
     resetFacePeak()
     const generation = ++faceGenerationRef.current
     let stream: MediaStream | undefined
-    let tracker: MediaPipeFaceTracker | undefined
+    let tracker: FaceTracker | undefined
     try {
       if (!controller)
         throw new Error('Wait for the Live2D model to become ready.')
@@ -323,11 +330,21 @@ export default function Home() {
           track.stop()
         return
       }
-      const createdTracker = await createMediaPipeFaceTracker({
+      const sharedOptions = {
         modelAssetPath: '/assets/mediapipe/face_landmarker.task',
         onFaceLost: faceLostMode,
         wasmPath: '/assets/mediapipe/wasm',
-      })
+      } as const
+      const createdTracker: FaceTracker = faceExecution === 'worker'
+        ? await createMediaPipeFaceTracker({
+            ...sharedOptions,
+            execution: 'worker',
+            workerFactory: () => new Worker(
+              new URL('../workers/face-tracking.worker.ts', import.meta.url),
+              { type: 'module' },
+            ),
+          })
+        : await createMediaPipeFaceTracker(sharedOptions)
       tracker = createdTracker
       if (generation !== faceGenerationRef.current) {
         createdTracker.dispose()
@@ -347,16 +364,30 @@ export default function Home() {
         tracker: createdTracker,
       }
       faceTrackingRef.current = tracking
-      const sample = (timestamp: number) => {
+      let attemptedFrames = 0
+      let skippedFrames = 0
+      const startedAt = performance.now()
+      const sample = async (timestamp: number) => {
         if (faceTrackingRef.current !== tracking)
           return
+        tracking.frame = requestAnimationFrame(nextTimestamp => void sample(nextTimestamp))
         if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
           try {
-            const update = createdTracker.update(video, timestamp)
+            attemptedFrames++
+            const roundTripStartedAt = performance.now()
+            const update = await createdTracker.update(video, timestamp)
+            const roundTripMs = Math.max(0, performance.now() - roundTripStartedAt)
             if (update.status !== 'skipped') {
               setFaceTrackingStatus(update.status)
               setFaceInferenceMs(update.inferenceMs)
+              setFaceRoundTripMs(roundTripMs)
+              setFaceEffectiveFps(update.effectiveFps)
             }
+            else {
+              skippedFrames++
+            }
+            if (performance.now() - startedAt >= 500)
+              setFaceSkippedRatio(skippedFrames / Math.max(1, attemptedFrames))
             // Read back the model rather than the tracker: this is the value that
             // survived motions, physics and every other driver, which is what the
             // rendered head angle actually uses.
@@ -383,12 +414,10 @@ export default function Home() {
           catch (error) {
             setFaceTrackingError(error instanceof Error ? error.message : String(error))
             stopFaceTracking()
-            return
           }
         }
-        tracking.frame = requestAnimationFrame(sample)
       }
-      tracking.frame = requestAnimationFrame(sample)
+      tracking.frame = requestAnimationFrame(timestamp => void sample(timestamp))
       setFaceTrackingActive(true)
     }
     catch (error) {
@@ -411,6 +440,7 @@ export default function Home() {
     faceLostMode,
     faceMapping,
     facePoseSensitivity,
+    faceExecution,
     resetFacePeak,
     stopFaceTracking,
   ])
@@ -1033,7 +1063,7 @@ export default function Home() {
                 />
                 <output data-testid="face-tracking-status">
                   {faceTrackingStatus}
-                  {faceTrackingActive && ` · ${faceInferenceMs.toFixed(1)} ms`}
+                  {faceTrackingActive && ` · inference ${faceInferenceMs.toFixed(1)} ms · round trip ${faceRoundTripMs.toFixed(1)} ms · ${faceEffectiveFps.toFixed(0)} fps · ${(faceSkippedRatio * 100).toFixed(0)}% skipped`}
                 </output>
                 {faceTrackingActive && (
                   <table className="pose-readout" data-testid="face-pose-readout">
@@ -1090,6 +1120,20 @@ export default function Home() {
                 >
                   Recalibrate face
                 </button>
+                <label>
+                  Execution
+                  <select
+                    aria-label="Face tracking execution"
+                    disabled={faceTrackingActive}
+                    value={faceExecution}
+                    onChange={event => setFaceExecution(
+                      event.target.value as FaceTrackingExecution,
+                    )}
+                  >
+                    <option value="worker">Worker</option>
+                    <option value="main">Main thread</option>
+                  </select>
+                </label>
                 <label>
                   Pose sensitivity
                   <output>{facePoseSensitivity.toFixed(2)}</output>

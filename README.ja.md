@@ -229,6 +229,31 @@ function frame(timestamp: number) {
 requestAnimationFrame(frame)
 ```
 
+オプションのWorkerオーバーロードを使うと、推論を描画スレッドから分離できます。
+アプリが自分のバンドラーとCSPに合うmodule Workerエントリを提供します。
+
+```ts
+// face-tracking.worker.ts
+import { startMediaPipeFaceTrackerWorker } from 'live2d-web/tracking/mediapipe/worker'
+
+startMediaPipeFaceTrackerWorker()
+
+const tracker = await createMediaPipeFaceTracker({
+  execution: 'worker',
+  workerFactory: () => new Worker(
+    new URL('./face-tracking.worker.ts', import.meta.url),
+    { type: 'module' },
+  ),
+  wasmPath: '/mediapipe/wasm',
+  modelAssetPath: '/mediapipe/face_landmarker.task',
+})
+await tracker.update(video, performance.now())
+```
+
+Worker推論は同時に1件だけ実行し、処理中の呼び出しはキューへ積まず
+`skipped`になります。`dispose()`はtaskを閉じ、ライブラリ所有のWorkerを
+終了します。既定値と同期`update()`はmainモードのままです。
+
 カメラ権限、`getUserMedia`、video、track、フレームスケジュールはアプリが
 所有します。トラッカーは推論、1秒のニュートラル補正、平滑化、パラメータ
 ドライバーだけを管理します。再補正には`calibrate()`、終了時には`detach()`と
@@ -252,7 +277,7 @@ MediaPipeのWASMランタイムは起動ログ
 トラッキングは0.5.0では**experimental**です。1.0までにAPIが変わる可能性が
 あり、実カメラとPerfect Syncモデルでの体感はまだリポジトリ外で検証されて
 いません。推論は端末内で実行されますが、カメラ利用の告知とMediaPipeの
-プライバシー案内はアプリ側の責任です。推論はメインスレッドで30fpsから始まり、計測した
+プライバシー案内はアプリ側の責任です。main推論は30fpsから始まり、計測した
 推論時間が描画を妨げるときは上限を自動で下げます（最低10fps）。各updateが
 現在の`effectiveFps`を返します。開始上限は`maxFps`で変更できます。
 
