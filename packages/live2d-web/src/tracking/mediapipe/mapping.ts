@@ -1,8 +1,10 @@
 import type { ModelInfo, ModelParameterInfo } from '../../core/contract'
+import type { MediaPipeBlendshape } from './blendshapes'
 import type { FaceTrackingSignals } from './state'
 import type { MediaPipeAttachOptions, MediaPipeFaceChannel } from './types'
 import {
-  MEDIAPIPE_BLENDSHAPES,
+  ARKIT_BLENDSHAPES,
+  PERFECT_SYNC_MINIMUM_PARAMETERS,
   PERFECT_SYNC_PARAMETER_IDS,
   perfectSyncParameterId,
 } from './blendshapes'
@@ -55,7 +57,7 @@ function scaleUnit(value: number, parameter: ModelParameterInfo) {
   )
 }
 
-function score(signals: FaceTrackingSignals, name: typeof MEDIAPIPE_BLENDSHAPES[number]) {
+function score(signals: FaceTrackingSignals, name: MediaPipeBlendshape) {
   return signals.blendshapes.get(name) ?? 0
 }
 
@@ -67,9 +69,16 @@ function isEnabled(options: MediaPipeAttachOptions, channel: MediaPipeFaceChanne
   return options.channels?.[channel] !== false
 }
 
-export function hasPerfectSyncParameters(info: ModelInfo) {
+export function missingPerfectSyncParameters(info: ModelInfo) {
   const ids = new Set(info.parameters?.map(parameter => parameter.id) ?? [])
-  return PERFECT_SYNC_PARAMETER_IDS.every(id => ids.has(id))
+  return PERFECT_SYNC_PARAMETER_IDS.filter(id => !ids.has(id))
+}
+
+// Riggers routinely drop a few ARKit parameters (tongue, cheeks), so demanding
+// all 52 would reject nearly every real model.
+export function hasPerfectSyncParameters(info: ModelInfo) {
+  const missing = missingPerfectSyncParameters(info).length
+  return PERFECT_SYNC_PARAMETER_IDS.length - missing >= PERFECT_SYNC_MINIMUM_PARAMETERS
 }
 
 export function createParameterBindings(
@@ -81,11 +90,12 @@ export function createParameterBindings(
     ? hasPerfectSyncParameters(info) ? 'perfect-sync' : 'standard'
     : options.mapping
 
-  if (mapping === 'perfect-sync') {
-    const missing = PERFECT_SYNC_PARAMETER_IDS.filter(id => !parameters.has(id))
-    if (missing.length) {
-      throw new Error(`Perfect Sync mapping is missing parameters: ${missing.join(', ')}`)
-    }
+  if (mapping === 'perfect-sync' && !hasPerfectSyncParameters(info)) {
+    const missing = missingPerfectSyncParameters(info)
+    throw new Error(
+      `Perfect Sync mapping needs at least ${PERFECT_SYNC_MINIMUM_PARAMETERS} of `
+      + `${PERFECT_SYNC_PARAMETER_IDS.length} ARKit parameters; missing: ${missing.join(', ')}`,
+    )
   }
 
   const bindings: ParameterBinding[] = []
@@ -122,7 +132,10 @@ export function createParameterBindings(
   add('ParamBodyAngleZ', 'pose', 'signed', signals => signals.pose.z / 30 * 0.3)
 
   if (mapping === 'perfect-sync') {
-    for (const name of MEDIAPIPE_BLENDSHAPES) {
+    for (const name of ARKIT_BLENDSHAPES) {
+      // MediaPipe never reports tongueOut; leave that parameter at the model default.
+      if (name === 'tongueOut')
+        continue
       const channel: MediaPipeFaceChannel = name.startsWith('eye')
         ? 'eyes'
         : name.startsWith('brow')
@@ -130,7 +143,7 @@ export function createParameterBindings(
           : name.startsWith('cheek') || name.startsWith('nose')
             ? 'cheeks'
             : 'mouth'
-      add(perfectSyncParameterId(name), channel, 'unit', signals => score(signals, name), true)
+      add(perfectSyncParameterId(name), channel, 'unit', signals => score(signals, name))
     }
     return bindings
   }
