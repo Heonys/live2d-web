@@ -17,17 +17,10 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        // Headless Firefox on a GPU-less Linux runner reports no WebGL2
-        // unless it is told to fall back to software rendering.
-        launchOptions: {
-          firefoxUserPrefs: {
-            'webgl.disabled': false,
-            'webgl.force-enabled': true,
-          },
-        },
-      },
+      // Headless Firefox on the Linux runner has no WebGL2 even with
+      // webgl.force-enabled (tried 2026-08-25). CI runs it headed under Xvfb,
+      // where Mesa's software GL is available.
+      use: { ...devices['Desktop Firefox'], headless: !process.env.CI },
     },
   ],
   // The github reporter turns failures into check-run annotations, which are

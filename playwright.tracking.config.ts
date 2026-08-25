@@ -9,7 +9,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     // Firefox infers an order of magnitude slower; give WASM startup room.
-    { name: 'firefox', timeout: 240_000, use: { ...devices['Desktop Firefox'] } },
+    { name: 'firefox', timeout: 240_000, use: { ...devices['Desktop Firefox'], headless: !process.env.CI } },
   ],
   // The github reporter turns failures into check-run annotations, which are
   // readable without a token when the run's log is not.
