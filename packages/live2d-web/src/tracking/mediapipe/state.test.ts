@@ -60,20 +60,35 @@ describe('mediaPipe face tracking state', () => {
     expect(Number.isFinite(split.signals?.pose.x)).toBe(true)
   })
 
-  it('holds a lost face briefly and then returns toward neutral', () => {
+  // Default. Recentring the head the moment a wearer glances off-camera reads
+  // as a snap, so the last pose stays until the face comes back.
+  it('holds the last pose indefinitely while the face is lost', () => {
     const state = new FaceTrackingState()
     calibrate(state)
     const tracked = state.update(input({ jawOpen: 1 }), 1_120)
     const open = tracked.signals?.blendshapes.get('jawOpen') ?? 0
 
-    const held = state.update(undefined, 1_300)
+    for (const timestamp of [1_300, 1_500, 3_000, 30_000]) {
+      const lost = state.update(undefined, timestamp)
+      expect(lost.status).toBe('lost')
+      expect(lost.signals?.blendshapes.get('jawOpen')).toBeCloseTo(open)
+    }
+  })
+
+  it('returns toward neutral when asked to', () => {
+    const state = new FaceTrackingState({ onFaceLost: 'neutral' })
+    calibrate(state)
+    const tracked = state.update(input({ jawOpen: 1 }), 1_120)
+    const open = tracked.signals?.blendshapes.get('jawOpen') ?? 0
+
+    const held = state.update(undefined, 1_600)
     expect(held.signals?.blendshapes.get('jawOpen')).toBeCloseTo(open)
 
-    const releasing = state.update(undefined, 1_500)
+    const releasing = state.update(undefined, 2_400)
     expect(releasing.status).toBe('lost')
     expect(releasing.signals?.blendshapes.get('jawOpen')).toBeLessThan(open)
 
-    const neutral = state.update(undefined, 1_670)
+    const neutral = state.update(undefined, 3_000)
     expect(neutral.signals?.blendshapes.get('jawOpen')).toBe(0)
     expect(neutral.signals?.pose).toEqual({ x: 0, y: 0, z: 0 })
   })
@@ -153,5 +168,97 @@ describe('mediaPipe face tracking state', () => {
     expect(poseFromMatrix(pitch20).x).toBeCloseTo(0)
     expect(poseFromMatrix(roll20).z).toBeCloseTo(-20)
     expect(poseFromMatrix(roll20).x).toBeCloseTo(0)
+  })
+
+  // MediaPipe fits the canonical face with a similarity transform, so the
+  // basis carries head scale. Before normalizing, a scaled basis shrank yaw
+  // (asin reads one entry) while leaving pitch and roll intact (atan2 takes a
+  // ratio). Measured live as a large head turn reporting a few degrees.
+  it.each([0.5, 0.85, 1, 1.4])('recovers angles from a basis scaled by %s', (scale) => {
+    const c = Math.cos(Math.PI / 6)
+    const s = Math.sin(Math.PI / 6)
+    const scaled = [
+      c * scale,
+      0,
+      -s * scale,
+      0,
+      0,
+      scale,
+      0,
+      0,
+      s * scale,
+      0,
+      c * scale,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ]
+
+    expect(poseFromMatrix(scaled).x).toBeCloseTo(30)
+  })
+
+  it('rejects a degenerate basis instead of returning NaN', () => {
+    expect(poseFromMatrix(Array.from<number>({ length: 16 }).fill(0)))
+      .toEqual({ x: 0, y: 0, z: 0 })
+  })
+
+  // As the face leaves frame the estimate breaks down and slams the pose to
+  // the parameter rail for a frame or two. A head cannot actually move that
+  // fast, so the jump is capped rather than dropped: dropping would stall a
+  // genuine fast turn.
+  it('caps an implausible pose jump instead of passing it through', () => {
+    const state = new FaceTrackingState()
+    calibrate(state)
+
+    const yaw = (degrees: number) => {
+      const radians = degrees * Math.PI / 180
+      return {
+        blendshapes: new Map<string, number>(),
+        pose: { x: degrees, y: 0, z: 0 },
+        matrix: [
+          Math.cos(radians),
+          0,
+          -Math.sin(radians),
+          0,
+          0,
+          1,
+          0,
+          0,
+          Math.sin(radians),
+          0,
+          Math.cos(radians),
+          0,
+          0,
+          0,
+          0,
+          1,
+        ],
+      }
+    }
+
+    // 34ms at 360 deg/s allows ~12 degrees; the estimate claims 80.
+    state.update(yaw(0), 1_054)
+    const slammed = state.update(yaw(80), 1_088)
+    expect(slammed.signals?.pose.x).toBeLessThan(13)
+
+    // A sustained turn still gets there, just across several frames.
+    let last = 0
+    for (let timestamp = 1_122; timestamp <= 1_500; timestamp += 34)
+      last = state.update(yaw(80), timestamp).signals?.pose.x ?? 0
+    expect(last).toBeGreaterThan(60)
+  })
+
+  it('leaves calibration frames unlimited so the baseline stays honest', () => {
+    const state = new FaceTrackingState()
+    let update = state.update({ blendshapes: new Map(), pose: { x: 0, y: 0, z: 0 } }, 0)
+    for (let timestamp = 34; timestamp <= 1_020; timestamp += 34)
+      update = state.update({ blendshapes: new Map(), pose: { x: 40, y: 0, z: 0 } }, timestamp)
+
+    expect(update.status).toBe('tracked')
+    // The baseline averaged the 40-degree frames, so holding there reads as
+    // neutral rather than as a capped ramp.
+    expect(update.signals?.pose.x).toBeLessThan(5)
   })
 })

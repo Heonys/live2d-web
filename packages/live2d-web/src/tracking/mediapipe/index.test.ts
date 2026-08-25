@@ -116,6 +116,45 @@ describe('createMediaPipeFaceTracker', () => {
     tracker.dispose()
   })
 
+  // MediaPipe defaults all three to 0.5, which drops the face partway into an
+  // ordinary head turn. Pin the relaxed defaults so a bump is deliberate.
+  it('relaxes the detection thresholds below the MediaPipe defaults', async () => {
+    const tracker = await createMediaPipeFaceTracker({
+      modelAssetPath: '/face.task',
+      wasmPath: '/confidence-defaults',
+    })
+
+    expect(mediaPipeMocks.createFromOptions).toHaveBeenCalledWith(
+      { wasm: 'fileset' },
+      expect.objectContaining({
+        minFaceDetectionConfidence: 0.4,
+        minFacePresenceConfidence: 0.4,
+        minTrackingConfidence: 0.3,
+      }),
+    )
+    tracker.dispose()
+  })
+
+  it('forwards explicit detection thresholds', async () => {
+    const tracker = await createMediaPipeFaceTracker({
+      minFaceDetectionConfidence: 0.7,
+      minFacePresenceConfidence: 0.6,
+      minTrackingConfidence: 0.5,
+      modelAssetPath: '/face.task',
+      wasmPath: '/confidence-explicit',
+    })
+
+    expect(mediaPipeMocks.createFromOptions).toHaveBeenCalledWith(
+      { wasm: 'fileset' },
+      expect.objectContaining({
+        minFaceDetectionConfidence: 0.7,
+        minFacePresenceConfidence: 0.6,
+        minTrackingConfidence: 0.5,
+      }),
+    )
+    tracker.dispose()
+  })
+
   it('passes an explicit model buffer without converting it to a path', async () => {
     const modelAssetBuffer = new Uint8Array([1, 2, 3])
     const tracker = await createMediaPipeFaceTracker({
@@ -252,6 +291,10 @@ describe('createMediaPipeFaceTracker', () => {
     { maxFps: 61, modelAssetPath: '/face.task', wasmPath: '/wasm' },
     { modelAssetBuffer: new Uint8Array(), wasmPath: '/wasm' },
     { modelAssetBuffer: new Uint8Array([1]), modelAssetPath: '/face.task', wasmPath: '/wasm' },
+    { minFaceDetectionConfidence: -0.1, modelAssetPath: '/face.task', wasmPath: '/wasm' },
+    { minFacePresenceConfidence: 1.1, modelAssetPath: '/face.task', wasmPath: '/wasm' },
+    { minTrackingConfidence: Number.NaN, modelAssetPath: '/face.task', wasmPath: '/wasm' },
+    { modelAssetPath: '/face.task', onFaceLost: 'freeze', wasmPath: '/wasm' },
   ])('rejects invalid options %#', async (options) => {
     await expect(createMediaPipeFaceTracker(options as never)).rejects.toMatchObject({
       code: 'invalid-props',

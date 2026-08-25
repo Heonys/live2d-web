@@ -1,4 +1,5 @@
 import type { MediaPipeBlendshape } from './blendshapes'
+import type { MediaPipeFaceLostBehaviour } from './types'
 import { MEDIAPIPE_BLENDSHAPES } from './blendshapes'
 
 export interface FaceTrackingInput {
@@ -19,10 +20,16 @@ export interface FaceTrackingStateUpdate {
 }
 
 const CALIBRATION_MS = 1_000
-const LOST_HOLD_MS = 250
-const LOST_RELEASE_MS = 300
+// 250ms + 300ms put the head back at centre inside half a second, which reads
+// as a snap when the wearer only glanced away. Only 'neutral' decays at all.
+const LOST_HOLD_MS = 1_000
+const LOST_RELEASE_MS = 800
 const POSE_SMOOTHING_MS = 100
 const FACE_SMOOTHING_MS = 60
+// A head cannot cross 360 degrees in a second. Anything faster is the pose
+// estimate breaking down as the face leaves frame, which reached the model as
+// a one-frame slam to the parameter rail.
+const MAX_POSE_DEGREES_PER_SECOND = 360
 
 function clamp(value: number, minimum = 0, maximum = 1) {
   return Math.max(minimum, Math.min(maximum, Number.isFinite(value) ? value : minimum))
@@ -35,15 +42,35 @@ function exponentialStep(current: number, target: number, deltaMs: number, timeM
   return current + (target - current) * alpha
 }
 
-/** Extracts Live2D-oriented Euler angles from a column-major 4x4 matrix. */
+function columnLength(matrix: readonly number[], column: number) {
+  const x = matrix[column * 4]
+  const y = matrix[column * 4 + 1]
+  const z = matrix[column * 4 + 2]
+  return Math.hypot(x, y, z)
+}
+
+/**
+ * Extracts Live2D-oriented Euler angles from a column-major 4x4 matrix.
+ *
+ * MediaPipe fits the canonical face with a similarity transform, so the basis
+ * carries the head's scale as well as its rotation. Dividing it out matters
+ * asymmetrically: the two atan2 axes take a ratio and cancel scale on their
+ * own, but asin reads a single entry and would report a smaller angle than the
+ * head actually turned.
+ */
 export function poseFromMatrix(matrix?: readonly number[]) {
   if (!matrix || matrix.length < 16 || matrix.some(value => !Number.isFinite(value)))
     return { x: 0, y: 0, z: 0 }
-  const r00 = matrix[0]
-  const r10 = matrix[1]
-  const r20 = matrix[2]
-  const r21 = matrix[6]
-  const r22 = matrix[10]
+  const scaleX = columnLength(matrix, 0)
+  const scaleY = columnLength(matrix, 1)
+  const scaleZ = columnLength(matrix, 2)
+  if (scaleX === 0 || scaleY === 0 || scaleZ === 0)
+    return { x: 0, y: 0, z: 0 }
+  const r00 = matrix[0] / scaleX
+  const r10 = matrix[1] / scaleX
+  const r20 = matrix[2] / scaleX
+  const r21 = matrix[6] / scaleY
+  const r22 = matrix[10] / scaleZ
   const radiansToDegrees = 180 / Math.PI
   return {
     x: Math.asin(clamp(-r20, -1, 1)) * radiansToDegrees,
@@ -59,7 +86,12 @@ function emptySignals(): FaceTrackingSignals {
   }
 }
 
+export interface FaceTrackingStateOptions {
+  onFaceLost?: MediaPipeFaceLostBehaviour
+}
+
 export class FaceTrackingState {
+  private readonly onFaceLost: MediaPipeFaceLostBehaviour
   private baselineBlendshapeSums = new Map<MediaPipeBlendshape, number>()
   private baselinePoseSum = { x: 0, y: 0, z: 0 }
   private calibrationStartedAt: number | undefined
@@ -71,6 +103,11 @@ export class FaceTrackingState {
   private neutralBlendshapes = new Map<MediaPipeBlendshape, number>()
   private neutralPose = { x: 0, y: 0, z: 0 }
   private smoothed = emptySignals()
+  private rawPose: { x: number, y: number, z: number } | undefined
+
+  constructor(options: FaceTrackingStateOptions = {}) {
+    this.onFaceLost = options.onFaceLost ?? 'hold'
+  }
 
   calibrate() {
     this.baselineBlendshapeSums.clear()
@@ -83,6 +120,7 @@ export class FaceTrackingState {
     this.lostSignals = undefined
     this.neutralBlendshapes.clear()
     this.neutralPose = { x: 0, y: 0, z: 0 }
+    this.rawPose = undefined
     this.smoothed = emptySignals()
   }
 
@@ -98,7 +136,7 @@ export class FaceTrackingState {
 
     this.lastFaceTimestamp = timestampMs
     this.lostSignals = undefined
-    const pose = input.pose ?? poseFromMatrix(input.matrix)
+    const pose = this.rateLimitPose(input.pose ?? poseFromMatrix(input.matrix), deltaMs)
     if (!this.calibrated) {
       // Wall-clock, not summed frame deltas: the delta is clamped for smoothing,
       // which would stretch calibration at low inference rates.
@@ -135,6 +173,26 @@ export class FaceTrackingState {
     }
     this.smoothToward(targetBlendshapes, targetPose, deltaMs)
     return { calibrated: true, signals: this.smoothed, status: 'tracked' }
+  }
+
+  private rateLimitPose(pose: FaceTrackingSignals['pose'], deltaMs: number) {
+    const previous = this.rawPose
+    // The first frame after a reset has nothing to compare against, and the
+    // calibration window needs the estimate raw so the baseline is honest.
+    if (!previous || !this.calibrated || deltaMs <= 0) {
+      this.rawPose = pose
+      return pose
+    }
+    const limit = MAX_POSE_DEGREES_PER_SECOND * deltaMs / 1_000
+    const step = (current: number, target: number) =>
+      current + clamp(target - current, -limit, limit)
+    const limited = {
+      x: step(previous.x, pose.x),
+      y: step(previous.y, pose.y),
+      z: step(previous.z, pose.z),
+    }
+    this.rawPose = limited
+    return limited
   }
 
   private finishCalibration() {
@@ -181,7 +239,7 @@ export class FaceTrackingState {
       blendshapes: new Map(this.smoothed.blendshapes),
       pose: { ...this.smoothed.pose },
     }
-    if (elapsed > LOST_HOLD_MS) {
+    if (this.onFaceLost === 'neutral' && elapsed > LOST_HOLD_MS) {
       const releaseProgress = clamp((elapsed - LOST_HOLD_MS) / LOST_RELEASE_MS)
       const blendshapes = new Map<MediaPipeBlendshape, number>()
       for (const name of MEDIAPIPE_BLENDSHAPES)
