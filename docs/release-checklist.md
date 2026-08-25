@@ -19,8 +19,10 @@
   고개를 위·아래·좌·우로 돌렸을 때 모델이 같은 방향으로 따라오는지, 눈을
   감으면 감기는지, 입을 벌리면 벌어지는지. CI는 정지 초상뿐이라 부호가
   뒤집혀도 잡지 못한다. Perfect Sync 모델이 있으면 같은 확인을 한 번 더.
-- **soak.** 렌더 루프·정리·캐시를 건드린 릴리스면 `LIVE2D_SOAK_MINUTES=20
-  pnpm test:soak` 1회. 힙이 계단식으로 오르면 발행하지 않는다.
+- **soak.** 렌더 루프·정리·캐시를 건드린 릴리스면 `LIVE2D_SOAK_MINUTES=30
+  pnpm test:soak` 1회. 힙이 계단식으로 오르면 발행하지 않는다. 30분 미만은
+  힙 단언(`heapSamples.length >= 30`)과 재생성 주기(30분)가 실행되지 않으므로
+  통과해도 아무것도 증명하지 못한다.
 - **README 3종 동기화.** 새 공개 이름이 `README.md`·`README.ko.md`·
   `README.ja.md`에 모두 있는지 `grep`으로 확인한다. 08-24에 JA만 문장이
   유실된 적이 있다.
@@ -33,8 +35,10 @@
    `release.yml`은 첫 `## ` 절을 릴리스 노트로 쓴다.
 2. `packages/live2d-web/package.json`의 `version`을 같은 값으로. 태그와 다르면
    워크플로가 실패한다.
-3. develop → main 병합. main의 `browser-e2e`가 초록인지 본다.
-4. `git tag vx.y.z && git push origin vx.y.z`. 태그 푸시가 발행이다.
+3. develop → main 병합. main의 `browser-e2e`·`tracking-e2e`가 초록인지 본다.
+4. `git tag vx.y.z && git push origin vx.y.z`. 태그 푸시가 발행이다. 게이트가
+   `npm publish`보다 앞에 있으므로 여기서 실패하면 발행은 일어나지 않는다.
+   고친 뒤 `git push --delete origin vx.y.z`로 태그를 지우고 다시 올린다.
 5. Actions `Release` 잡이 끝나면 npm 페이지에서 버전과 provenance 배지를
    확인한다.
 
