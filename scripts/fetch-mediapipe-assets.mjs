@@ -25,14 +25,18 @@ const outputDirectory = path.join(
 )
 const wasmOutputDirectory = path.join(outputDirectory, 'wasm')
 
+// Each asset carries its own provenance: the npm license check below covers
+// only the package, not these downloads.
 const remoteAssets = [
   {
     file: 'face_landmarker.task',
+    license: 'Apache-2.0 (Google model card)',
     sha256: '64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff',
     url: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
   },
   {
     file: 'portrait.jpg',
+    license: 'MediaPipe sample asset; test fixture only',
     sha256: 'a6f11efaa834706db23f275b6115058fa87fc7f14362681e6abe14e82749de3e',
     url: 'https://storage.googleapis.com/mediapipe-assets/portrait.jpg',
   },
@@ -109,8 +113,7 @@ for (const asset of remoteAssets)
 
 writeFileSync(path.join(outputDirectory, 'asset-manifest.json'), `${JSON.stringify({
   generatedAt: new Date().toISOString(),
-  license: 'Apache-2.0',
-  mediaPipeTasksVision: installed.version,
+  mediaPipeTasksVision: { license: installed.license, version: installed.version },
   model: remoteAssets[0],
   portrait: remoteAssets[1],
   wasm: wasmHashes,

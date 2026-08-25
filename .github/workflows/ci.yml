@@ -51,8 +51,42 @@ jobs:
       - run: pnpm verify:packed-consumers
       - run: pnpm -F @live2d-web/playground build
 
+  # Hiyori and Cubism Core are licensed downloads, so this job only runs on
+  # pushes to our own branches; fork PRs cannot receive the assets and are
+  # checked by the main run after merge instead.
+  browser-e2e:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      LIVE2D_ACCEPT_TERMS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: |
+            apps/playground/public/assets/js
+            apps/playground/public/assets/live2d
+          key: live2d-assets-${{ hashFiles('scripts/fetch-assets.mjs') }}
+      - run: pnpm fetch-assets
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm -F @live2d-web/playground build
+      - run: pnpm test:e2e
+
+  # Firefox is measured well past the inference budget (docs/compatibility.md),
+  # so it reports but does not block until the adaptive cap proves it stable.
   tracking-e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit, firefox]
+    continue-on-error: ${{ matrix.browser == 'firefox' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -66,5 +100,6 @@ jobs:
           path: apps/playground/public/assets/mediapipe
           key: mediapipe-web-1.0.1-face-landmarker-float16-v1
       - run: pnpm fetch-mediapipe-assets
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
-      - run: pnpm test:tracking:e2e
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - run: pnpm -F @live2d-web/playground build
+      - run: pnpm test:tracking:e2e --project=${{ matrix.browser }}

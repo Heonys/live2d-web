@@ -94,6 +94,9 @@ try {
   }, [
     ['npm', ['run', 'build']],
     ['npm', ['audit', '--omit=dev', '--audit-level=high']],
+    // The optional peer must stay optional: a plain install must not pull the
+    // 12 MB MediaPipe package into a consumer that never imports tracking.
+    ['node', ['-e', 'if (require("fs").existsSync("node_modules/@mediapipe")) { console.error("optional peer @mediapipe/tasks-vision was installed into a vanilla consumer"); process.exit(1) }']],
   ])
 
   installAndRun('react-vite', {

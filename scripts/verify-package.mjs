@@ -70,6 +70,8 @@ if (rootBundle.includes('CubismFramework') || rootBundle.includes('csmGetVersion
   failures.push('root bundle appears to contain Cubism runtime code')
 if (rootBundle.includes('@mediapipe/tasks-vision') || rootBundle.includes('FaceLandmarker'))
   failures.push('root bundle contains MediaPipe tracking code')
+if (react.includes('@mediapipe/tasks-vision') || react.includes('FaceLandmarker'))
+  failures.push('react bundle contains MediaPipe tracking code')
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
@@ -89,7 +91,7 @@ if (mediaPipeBundle.includes('vision_wasm_internal') || mediaPipeBundle.includes
 
 const bundledAssets = readdirSync(dist, { recursive: true })
   .map(file => String(file))
-  .filter(file => /\.(?:bin|json|wasm)$/i.test(file))
+  .filter(file => /\.(?:bin|json|task|wasm)$/i.test(file))
 if (bundledAssets.length)
   failures.push(`package dist contains forbidden profile/runtime assets: ${bundledAssets.join(', ')}`)
 
