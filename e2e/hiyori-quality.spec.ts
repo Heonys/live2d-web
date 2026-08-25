@@ -40,6 +40,16 @@ function traceEnergy(samples: readonly ParameterSample[]) {
   return total / Math.max(1, selected.length)
 }
 
+// Largest gap between two samples across the parameters both carry.
+function sampleDistance(a: ParameterSample, b: ParameterSample) {
+  let maximum = 0
+  for (const [id, value] of Object.entries(a.values)) {
+    if (id in b.values)
+      maximum = Math.max(maximum, Math.abs(value - b.values[id]))
+  }
+  return maximum
+}
+
 function maxFrameDelta(samples: readonly ParameterSample[]) {
   let maximum = 0
   for (let frame = 1; frame < samples.length; frame++) {
@@ -158,6 +168,13 @@ test('records and validates the Hiyori 0.4 quality candidate', async ({
     expect(traceEnergy(quality.motion.slow)).toBeGreaterThan(5)
     expect(traceEnergy(quality.motion.repeatedInstant)).toBeGreaterThan(5)
     expect(traceEnergy(quality.motion.defaultAfterInstant)).toBeGreaterThan(5)
+    // Same motion, so the only difference between the authored fade-in and an
+    // explicit 0 is the fade itself. Recorded traces put the gap around 7 on
+    // ParamAngleY while the curve ramps; ignoring the override collapses it to
+    // ~0.001. (500ms lands near Hiyori's authored fade, so it cannot serve here.)
+    const fadeGap = Math.max(...quality.motion.instant.slice(0, 36).map((sample, frame) =>
+      sampleDistance(sample, quality.motion.default[frame])))
+    expect(fadeGap).toBeGreaterThan(3)
 
     expect(quality.sequence.completed).toEqual({
       completedSteps: 2,
