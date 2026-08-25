@@ -94,7 +94,17 @@ export type CreateLive2DOptions = BaseCreateLive2DOptions & RuntimeQualityOption
 
 export interface ParameterDriver {
   getValue: () => number
+  /**
+   * Where in the frame the value is written. `'after-motion'` (the default)
+   * wins over every effect and over manual overrides. `'before-physics'` feeds
+   * physics instead, which head pose needs so hair and body follow the value;
+   * the cost is that a manual setParameter() for the same id then wins.
+   * Backends without the hook fall back to `'after-motion'`.
+   */
+  phase?: ParameterDriverPhase
 }
+
+export type ParameterDriverPhase = 'after-motion' | 'before-physics'
 
 export interface LipSyncDriver {
   getMouthOpen: () => number
@@ -784,13 +794,17 @@ export class Live2DRuntime implements Live2DInstance {
       )
     }
     return this.addFeature(new ManagedFeature((model) => {
-      const unsubscribe = model.onAfterMotionUpdate(() => {
+      const write = () => {
         // Write transiently: the value must last only until the next SDK
         // update, or the last driver output would keep overriding motion
         // curves after the driver is removed.
         model.setParameter(id, driver.getValue())
         model.clearParameter(id)
-      })
+      }
+      const subscribe = driver.phase === 'before-physics' && model.onBeforePhysicsUpdate
+        ? model.onBeforePhysicsUpdate
+        : model.onAfterMotionUpdate
+      const unsubscribe = subscribe.call(model, write)
       return () => {
         unsubscribe()
         model.clearParameter(id)

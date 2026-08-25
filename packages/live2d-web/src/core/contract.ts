@@ -72,6 +72,13 @@ export interface ModelHandle {
    * The returned unsubscribe function must be idempotent.
    */
   onAfterMotionUpdate: (callback: (deltaMs: number) => void) => () => void
+  /**
+   * Runs after the SDK effects but before physics, so a value written here
+   * drives the physics simulation instead of arriving too late for it. Head
+   * pose needs this; a mouth value does not. Optional for backends that do not
+   * own their frame loop, which fall back to onAfterMotionUpdate.
+   */
+  onBeforePhysicsUpdate?: (callback: (deltaMs: number) => void) => () => void
   dispose: () => void
 }
 

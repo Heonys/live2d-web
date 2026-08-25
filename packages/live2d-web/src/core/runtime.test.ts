@@ -12,14 +12,16 @@ import { createLive2D, Live2DRuntime } from './runtime'
 
 interface RuntimeHarness {
   afterMotionCallbacks: Set<(deltaMs: number) => void>
+  beforePhysicsCallbacks: Set<(deltaMs: number) => void>
   backend: Live2DBackend
   events: string[]
   renderErrors: Set<(error: Live2DError) => void>
   resolvePendingModel?: (model: ModelHandle) => void
 }
 
-function createRuntimeHarness(pending = false): RuntimeHarness {
+function createRuntimeHarness(pending = false, withBeforePhysics = true): RuntimeHarness {
   const afterMotionCallbacks = new Set<(deltaMs: number) => void>()
+  const beforePhysicsCallbacks = new Set<(deltaMs: number) => void>()
   const events: string[] = []
   const renderErrors = new Set<(error: Live2DError) => void>()
   let resolvePendingModel: ((model: ModelHandle) => void) | undefined
@@ -69,6 +71,17 @@ function createRuntimeHarness(pending = false): RuntimeHarness {
             events.push('feature:dispose')
         }
       },
+      ...withBeforePhysics
+        ? {
+            onBeforePhysicsUpdate(callback: (deltaMs: number) => void) {
+              beforePhysicsCallbacks.add(callback)
+              return () => {
+                if (beforePhysicsCallbacks.delete(callback))
+                  events.push('feature:dispose')
+              }
+            },
+          }
+        : {},
       setParameter(id, value) {
         parameters.set(id, value)
         events.push(`parameter:${id}:${value}`)
@@ -119,6 +132,7 @@ function createRuntimeHarness(pending = false): RuntimeHarness {
 
   return {
     afterMotionCallbacks,
+    beforePhysicsCallbacks,
     backend,
     events,
     renderErrors,
@@ -287,6 +301,54 @@ describe('createLive2D', () => {
     expect(featureDispose).toBeGreaterThan(-1)
     expect(featureDispose).toBeLessThan(modelDispose)
     expect(modelDispose).toBeLessThan(stageDispose)
+  })
+
+  // Head pose has to be written before physics or hair and body never react to
+  // it. Everything else keeps the late phase, which outranks manual overrides.
+  it('routes a before-physics driver to the earlier hook', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+    instance.addParameterDriver('ParamAngleX', {
+      getValue: () => 12,
+      phase: 'before-physics',
+    })
+    instance.addParameterDriver('ParamMouthOpenY', { getValue: () => 0.5 })
+
+    expect(harness.beforePhysicsCallbacks.size).toBe(1)
+    expect(harness.afterMotionCallbacks.size).toBe(1)
+
+    for (const callback of harness.beforePhysicsCallbacks)
+      callback(16)
+    expect(harness.events).toContain('parameter:ParamAngleX:12')
+    expect(harness.events).not.toContain('parameter:ParamMouthOpenY:0.5')
+
+    instance.dispose()
+  })
+
+  it('falls back to the late hook on a backend without the early one', async () => {
+    const harness = createRuntimeHarness(false, false)
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+    instance.addParameterDriver('ParamAngleX', {
+      getValue: () => 12,
+      phase: 'before-physics',
+    })
+
+    expect(harness.beforePhysicsCallbacks.size).toBe(0)
+    expect(harness.afterMotionCallbacks.size).toBe(1)
+
+    for (const callback of harness.afterMotionCallbacks)
+      callback(16)
+    expect(harness.events).toContain('parameter:ParamAngleX:12')
+
+    instance.dispose()
   })
 
   it('settles start() when the instance is disposed while Core is loading', async () => {

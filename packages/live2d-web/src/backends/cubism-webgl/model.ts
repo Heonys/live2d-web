@@ -41,7 +41,7 @@ import { InvalidMotionQueueEntryHandleValue } from '#cubism-framework/motion/cub
 import { CubismPhysicsUpdater } from '#cubism-framework/motion/cubismphysicsupdater'
 import { CubismPoseUpdater } from '#cubism-framework/motion/cubismposeupdater'
 import { CubismUpdateScheduler } from '#cubism-framework/motion/cubismupdatescheduler'
-import { CubismUpdateOrder } from '#cubism-framework/motion/icubismupdater'
+import { CubismUpdateOrder, ICubismUpdater } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
 import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
@@ -104,8 +104,25 @@ function modelAssetDetails(
   return { assetType, backend: 'cubism-webgl', url }
 }
 
+// Between Breath (500) and Physics (600): late enough that look and breath
+// cannot add on top of a driven head pose, early enough that physics simulates
+// hair and body against it.
+const BEFORE_PHYSICS_ORDER = 550
+
+class CallbackUpdater extends ICubismUpdater {
+  constructor(private readonly callbacks: Set<(deltaMs: number) => void>) {
+    super(BEFORE_PHYSICS_ORDER)
+  }
+
+  onLateUpdate(_model: unknown, deltaTimeSeconds: number) {
+    for (const callback of this.callbacks)
+      callback(deltaTimeSeconds * 1_000)
+  }
+}
+
 class FrameworkModel extends CubismUserModel {
   private readonly afterMotionCallbacks = new Set<(deltaMs: number) => void>()
+  private readonly beforePhysicsCallbacks = new Set<(deltaMs: number) => void>()
   private readonly assetController = new AbortController()
   private readonly expressionCache = new Map<string, Promise<CachedMotionAsset<ACubismMotion>>>()
   private readonly loadedMotions = new Set<ACubismMotion>()
@@ -384,6 +401,7 @@ class FrameworkModel extends CubismUserModel {
       new LookParameterData(this.parameterId(CubismDefaultParameterId.ParamEyeBallY), 0, 1, 0),
     ])
     this.scheduler.addUpdatableList(new CubismLookUpdater(this.look, this._dragManager))
+    this.scheduler.addUpdatableList(new CallbackUpdater(this.beforePhysicsCallbacks))
     this.scheduler.sortUpdatableList()
   }
 
@@ -983,6 +1001,10 @@ class FrameworkModel extends CubismUserModel {
         this.afterMotionCallbacks.add(callback)
         return once(() => this.afterMotionCallbacks.delete(callback))
       },
+      onBeforePhysicsUpdate: (callback) => {
+        this.beforePhysicsCallbacks.add(callback)
+        return once(() => this.beforePhysicsCallbacks.delete(callback))
+      },
       setParameter: (id, value) => {
         if (!this.disposed) {
           this.manualParameters.set(id, value)
@@ -1017,6 +1039,7 @@ class FrameworkModel extends CubismUserModel {
     this.stopErrorWatch?.()
     this.stopErrorWatch = undefined
     this.afterMotionCallbacks.clear()
+    this.beforePhysicsCallbacks.clear()
     this.scheduler.release()
     if (this.look)
       CubismLook.delete(this.look)
