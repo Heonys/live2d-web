@@ -51,9 +51,10 @@ jobs:
       - run: pnpm verify:packed-consumers
       - run: pnpm -F @live2d-web/playground build
 
-  # Hiyori and Cubism Core are licensed downloads, so this job only runs on
-  # pushes to our own branches; fork PRs cannot receive the assets and are
-  # checked by the main run after merge instead.
+  # Hiyori and Cubism Core are licensed downloads: fetched fresh each run
+  # against the official terms, never stored in the Actions cache or an
+  # artifact. Fork PRs cannot receive them and are checked by the main run
+  # after merge instead.
   browser-e2e:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -67,12 +68,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v4
-        with:
-          path: |
-            apps/playground/public/assets/js
-            apps/playground/public/assets/live2d
-          key: live2d-assets-${{ hashFiles('scripts/fetch-assets.mjs') }}
       - run: pnpm fetch-assets
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm -F @live2d-web/playground build
