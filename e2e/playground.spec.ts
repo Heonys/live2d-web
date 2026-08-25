@@ -295,6 +295,49 @@ test('inspects a local Hiyori zip and blocks external archive references', async
   expect(requested).toEqual([])
 })
 
+test('navigates localized documentation, search, API and code copy', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText(value: string) {
+          Object.assign(window, { __docsClipboard: value })
+          return Promise.resolve()
+        },
+      },
+    })
+  })
+  await page.goto('/docs')
+  await expect(page).toHaveURL(/\/docs\/en$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Getting started')
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/docs\/en$/)
+  await expect(page.locator('link[hreflang="ko"]')).toHaveAttribute('href', /\/docs\/ko$/)
+
+  await page.getByLabel('Search documentation').fill('MediaPipe')
+  await page.getByRole('link', { exact: true, name: 'MediaPipe face tracking' }).click()
+  await expect(page).toHaveURL(/\/docs\/en\/mediapipe$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe face tracking')
+
+  await page.getByRole('link', { name: '한국어' }).click()
+  await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
+  await page.getByRole('link', { name: '日本語' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 顔トラッキング')
+
+  await page.goto('/docs/en/vanilla')
+  await page.getByRole('button', { name: 'Copy' }).click()
+  await expect.poll(() => page.evaluate(
+    () => (window as typeof window & { __docsClipboard?: string }).__docsClipboard,
+  )).toContain('import { createLive2D }')
+
+  await page.goto('/docs/en/api')
+  await expect(page.getByText('inspectModelSource', { exact: true })).toBeVisible()
+  const links = await page.locator('.docs-sidebar nav a').evaluateAll(elements =>
+    elements.map(element => (element as HTMLAnchorElement).href))
+  for (const href of links)
+    expect((await page.request.get(href)).ok()).toBe(true)
+})
+
 test('runs and cleans up the source AudioWorklet smoke test', async ({ browserName, page }) => {
   test.skip(
     browserName === 'firefox',

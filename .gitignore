@@ -3,6 +3,7 @@ dist/
 tmp/
 .DS_Store
 .next/
+.generated/
 apps/playground/public/assets/
 playwright-report/
 test-results/

@@ -2,502 +2,102 @@
 
 **English** | [한국어](README.ko.md) | [日本語](README.ja.md)
 
-> A Live2D runtime for the modern web. Load a Cubism model, play motions,
-> follow the pointer and lip sync, from vanilla JavaScript or React. No PixiJS.
+> An unofficial Live2D Cubism runtime for vanilla JavaScript and React. It
+> renders through WebGL2 without PixiJS.
 
-An unofficial library for Live2D, not affiliated with Live2D Inc. Shipping an
-app built with it may need its own
-[Cubism SDK license](https://www.live2d.com/en/sdk/license/); details in
-[licensing notes](docs/licensing.md).
+**[Documentation](https://live2d-web-demo.netlify.app/docs/en)** ·
+[Playground](https://live2d-web-demo.netlify.app/) ·
+[Model inspector](https://live2d-web-demo.netlify.app/inspect) ·
+[Examples](examples)
 
-**[Live demo](https://live2d-web-demo.netlify.app/)** ·
-[Model inspector](https://live2d-web-demo.netlify.app/inspect)
+## Why live2d-web
 
-## Features
+- Cubism 4/5 model loading with a bundled Framework 5-r.5 WebGL2 adapter
+- One React-free root API plus an optional React binding
+- Motions, sequences, fades, weighted idle, expressions and pointer interaction
+- Volume/wLipSync inputs and optional MediaPipe main/Worker face tracking
+- Explicit lifecycle cleanup, stable errors and real tarball/browser gates
+- Optional `live2d-web/inspect` model compatibility reports
 
-- Lightweight. No rendering framework underneath; the runtime draws through
-  WebGL2 directly, at about 58KB gzipped for one character.
-- Characters appear fast: 4 to 6 times quicker to the first frame on GPU
-  hardware ([measurements](docs/benchmarks/2026-08-18-hardware-matrix.md)),
-  with [frame rates equal to
-  pixi-live2d-display](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md).
-- React works out of the box, with components and hooks over the same API as
-  vanilla JavaScript.
-- Optional MediaPipe face tracking maps head pose and 52 face blendshapes to
-  standard or Perfect Sync parameters without entering the root bundle.
-- Built for the current Cubism 5.3, so Cubism 4 and 5 models both load. A
-  replacement for the unmaintained `pixi-live2d-display`.
+## Quick start
 
-## Getting started
-
-```bash
-npm install live2d-web
+```sh
+pnpm add live2d-web
 ```
 
-Two files are required that the package does not bundle:
-
-1. **Cubism Core** (`live2dcubismcore.min.js`), Live2D's closed-source engine.
-   Download the official Web SDK from https://www.live2d.com/sdk/download/web/,
-   serve the file yourself and pass its URL as `coreUrl`. For a quick trial the
-   `OFFICIAL_CUBISM_CORE_URL` constant points at Live2D's hosted copy;
-   self-host for production.
-2. **A model directory.** A `model3.json` references its `.moc3`, textures,
-   motions and physics by relative path, so serve the whole directory as static
-   files (for example under `public/models/hiyori/`) and pass the
-   `model3.json` URL as `src`.
-
-Vanilla:
+Cubism Core and model files are deliberately not bundled. Download Core under
+Live2D’s terms, self-host it, and serve a licensed Cubism 4/5 model directory.
 
 ```ts
-import { createLive2D, OFFICIAL_CUBISM_CORE_URL } from 'live2d-web'
+import { createLive2D } from 'live2d-web'
 
 const character = await createLive2D({
-  container: document.querySelector('#character')!,
-  coreUrl: OFFICIAL_CUBISM_CORE_URL,
-  src: '/models/hiyori/hiyori.model3.json',
-  fit: 'upper-body',
+  container: document.querySelector('#avatar')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
   followPointer: true,
 })
-```
 
-React:
+await character.motion('TapBody', 0)
+character.dispose()
+```
 
 ```tsx
 'use client'
 
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
-export function Character() {
+export function Avatar() {
   return (
-    <Live2DCanvas coreUrl="/assets/live2dcubismcore.min.js">
-      <Live2DModel src="/models/hiyori/hiyori.model3.json" followPointer />
+    <Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+      <Live2DModel src="/models/model.model3.json" followPointer />
     </Live2DCanvas>
   )
 }
 ```
 
-The promise resolves once the character is on screen. Give the container a
-CSS size and the canvas fills it.
+The host element needs an explicit CSS size. Dispose the vanilla instance when
+the host view is removed; React components clean themselves up on unmount.
 
-## Motions and expressions
+## Learn and verify
 
-`getModelInfo()` lists the model's motion groups, expressions and hit areas.
+The localized guides cover Core/model preparation, Vanilla, React,
+motion/expression, lip sync, MediaPipe main/Worker, Next SSR, mobile,
+troubleshooting, security and licenses:
 
-```ts
-const info = character.getModelInfo()
-// { motions: { Idle: 3, 'Tap@Body': 2 }, expressions: [...], hitAreas: [...] }
+- [English documentation](https://live2d-web-demo.netlify.app/docs/en)
+- [한국어 문서](https://live2d-web-demo.netlify.app/docs/ko)
+- [日本語ドキュメント](https://live2d-web-demo.netlify.app/docs/ja)
+- [Generated API reference](https://live2d-web-demo.netlify.app/docs/en/api)
 
-await character.motion('Tap@Body') // random index within the group
-await character.motion('Tap@Body', 1) // specific index
-await character.motion('Idle', 0, { priority: 'normal' }) // do not interrupt
-await character.motion('Tap@Body', 0, { fadeInMs: 250, fadeOutMs: 400 })
-const result = await character.playMotion('Tap@Body')
-// { status: 'completed' | 'interrupted' | 'skipped' | 'disposed' }
-await character.sequence([
-  { group: 'Tap@Body', index: 0 },
-  { group: 'Tap@Body', index: 1, options: { fadeInMs: 250 } },
-])
+The repository includes production-built Vite Vanilla, Next React, Vue Vite
+and transparent OBS overlay examples. Run them after providing
+`/live2dcubismcore.min.js` and `/models/model.model3.json`:
 
-await character.expression('smile', { fadeInMs: 250, fadeOutMs: 400 })
-character.clearExpression()
+```sh
+pnpm examples:build
 ```
 
-`motion()` resolves when playback finishes, so sequencing works with plain
-`await` and keeps its existing `Promise<void>` contract. Use `playMotion()`
-when the ending reason matters. `sequence()` pre-validates every step, runs in
-order and stops on the first non-completed result. Render and asset errors
-reject instead of becoming statuses.
+## Compatibility and package boundaries
 
-`fadeInMs` and `fadeOutMs` override the model's motion-wide fade for that
-playback only. Values are finite, non-negative milliseconds; `0` makes the
-corresponding fade instant. Omitted values keep the model3/motion3 defaults,
-and parameter-specific fades authored in motion3 stay unchanged.
+The default target is current Chromium, Firefox and WebKit with WebGL2, Cubism
+Core 5.3 and Framework 5-r.5. See the [compatibility matrix](docs/compatibility.md)
+for verified and pending combinations.
 
-Idle playback runs automatically from the model's `Idle` group; use
-`idleMotion` to pick a different group, `false` to turn it off, or
-`{ group: 'Idle', weights: [5, 2, 1] }` for weighted random selection. Weights
-must match the group's motion count; zero-weight motions are never selected.
-Priorities are `'idle' | 'normal' | 'force'`, and the default `'force'`
-interrupts the current motion. An unknown group, expression or explicitly
-named idle group rejects with an error that lists the valid names. Expression
-fades use the same non-negative
-millisecond rules as motion fades; omitted values keep exp3/Framework defaults,
-while `clearExpression()` remains immediate.
+The root entry stays React-, Framework- and MediaPipe-free. React,
+`tracking/mediapipe`, its Worker entry, `inspect`, and the Cubism backend have
+separate package boundaries. WASM, tracking models, Cubism Core and Live2D
+models are never included in the npm package.
 
-## Pointer tracking and taps
+## License and trademarks
 
-With `followPointer: true` the character watches the pointer while it is
-over the canvas and returns its gaze to the centre when it leaves.
+live2d-web is not affiliated with or endorsed by Live2D Inc. The library,
+Cubism Framework, Cubism Core, models and MediaPipe have separate terms. Review
+[LICENSES.md](LICENSES.md), [licensing notes](docs/licensing.md), and Live2D’s
+[SDK license page](https://www.live2d.com/en/sdk/license/) before distribution.
 
-```ts
-container.addEventListener('click', async (event) => {
-  const areas = character.hitTest(event.clientX, event.clientY)
-  if (areas.includes('Body'))
-    await character.motion('Tap@Body')
-})
-```
+## Contributing
 
-Two methods control the gaze directly: `focusAt()` takes viewport client
-coordinates, `focus()` takes container-local CSS pixels.
-
-In React the same wiring is two props. Toggling them never reloads the model:
-
-```tsx
-<Live2DModel
-  src="/models/hiyori/hiyori.model3.json"
-  followPointer
-  onTap={(areas) => {
-    if (areas.includes('Body'))
-      controller?.motion('Tap@Body')
-  }}
-/>
-```
-
-## Lip sync
-
-Lip sync supports three modes. All of them write after the SDK's motion
-update, so motion curves cannot overwrite the value.
-
-From a WebAudio node (TTS output, a microphone), analysed by wLipSync; the
-analyser is loaded on demand:
-
-```ts
-const stopLipSync = character.addLipSync({
-  source: audioNode, // your WebAudio node, e.g. TTS output
-  profile: '/lipsync/profile.bin', // wLipSync calibration profile
-  isSpeaking: () => isPlaying,
-})
-```
-
-For a microphone or another RMS volume source, the built-in driver performs
-noise-floor calibration, smoothing and speaking hysteresis. Your app still
-owns capture, RMS analysis and frame scheduling:
-
-```ts
-import { createVolumeLipSync } from 'live2d-web'
-
-const volume = createVolumeLipSync()
-const stopLipSync = character.addLipSync({ driver: volume })
-
-// Once per capture frame; elapsedMs is time since capture started.
-volume.sample(rms, elapsedMs)
-```
-
-You can also provide any custom object with `getMouthOpen()` and
-`isSpeaking()` as the driver.
-
-From plain values, React only:
-
-```tsx
-<LipSync mouthOpen={mouth} speaking={mouth > 0} />
-```
-
-The target parameter defaults to `ParamMouthOpenY`; change it with
-`parameterId`. The library never closes or suspends your `AudioContext`, and
-no wLipSync calibration profile is bundled. `createVolumeLipSync()` itself is
-React-free and does not access WebAudio or browser globals.
-
-## MediaPipe face tracking
-
-Install the optional peer and self-host its WASM files and Face Landmarker
-model. `live2d-web` does not bundle them or choose a remote CDN.
-
-```bash
-npm install live2d-web @mediapipe/tasks-vision
-```
-
-```ts
-import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
-
-const tracker = await createMediaPipeFaceTracker({
-  wasmPath: '/mediapipe/wasm',
-  modelAssetPath: '/mediapipe/face_landmarker.task',
-})
-const detach = tracker.attach(character, {
-  mapping: 'auto',
-  channels: { mouth: false }, // keep audio lip sync as the mouth writer
-  sensitivity: { pose: 2.5 }, // defaults to 3; tune to your camera
-})
-
-function frame(timestamp: number) {
-  tracker.update(video, timestamp)
-  requestAnimationFrame(frame)
-}
-requestAnimationFrame(frame)
-```
-
-Move inference off the render thread with the optional Worker overload. The
-application provides the module Worker entry so its own bundler and CSP remain
-in control:
-
-```ts
-// face-tracking.worker.ts
-import { startMediaPipeFaceTrackerWorker } from 'live2d-web/tracking/mediapipe/worker'
-
-startMediaPipeFaceTrackerWorker()
-
-// application
-const tracker = await createMediaPipeFaceTracker({
-  execution: 'worker',
-  workerFactory: () => new Worker(
-    new URL('./face-tracking.worker.ts', import.meta.url),
-    { type: 'module' },
-  ),
-  wasmPath: '/mediapipe/wasm',
-  modelAssetPath: '/mediapipe/face_landmarker.task',
-})
-await tracker.update(video, performance.now())
-```
-
-Only one Worker inference runs at a time; calls made while it is busy resolve
-as `skipped` instead of growing a frame queue. `dispose()` closes the task and
-terminates the library-owned Worker. Main-thread mode remains the API default.
-
-The application owns `getUserMedia`, the video element, permissions, tracks
-and frame scheduling. The tracker owns only inference, one-second neutral
-calibration, smoothing and parameter drivers. Call `calibrate()` for a new
-neutral pose, then `detach()` and `tracker.dispose()` on cleanup. `auto` maps
-directly onto a model's ARKit-named Perfect Sync parameters when it declares at
-least 45 of the 52 (binding only the ones present) and otherwise falls back to
-common pose, eye, brow, mouth and cheek parameters.
-
-MediaPipe estimates head rotation well below what the wearer feels, and how far
-below depends on where the camera sits, so `sensitivity` scales a channel
-before the model's parameter range clamps it: raising it cannot exceed what the
-rigger allowed. At 1 a degree of real rotation becomes a degree of model
-rotation; pose defaults to 3, measured against one laptop camera. Expose this to
-your own users rather than assuming the default fits their setup.
-Losing the face holds the last pose rather than recentring the head, which
-would read as a snap when the wearer glances away; pass `onFaceLost: 'neutral'`
-to return to model defaults instead.
-
-MediaPipe's WASM runtime writes its startup line
-(`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`) to `console.error`.
-It is informational, and some dev overlays present it as an error.
-
-Tracking is **experimental** in 0.5.0: the API may change before 1.0, and
-real-camera behaviour on Perfect Sync models has not yet been verified outside
-this repository. Inference runs on-device, but applications must still disclose
-camera use and follow the MediaPipe privacy notice. Main-thread inference starts at 30fps and
-lowers its own cap, down to 10fps, whenever measured inference time
-would starve rendering; each update reports the current `effectiveFps`. Pass
-`maxFps` to set a different starting cap.
-
-## Direct parameter control
-
-`setParameter()` is a persistent override: it wins over motion curves every
-frame until `clearParameter()` releases it. For values recomputed per frame,
-register a driver instead; the library polls it after each SDK update.
-
-```ts
-character.setParameter('ParamMouthOpenY', 0.6) // hold the mouth open
-character.clearParameter('ParamMouthOpenY') // motions take over again
-
-const stop = character.addParameterDriver('ParamAngleX', {
-  getValue: () => Math.sin(performance.now() / 300) * 30,
-})
-```
-
-In React, `useLive2DParameter(id, value)` is the override (cleaned up on
-unmount) and `useParameterDriver(id, getter)` is the per-frame driver.
-
-## Framing and render quality
-
-`fit` frames the model without touching the model file: `'upper-body'`
-(default), `'full'`, or a custom `{ scale, offsetX, offsetY }`. Change it at
-runtime with `setFit()`.
-
-Rendering quality is automatic by default. The backing buffer follows
-`devicePixelRatio` up to a cap (1.5MP on mobile, 4MP on desktop) and steps
-down when frames run long. Pass a fixed `resolution` to pin it, and `maxFps`
-to cap the frame rate. Hidden tabs and canvases scrolled out of view pause
-automatically.
-
-```ts
-const character = await createLive2D({
-  // ...
-  fit: 'full',
-  maxFps: 30,
-  pauseWhenOffscreen: false, // keep rendering for capture scenarios
-})
-```
-
-## Lifecycle and error handling
-
-`getState()` returns `{ status, loadingStage, error, render }`, and
-`subscribe()` notifies on every change. Errors carry a stable `code`
-(`'core-missing'`, `'model-load-failed'`, `'render-error'`, ...) and details
-about the asset involved.
-
-```ts
-const character = await createLive2D({
-  // ...
-  onError: error => console.warn(error.code, error.message),
-})
-
-const unsubscribe = character.subscribe(() => {
-  console.log(character.getState().status) // 'loading' | 'ready' | 'error' | 'disposed'
-})
-
-character.pause() // e.g. while a modal is open
-character.resume()
-character.dispose() // releases model, canvas and GL context; safe to call twice
-```
-
-HTTP 4xx fails immediately; transient failures retry twice by default
-(`retries`). After a render error such as WebGL context loss, `retry()`
-rebuilds the stage. Loading can be aborted with an `AbortSignal` passed as
-`signal`.
-
-## React API summary
-
-Everything lives in `live2d-web/react`; React is an optional peer dependency
-(18.2 and 19 supported), and the root import stays React-free.
-
-| `<Live2DCanvas>` prop                  | Purpose                                                       |
-| -------------------------------------- | ------------------------------------------------------------- |
-| `coreUrl`                              | Cubism Core script URL (omit if the script is already loaded) |
-| `quality` / `resolution`               | Automatic quality (default) or a fixed backing-buffer scale   |
-| `maxFps`, `pauseWhenOffscreen`         | Frame cap and offscreen pausing                               |
-| `backend`                              | Renderer backend; keep the value stable across renders        |
-| `fallback`, `errorFallback`, `onError` | Loading UI, error UI with retry, error callback               |
-
-| `<Live2DModel>` prop                  | Purpose                                                    |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `src`, `fit`, `idleMotion`, `retries` | Model URL and load-time options                            |
-| `resolveAsset`                        | Supplies the model's files instead of fetching them        |
-| `followPointer`, `paused`, `onTap`    | Interaction toggles; changing them never reloads the model |
-| `onLoad`, `onError`                   | Controller delivery and error callback                     |
-
-| Hook                             | Purpose                                                                                   |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `useLive2DModel()`               | The same controller `onLoad` delivers (motion, expression, focus, parameters, model info) |
-| `useLive2DCanvas()`              | Stage state: `status`, `loadingStage`, `error`, render info                               |
-| `useLive2DParameter(id, value)`  | Declarative parameter override with automatic cleanup                                     |
-| `useParameterDriver(id, getter)` | Per-frame parameter driver                                                                |
-| `useLive2D(options)`             | The vanilla instance under React ownership (StrictMode-safe)                              |
-
-`<LipSync>` accepts exactly one of its three modes: `driver`,
-`source`/`active`/`profile`, or `mouthOpen`/`speaking`.
-
-## Backends
-
-Omitting `backend` loads the default Framework-on-WebGL2 backend, which is
-the only backend the package ships. Pass one explicitly to host the shaders
-yourself.
-
-```ts
-import { createCubismWebGLBackend, cubismWebGL } from 'live2d-web/backends/cubism-webgl'
-
-const custom = createCubismWebGLBackend({ shaderBaseUrl: '/live2d-shaders/' })
-```
-
-A Pixi v6 backend lives in the repository as the counterpart for the
-benchmarks above, but it is not published: it would pull Pixi into the
-dependency graph of every install for a path almost nobody takes. The
-`Backend` interface is public, so a Pixi backend can be written against it
-outside this package.
-
-## Model sources
-
-By default `src` is a URL and the model's own files load relative to it. When
-the model is not on a server, for instance an archive the user just picked,
-pass `resolveAsset` and `src` becomes a path inside that source instead.
-
-```tsx
-// filled from an archive, storage, ...
-const files = new Map<string, Blob>()
-
-export function Character() {
-  return (
-    <Live2DModel
-      src="hiyori/hiyori.model3.json"
-      resolveAsset={path => files.get(path)}
-    />
-  )
-}
-```
-
-The resolver is asked for each file the model declares, with the path already
-resolved relative to `src` (nested directories, `./` and `../` included) and
-decoded, so names written in Korean, Japanese or Chinese arrive as themselves.
-Return `undefined` and the load fails naming that path. Absolute URLs inside a
-model3.json are still fetched.
-
-Spaces and literal `%`, `#` and `?` in filenames are preserved too. If you open
-untrusted local archives, validate model3.json before rendering when network
-access is not desired: absolute URLs intentionally bypass the resolver and use
-`fetch`.
-
-Unpacking an archive is left to you: keeping the resolver a plain function is
-what lets this package stay free of an archive dependency. In React, keep the
-function stable with `useCallback` or a module constant, since a new identity
-reloads the model.
-
-## Troubleshooting
-
-- Nothing visible but the status is ready: the container has no CSS size, so
-  the canvas collapsed to 1x1. Give the container a width and height. A
-  console warning is printed in this case.
-- The model 404s: the model directory must be served as static files; every
-  sibling asset loads relative to the model3.json URL.
-- Several characters feel slow: each canvas owns a WebGL context and a render
-  loop, and browsers cap contexts at around 8-16. Reduce the canvas count.
-- The page scrolls while dragging on mobile: the canvas sets
-  `touch-action: none`, but a scrolling ancestor may need it too.
-
-The local release gate covers current Chromium, Firefox and WebKit. OBS is a
-separate embedded Chromium environment; the current downstream compatibility
-target is OBS 31+, validated manually rather than inferred from desktop Chrome.
-The driver/value lip-sync API works across that matrix. The optional wLipSync
-AudioWorklet source mode is currently gated to Chromium/WebKit because
-wlipsync 1.3 throws from its worklet in Firefox.
-
-## Development
-
-Node 24 and pnpm are required.
-
-```bash
-pnpm install
-LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # downloads Core + sample models after you review the linked terms
-pnpm dev
-
-pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
-pnpm verify:packed-consumers             # installs the exact tarball in three apps
-LIVE2D_SOAK_MINUTES=120 pnpm test:soak   # optional local long-session gate
-```
-
-Downloaded assets stay in gitignored development paths and are never
-packaged. The playground serves a React demo at `/`, the vanilla API at
-`/vanilla`, a model inspector at `/inspect` and a WebGL/Pixi comparison at
-`/compare`. Benchmarks are documented in the
-[benchmark guide](docs/benchmarking.md).
-
-## Documentation
-
-Start from the [documentation map](docs/README.md). Highlights:
-
-- [API reference](docs/api-design.md)
-- [Architecture](docs/architecture.md)
-- [Licensing](docs/licensing.md)
-- [Benchmark guide](docs/benchmarking.md),
-  [WebGL vs Pixi v6 results](docs/benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
-  and [startup cost on GPU hardware](docs/benchmarks/2026-08-18-hardware-matrix.md)
-
-## License and trademark
-
-The original project source is MIT licensed. The bundled Cubism Web Framework
-and shaders remain under Live2D's license. Package license details and modified
-Framework files are recorded in [LICENSES.md](packages/live2d-web/LICENSES.md)
-and [THIRD_PARTY_NOTICES.md](packages/live2d-web/THIRD_PARTY_NOTICES.md).
-
-This is an unofficial third-party project. It is not developed, provided or
-endorsed by Live2D Inc., and it is not one of their official products. Live2D
-and Cubism are trademarks of Live2D Inc. `live2d-web` does not bundle Cubism
-Core, sample models or a lip-sync profile.
-
-An application you build with this library may need its own Live2D Cubism SDK
-publishing license, depending on what it is and on the size of the business
-releasing it. See
-[Live2D's SDK license terms](https://www.live2d.com/en/sdk/license/) and the
-[licensing notes](docs/licensing.md).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
+Do not attach Cubism Core, licensed models, camera frames or restricted test
+artifacts to GitHub.

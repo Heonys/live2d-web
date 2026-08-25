@@ -5,8 +5,11 @@ import type {
 import type { Live2DAssetType } from '../core/errors'
 
 export interface ModelInspectionLimits {
+  /** Maximum bytes read from one model asset. Defaults to 64 MiB. */
   maxAssetBytes?: number
+  /** Maximum number of declared model assets. Defaults to 2,048. */
   maxReferences?: number
+  /** Maximum bytes read across the model and its assets. Defaults to 256 MiB. */
   maxTotalBytes?: number
 }
 
@@ -38,6 +41,7 @@ export type ModelInspectionFindingCode
     | 'unreadable-asset'
     | 'unsupported-model3-version'
 
+/** One stable, actionable content finding discovered during source inspection. */
 export interface ModelInspectionFinding {
   assetType?: Live2DAssetType
   code: ModelInspectionFindingCode
@@ -54,6 +58,7 @@ export interface ModelInspectionAsset {
   status: ModelInspectionAssetStatus
 }
 
+/** Aggregate source report. An error finding makes the report incompatible. */
 export interface ModelInspectionReport {
   assets: readonly ModelInspectionAsset[]
   expressions: readonly string[]
@@ -68,6 +73,7 @@ export interface ModelInspectionReport {
 export type ModelTrackingChannel = 'pose' | 'eyes' | 'brows' | 'mouth' | 'cheeks'
 export type ModelTrackingChannelSupport = 'full' | 'partial' | 'missing'
 
+/** Tracking parameter coverage derived from a loaded backend's ModelInfo. */
 export interface ModelCapabilityReport {
   model3Version?: number
   mocVersion?: number

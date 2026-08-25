@@ -670,3 +670,27 @@ load. In that case Core errors still include the final URL and asset type.
 The root, cubism-webgl, pixi and MediaPipe tracking entries are SSR-evaluation
 safe. The React entry is a client entry. Framework, renderer, wLipSync and
 MediaPipe runtime modules load only in browser lifecycle code.
+
+## Model inspection subpath
+
+`live2d-web/inspect` is optional, React-free and SSR-safe. It does not import
+Core, Framework, MediaPipe or JSZip.
+
+```ts
+function inspectModelSource(
+  options: InspectModelSourceOptions,
+): Promise<ModelInspectionReport>
+
+function inspectModelCapabilities(info: ModelInfo): ModelCapabilityReport
+```
+
+Content defects are aggregated in `findings` with stable codes and produce a
+`compatible`, `warning` or `incompatible` report. Only invalid API arguments
+and abort reject. URL inspection accepts HTTP(S) and follows CORS; resolver
+inspection never fetches an external URL declared by a local model. Default
+limits are 64 MiB per asset, 256 MiB total and 2,048 references.
+
+`ModelInfo.model3Version` and `mocVersion` are optional so existing custom
+backends remain compatible. Standard tracking support is reported per channel.
+Perfect Sync uses the same shared ARKit 52-name set as MediaPipe mapping and is
+compatible at 45 matches.

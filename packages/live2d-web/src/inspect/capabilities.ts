@@ -27,6 +27,7 @@ function channelSupport(
   return matched === required.length ? 'full' : 'partial'
 }
 
+/** Reports Standard channel and ARKit Perfect Sync coverage from model metadata. */
 export function inspectModelCapabilities(info: ModelInfo): ModelCapabilityReport {
   const parameterIds = new Set(info.parameters?.map(parameter => parameter.id) ?? [])
   const standardChannels = Object.fromEntries(

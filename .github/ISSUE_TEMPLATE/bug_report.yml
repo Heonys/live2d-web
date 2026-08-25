@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible live2d-web defect
+title: 'bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach Cubism Core, licensed models, camera frames or Playwright traces containing them.
+  - type: input
+    id: version
+    attributes:
+      label: live2d-web version or commit
+      placeholder: 0.5.0 or commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include code or a public repository that does not contain licensed assets.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: input
+    id: error
+    attributes:
+      label: Error code and asset details
+      placeholder: model-load-failed; HTTP 404; assetType model3
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser/version, bundler, framework, Cubism Core and model export version.
+    validations:
+      required: true
+  - type: checkboxes
+    id: assets
+    attributes:
+      label: Asset safety
+      options:
+        - label: I did not attach Cubism Core, licensed models, camera frames or restricted artifacts.
+          required: true

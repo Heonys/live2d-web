@@ -1,37 +1,27 @@
 # live2d-web
 
-> A Live2D runtime for the modern web: model loading, motions, pointer
-> tracking, tap hit testing, lip sync and render quality, from vanilla
-> JavaScript or React, with a direct WebGL2 backend and no PixiJS dependency.
+Unofficial Live2D Cubism runtime for vanilla JavaScript and React. The default
+backend uses WebGL2 without Pixi. Cubism Core and model files are never bundled.
 
-live2d-web is an unofficial third-party library, not affiliated with Live2D
-Inc. Applications built with it may need their own Live2D Cubism SDK license
-(https://www.live2d.com/en/sdk/license/). The package does not bundle Cubism
-Core or any model; both are supplied by the application.
+## Documentation
 
-Install: `npm install live2d-web`. Entry points: `live2d-web` (vanilla,
-React-free), `live2d-web/react` (components and hooks),
-`live2d-web/backends/cubism-webgl` (default backend). TypeScript definitions
-with JSDoc ship with the package. Models load from a URL by default; pass
-`resolveAsset` to supply their files from memory or browser storage instead.
+- English: /docs/en
+- 한국어: /docs/ko
+- 日本語: /docs/ja
+- API reference: /docs/en/api
+- Model inspector: /inspect
 
-## Docs
+## Main topics
 
-- [README](https://github.com/Heonys/live2d-web#readme): full guide with
-  runnable examples for every feature (motions, taps, lip sync, parameters,
-  quality, errors) plus React reference tables
-- [API reference](https://github.com/Heonys/live2d-web/blob/main/docs/api-design.md):
-  complete signatures and per-frame contracts
-- [npm package](https://www.npmjs.com/package/live2d-web): install page with a
-  condensed API tour
-
-## Demo
-
-- [React playground](https://live2d-web-demo.netlify.app/): motions,
-  expressions, tap hit testing, microphone lip sync
-- [Vanilla playground](https://live2d-web-demo.netlify.app/vanilla): the same
-  runtime driven with createLive2D()
-- [Model inspector](https://live2d-web-demo.netlify.app/inspect): load any
-  model3.json URL and probe its motions, expressions and parameters
-- [Backend comparison](https://live2d-web-demo.netlify.app/compare): the WebGL2
-  backend next to the Pixi v6 compatibility backend
+- /docs/en/core-and-models
+- /docs/en/vanilla
+- /docs/en/react
+- /docs/en/motion-and-expression
+- /docs/en/lip-sync
+- /docs/en/mediapipe
+- /docs/en/next-ssr
+- /docs/en/mobile
+- /docs/en/model-inspection
+- /docs/en/troubleshooting
+- /docs/en/security-and-license
+- /docs/en/examples

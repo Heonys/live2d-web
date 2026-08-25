@@ -1,0 +1,22 @@
+:root {
+  color: #eee;
+  background: #17151f;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  width: min(720px, calc(100% - 32px));
+  margin: 32px auto;
+}
+
+#avatar {
+  position: relative;
+  height: 70vh;
+  min-height: 420px;
+  background: #24202f;
+}
+
+#avatar canvas {
+  position: absolute;
+  inset: 0;
+}

@@ -258,3 +258,22 @@ Framework 5-r.5의 단일 소스는
 전용 동적 chunk에, 13개 셰이더는 embedded source와 배포 asset에 포함된다.
 Core와 Hiyori는 ignored 개발 자산으로만 둔다. 포함 형태에 대한 Live2D 확인
 결과는 [라이선스 문서](licensing.md)에 있다.
+
+## 모델 검사와 문서 사이트
+
+`src/inspect`는 model3 manifest와 `ModelInfo` 메타데이터만 다루는 순수 공개
+경계다. URL fetch 또는 소비자가 준 `resolveAsset`을 사용하지만 렌더러·Core·
+Framework·React·MediaPipe를 import하지 않는다. Perfect Sync 이름은 tracking
+구현이 아니라 `core/perfect-sync.ts`에 있어 검사기와 tracking이 같은 45/52
+판정을 사용한다.
+
+zip 해제는 라이브러리가 아니라 Playground 앱 책임이다. `/inspect`는 JSZip을
+사용자 선택 뒤에만 동적 로드하고, 중앙 디렉터리를 먼저 검사해 압축 크기·entry
+수·해제 크기·경로 탈출·정규화 중복을 차단한다. archive resolver는 메모리 Blob
+맵만 읽고 외부 URL을 네트워크로 넘기지 않는다.
+
+문서 페이지는 `apps/playground/src/docs/content.ts`의 세 언어 공통 slug에서
+정적으로 생성된다. API 레퍼런스는 build 전에 TypeDoc이 공개 entry 소스를 읽어
+ignored `.generated` JSON을 만들고, Next가 이를 정적 HTML에 포함한다. 예제는
+`examples/**`의 독립 workspace이며 문서용 가짜 snippet이 아니라 CI에서 실제
+production build되는 소비자다.

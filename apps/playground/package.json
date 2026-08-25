@@ -5,6 +5,9 @@
     "node": "24.x"
   },
   "scripts": {
+    "prebuild": "pnpm docs:generate",
+    "predev": "pnpm docs:generate",
+    "docs:generate": "node ../../scripts/generate-api-reference.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

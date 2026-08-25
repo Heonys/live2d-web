@@ -3,7 +3,9 @@
 상태 기준일: **2026-08-25**. 바닐라 우선 headless runtime, React binding,
 상호작용 API(hitTest/followPointer/모션 완료 대기), source/driver 립싱크,
 선택형 MediaPipe 얼굴 추적과 pixi-v6 비교 어댑터가 구현돼 있다. 공식
-Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
+Framework 5-r.5 WebGL2 어댑터가 기본 backend다. `develop`에는 선택형
+MediaPipe Worker, 모델 검사 API·URL/zip 도구, 세 언어 문서 사이트와 빌드
+가능한 예제 4종이 추가됐다.
 
 1. [로드맵](roadmap.md) — 성장 목표·상시 품질 기준·고도화 축·버전 순서
 2. [호환성](compatibility.md) — 지원·검증·미검증 범위와 알려진 제한
@@ -13,31 +15,35 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 6. [라이선스와 상표](licensing.md)
 7. [벤치마크 가이드](benchmarking.md)
 8. [배포물과 개발 저장소 보안 검증](security.md)
-9. [0.6 MediaPipe Worker 추적 측정](benchmarks/2026-08-25-0.6-worker-tracking.md)
+9. [공개 문서 사이트](https://live2d-web-demo.netlify.app/docs/en) — 영어·한국어·
+   일본어 가이드, TypeDoc API, 검색과 예제 갤러리
+10. [모델 검사기](https://live2d-web-demo.netlify.app/inspect) — URL·로컬 zip
+    자산/버전/트래킹 호환성 검사
+11. [0.6 MediaPipe Worker 추적 측정](benchmarks/2026-08-25-0.6-worker-tracking.md)
    — Hiyori 동시 렌더 main/Worker 3회 비교와 0.6 번들 예산
-10. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
+12. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
    — 리뷰 반영 뒤 크기·적응형 추론 상한·e2e 결과
-11. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
+13. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
    — 공개 패키지·소비자·브라우저·smoke 회귀 기준
-12. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
+14. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
    — root/runtime chunk·tarball의 v0.3.1 기준선 대비 변화
-13. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
+15. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
    — root/runtime/cubism/model chunk·tarball의 v0.3.1 기준선 대비 변화
-14. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
+16. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
    — 상세 상태·시퀀스·가중 Idle·표정 페이드 뒤 chunk·tarball 변화
-15. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
+17. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
    — 선택형 tracking entry·자산 크기·브라우저 추론과 프레임 영향
-16. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+18. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-17. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+19. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-18. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-19. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-20. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-21. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-22. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-23. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-24. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+20. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+21. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+22. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+23. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+24. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+25. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+26. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
@@ -45,7 +51,7 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 - 현재 발행 버전은 `0.5.0`이다. 0.3.x 기반 안정화는 충족됐으며,
   `v*` 태그 푸시가 릴리스 워크플로를 실행해 npm에 발행한다. 변경 이력은
   [CHANGELOG](../CHANGELOG.md)에 기록한다.
-- npm 패키지는 하나이며 `.`, `/react`, `/tracking/mediapipe`,
+- npm 패키지는 하나이며 `.`, `/react`, `/inspect`, `/tracking/mediapipe`,
   `/tracking/mediapipe/worker`,
   `/backends/cubism-webgl`로 경계를 나눈다. pixi-v6는 저장소 안의 벤치마크
   비교 대상이며 발행하지 않는다.
@@ -198,3 +204,20 @@ Framework 5-r.5 WebGL2 어댑터가 기본 backend다.
 - **재검토 조건**: 모바일 두 기기와 tracking benchmark에서 Worker가 33ms
   프레임 목표를 못 맞추면 기본 FPS와 Worker 프로토콜을 다시 본다. 15분 soak가
   반복해서 놓치는 누수가 확인될 때만 주간 시간을 늘린다.
+
+### 2026-08-25 0.7 문서와 모델 검사 경계
+
+- **결정문**: 상세 사용법은 세 언어 문서 사이트의 공통 slug 소스로 옮기고
+  README 3종은 빠른 시작·라이선스·문서 링크 중심으로 줄인다. 모델 내용 검사는
+  React-free `live2d-web/inspect`, zip 해제와 렌더 UI는 Playground 책임으로
+  분리한다. 0.7 구현 완료와 외부 참여 완료 조건은 구분한다.
+- **근거**: README 3종의 긴 중복은 번역 유실을 이미 만들었고 검색·내부 링크·
+  framework별 시작 경로를 제공하기 어렵다. model3 참조 검사는 다른 소비자도
+  재사용할 수 있지만 JSZip을 npm 루트에 넣을 이유는 없다. TypeDoc API와 실제
+  build되는 예제를 함께 두면 문서 snippet이 코드와 어긋나는 위험도 줄어든다.
+- **포기와 대체**: 별도 문서 호스팅 제품, npm에 JSZip 포함, runtime telemetry,
+  소비자 없는 Canvas 접근성 API는 만들지 않는다. 기존 Netlify Playground가
+  문서·데모·검사기를 함께 제공하고 optional 책임은 subpath/app에 둔다.
+- **재검토 조건**: 처음 보는 사용자의 10분 온보딩 또는 외부 PR에서 막히는
+  구간이 확인되면 가이드·예제를 먼저 바꾼다. runtime 진단 snapshot과 접근성
+  전달 경로는 실제 이슈가 생길 때 API 설계부터 다시 시작한다.

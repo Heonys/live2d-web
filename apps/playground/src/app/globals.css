@@ -253,6 +253,232 @@ header nav {
   border-color: #9c7d3e;
 }
 
+.docs-shell {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.docs-sidebar {
+  position: sticky;
+  top: 0;
+  display: block;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 28px 22px;
+  border: 0;
+  border-right: 1px solid #393548;
+  border-radius: 0;
+  background: #16141d;
+}
+
+.docs-brand {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #ecebf4;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.docs-search {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.docs-search input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #58536d;
+  border-radius: 8px;
+  color: inherit;
+  background: #111019;
+}
+
+.docs-search-results {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 8px);
+  display: grid;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #58536d;
+  border-radius: 10px;
+  background: #211e2b;
+  box-shadow: 0 14px 40px rgb(0 0 0 / 45%);
+}
+
+.docs-search-results > a,
+.docs-search-results > span {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  color: #ecebf4;
+  text-decoration: none;
+}
+
+.docs-search-results a + a {
+  border-top: 1px solid #393548;
+}
+
+.docs-search-results span {
+  color: #aaa6bb;
+  font-size: 0.76rem;
+}
+
+.docs-sidebar nav section {
+  margin-bottom: 22px;
+}
+
+.docs-sidebar nav h2 {
+  margin: 0 0 7px;
+  color: #858092;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.docs-sidebar nav a {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: #aaa6bb;
+  font-size: 0.84rem;
+  text-decoration: none;
+}
+
+.docs-sidebar nav a[aria-current='page'] {
+  color: #ecebf4;
+  background: #2b2739;
+}
+
+.docs-main {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.docs-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 20px;
+  min-height: 62px;
+  margin: 0;
+  padding: 0 34px;
+  border-bottom: 1px solid #393548;
+}
+
+.docs-topbar a {
+  color: #b9adff;
+  font-size: 0.82rem;
+}
+
+.docs-locales {
+  display: flex;
+  gap: 10px;
+}
+
+.docs-locales a[aria-current='page'] {
+  color: #ecebf4;
+  text-decoration: none;
+}
+
+.docs-article {
+  width: min(780px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 52px 0 100px;
+}
+
+.docs-article > h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: -0.035em;
+}
+
+.docs-lead {
+  margin: 14px 0 48px;
+  color: #aaa6bb;
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.docs-article > section {
+  margin-top: 42px;
+}
+
+.docs-article h2 {
+  margin: 0 0 14px;
+  font-size: 1.35rem;
+}
+
+.docs-article h3 {
+  margin: 4px 0 10px;
+}
+
+.docs-article p,
+.docs-article li {
+  color: #c8c4d4;
+  line-height: 1.75;
+}
+
+.docs-code,
+.api-reference > div > section {
+  margin: 20px 0;
+  overflow: hidden;
+  border: 1px solid #393548;
+  border-radius: 12px;
+  background: #0d0c12;
+}
+
+.docs-code > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-bottom: 1px solid #393548;
+  color: #858092;
+  font-size: 0.72rem;
+}
+
+.docs-code button {
+  padding: 4px 8px;
+  font-size: 0.72rem;
+}
+
+.docs-code pre,
+.api-reference pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  color: #d6d2e3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.api-reference > div {
+  margin-top: 42px;
+}
+
+.api-reference > div > section {
+  padding: 16px;
+  background: #191720;
+}
+
+.api-reference > div > section > span {
+  color: #858092;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.api-reference pre {
+  border-radius: 8px;
+  background: #0d0c12;
+}
+
 .stage-shell {
   position: relative;
   height: 660px;
@@ -675,6 +901,38 @@ label output {
   .inspection-findings li,
   .asset-list li {
     grid-template-columns: 1fr;
+  }
+
+  .docs-shell {
+    display: block;
+  }
+
+  .docs-sidebar {
+    position: static;
+    height: auto;
+    padding: 18px;
+    border-right: 0;
+    border-bottom: 1px solid #393548;
+  }
+
+  .docs-sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .docs-sidebar nav section {
+    margin: 0;
+  }
+
+  .docs-topbar {
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+
+  .docs-article {
+    width: min(100% - 28px, 780px);
+    padding-top: 34px;
   }
 
   .stage-shell {

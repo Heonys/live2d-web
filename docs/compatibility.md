@@ -1,6 +1,6 @@
 # live2d-web 호환성
 
-상태 기준일: **2026-08-25**. 대상은 발행된 `0.5.0`과 `develop`의 0.6
+상태 기준일: **2026-08-25**. 대상은 발행된 `0.5.0`과 `develop`의 0.6·0.7
 후속 작업이다. 이 문서는
 공개적으로 지원한다고 약속한 범위와 현재 저장소에서 실제 검증한 조합을
 구분한다.
@@ -39,11 +39,28 @@
 | Vanilla Vite | ESM root API | Vite `8.1.5`, 실제 npm tarball 설치·typecheck·production build |
 | React Vite | `live2d-web/react` | Vite `8.1.5` + React `19.2.8`, 실제 npm tarball build |
 | Next.js SSR | client component에서 `/react` 사용 | Next `16.2.12` + React `19.2.8`, 실제 npm tarball production build |
+| Vue Vite | 별도 binding 없이 ESM root API | Vue `3.5.21` + Vite `8.1.5`, workspace 예제 typecheck·production build |
+| OBS Browser Source | 투명 Vite overlay, query 기반 model/fit | workspace 예제 typecheck·production build. OBS 자체 실기 구동은 미검증 |
+| 모델 검사 | `live2d-web/inspect`, URL·resolver | 실제 tarball Vite import·Node SSR 평가, URL/zip은 세 브라우저 Playwright 검증 |
 
 React 18.2는 공개 peer 범위에 포함되지만 현재 자동 소비자 fixture는 React
 19.2.8만 설치한다. React 18.2를 포함한 이중 버전 matrix를 추가하기 전까지
 "지원"과 "현재 자동 검증 버전"을 같은 의미로 쓰지 않는다. Vue, Svelte,
-Webpack, Rollup 직접 구성은 현재 미검증이다.
+Webpack, Rollup 직접 구성 중 Vue만 위의 root API 예제로 검증했으며 Svelte와
+Webpack/Rollup 직접 구성은 현재 미검증이다.
+
+## 모델 검사와 문서 사이트
+
+`live2d-web/inspect`는 Chromium·WebKit·Firefox에서 같은-origin Hiyori URL,
+실제 Hiyori zip, 누락 URL, 외부 URL을 선언한 로컬 archive와 Canvas 정리를
+검증한다. zip은 UTF-8·GBK 파일명, macOS metadata, 다중 model3, 정규화 중복,
+경로 탈출과 압축 한도를 단위 테스트로 고정한다. 실제 Inspector의 JSZip은
+Playground에서만 동적 로드되며 npm `inspect` entry에는 포함되지 않는다.
+
+`/docs/{en|ko|ja}` 42개 경로는 같은 14개 slug 집합에서 정적 생성된다. 세
+브라우저가 `/docs` redirect, 검색, 언어 전환, code copy, canonical/hreflang,
+TypeDoc API와 내부 링크 응답을 검증한다. 문서 내용의 사람이 느끼는 명확성과
+"10분 안에 모델 표시"는 자동 테스트가 아니라 외부 사용자 확인 항목이다.
 
 ## MediaPipe 선택 기능
 
@@ -79,7 +96,7 @@ delegate for CPU.`를 `console.error`로 내보낸다. 정보성 로그이므로
 ## 브라우저
 
 2026-08-25 로컬 `pnpm test:e2e`는 Playwright `1.62.0`과 다음 엔진에서
-실행했고(32 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식
+실행했고(38 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식
 Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
 
 | 엔진 | 실제 버전 | 일반 runtime·driver/value 립싱크 | wLipSync source |
@@ -88,7 +105,7 @@ Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
 | WebKit | `26.5` | 검증 | 검증 |
 | Firefox | `153.0` | 검증. Linux 러너의 헤드리스 Firefox는 WebGL2가 없어(`webgl.force-enabled`도 무효, 2026-08-25) CI에서는 Xvfb 위에서 headed로 실행한다 | 미검증·현재 e2e skip |
 
-기본 e2e는 13개 테스트 × 3엔진 = 39개 조합이고, 그중 7개는 설계상 skip이다
+기본 e2e는 15개 테스트 × 3엔진 = 45개 조합이고, 그중 7개는 설계상 skip이다
 (Chromium 전용인 Hiyori 품질·마이크·MediaPipe 카메라 3건 × WebKit·Firefox,
 Firefox wLipSync source 1건). 3엔진 전체 실행은 2026-08-25부터 CI
 `browser-e2e`(push)와 릴리스 잡이 담당한다. Firefox에서는 `wlipsync@1.3.0`

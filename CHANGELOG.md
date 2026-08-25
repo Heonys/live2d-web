@@ -4,6 +4,16 @@
 
 ### Added
 
+- A React-free, SSR-safe `live2d-web/inspect` entry reports model3 assets,
+  motions, expressions, hit areas, version metadata, stable compatibility
+  findings and Standard/Perfect Sync parameter coverage. The public browser
+  inspector accepts CORS-enabled URLs and local zip files without uploading or
+  rendering incompatible archives.
+- The Netlify Playground now includes localized English, Korean and Japanese
+  guides, a TypeDoc-generated API reference, static search, language metadata,
+  sitemap and `llms.txt`. Four production-built examples cover Vite Vanilla,
+  Next React, Vue Vite and transparent OBS overlays; contribution and issue
+  templates define asset-safe reproduction requirements.
 - Optional MediaPipe Worker execution keeps the existing synchronous main
   tracker as the default while adding an asynchronous, one-frame-in-flight
   tracker through an application-provided module Worker. The new

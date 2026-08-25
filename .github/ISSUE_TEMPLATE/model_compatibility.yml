@@ -1,0 +1,40 @@
+name: Model compatibility report
+description: Report a model format or export compatibility problem without uploading the model
+title: 'compat: '
+labels: [compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: Run the public /inspect tool and paste its text report. Do not upload the model or Cubism Core.
+  - type: textarea
+    id: report
+    attributes:
+      label: Inspector text report
+    validations:
+      required: true
+  - type: input
+    id: export
+    attributes:
+      label: Editor and export version
+      placeholder: Cubism Editor version, model3 and moc version
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happens when the model is loaded?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Browser, OS, Core and bundler
+    validations:
+      required: true
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Asset safety
+      options:
+        - label: I have not attached the model, Cubism Core or artifacts containing either.
+          required: true

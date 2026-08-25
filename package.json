@@ -33,6 +33,9 @@
     "benchmark:report": "tsx scripts/render-benchmark-report.mjs",
     "dev": "pnpm -F @live2d-web/playground dev",
     "build": "pnpm -F live2d-web build",
+    "docs:check": "pnpm docs:generate && tsx scripts/check-docs.ts",
+    "docs:generate": "pnpm -F @live2d-web/playground docs:generate",
+    "examples:build": "pnpm --filter './examples/**' --parallel build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "pnpm -r --parallel typecheck && tsc -p benchmarks/tsconfig.json",
@@ -67,6 +70,7 @@
     "simple-git-hooks": "catalog:",
     "taze": "catalog:",
     "tsx": "catalog:",
+    "typedoc": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:vitest"
   },

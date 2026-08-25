@@ -43,6 +43,24 @@ still need the same CORS and CSP permissions. Prefer self-hosting them.
 
 ## Repository and Playground
 
+The public `/inspect` page opens zip files entirely in the current browser tab.
+JSZip loads only after the user selects a file. Before extraction, the app
+checks the compressed size (256 MiB), central-directory entry count (2,048),
+declared expanded size (768 MiB), root-escaping paths and duplicate normalized
+paths. The expanded byte total is checked again while reading. It does not
+upload, persist or send telemetry about the archive.
+
+The library inspector uses lower model limits: 64 MiB per asset, 256 MiB total
+and 2,048 references by default. A resolver-backed local model that declares an
+external URL receives an error finding and no network request. URL inspection
+warns about cross-origin assets and still requires their server to allow CORS.
+Incompatible reports never create a Canvas; warning-only reports require an
+explicit render action.
+
+Documentation API JSON contains TypeScript metadata only. Core, Hiyori,
+MediaPipe models, local zip contents and Playwright traces remain excluded from
+the site artifact and repository.
+
 `pnpm audit --prod` at the workspace root currently reports eight advisories:
 
 - `pixi-live2d-display → gh-pages` and its old glob chain: repository-only Pixi

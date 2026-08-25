@@ -306,6 +306,11 @@ function reportStatus(findings: readonly ModelInspectionFinding[]) {
   return 'compatible' as const
 }
 
+/**
+ * Reads model3.json and every declared asset without creating a renderer.
+ * Content problems are aggregated in the returned report; only invalid caller
+ * input and cancellation reject.
+ */
 export async function inspectModelSource(
   options: InspectModelSourceOptions,
 ): Promise<ModelInspectionReport> {

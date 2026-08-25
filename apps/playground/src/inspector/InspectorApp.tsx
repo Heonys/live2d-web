@@ -577,7 +577,11 @@ export function InspectorApp() {
           <button disabled={!controller || !expression} type="button" onClick={() => void runOperation(() => controller?.expression(expression))}>Apply expression</button>
           <label>
             Parameter ID
-            <input value={parameterId} onChange={event => setParameterId(event.target.value)} />
+            <input
+              type="text"
+              value={parameterId}
+              onChange={event => setParameterId(event.target.value)}
+            />
           </label>
           <label>
             Parameter value
