@@ -46,14 +46,19 @@ jobs:
       - run: pnpm verify:package
       - run: pnpm verify:packed-consumers
 
-      # Browser e2e against the real Cubism Core and Hiyori. No asset cache
-      # here for the same reason there is no dependency cache above.
+      # Browser e2e against the real Cubism Core, Hiyori and MediaPipe assets,
+      # the same steps ci.yml runs per browser. No asset cache here for the
+      # same reason there is no dependency cache above. Firefox needs a display
+      # for WebGL2 on this runner, so the whole run sits under Xvfb; the
+      # headless browsers ignore it.
       - run: pnpm fetch-assets
         env:
           LIVE2D_ACCEPT_TERMS: '1'
+      - run: pnpm fetch-mediapipe-assets
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: sudo apt-get install -y xvfb
       - run: pnpm -F @live2d-web/playground build
-      - run: pnpm test:e2e
+      - run: xvfb-run -a pnpm test:e2e
 
       # pnpm packs (it resolves the catalog: protocol that npm cannot read),
       # npm publishes (pnpm has no trusted-publishing support).
