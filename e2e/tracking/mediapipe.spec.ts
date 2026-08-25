@@ -2,17 +2,18 @@ import { Buffer } from 'node:buffer'
 import { writeFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
-test('runs the real Face Landmarker and releases it cleanly', async ({ page }) => {
+test('runs the real Face Landmarker and releases it cleanly', async ({ browserName, page }) => {
+  const startup = browserName === 'firefox' ? 150_000 : 60_000
   const pageErrors: string[] = []
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto('/tracking-e2e')
 
   const status = page.getByTestId('tracking-status')
-  await expect(status).toHaveText('tracked', { timeout: 60_000 })
+  await expect(status).toHaveText('tracked', { timeout: startup })
   await expect(page.getByTestId('tracking-error')).toHaveCount(0)
   await expect(page.getByTestId('tracking-inference')).not.toHaveText('0.00')
   await expect(page.getByTestId('tracking-metrics')).not.toHaveText('', {
-    timeout: 60_000,
+    timeout: startup,
   })
   const metrics = JSON.parse(await page.getByTestId('tracking-metrics').textContent()) as {
     effectiveFps: number
@@ -36,7 +37,7 @@ test('runs the real Face Landmarker and releases it cleanly', async ({ page }) =
   await expect(status).toHaveText('lost')
 
   await page.getByRole('button', { name: 'Restart' }).click()
-  await expect(status).toHaveText('tracked', { timeout: 60_000 })
+  await expect(status).toHaveText('tracked', { timeout: startup })
   await page.getByRole('button', { name: 'Dispose' }).click()
   await expect(status).toHaveText('disposed')
   expect(pageErrors).toEqual([])

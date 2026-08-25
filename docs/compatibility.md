@@ -71,7 +71,7 @@ Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독�
 | --- | --- | --- | --- |
 | Chromium | `151.0.7922.34` | 검증 | 검증 |
 | WebKit | `26.5` | 검증 | 검증 |
-| Firefox | `153.0` | 검증 | 미검증·현재 e2e skip |
+| Firefox | `153.0` | 검증(macOS 로컬). Linux 헤드리스 러너는 WebGL2가 없어 CI `browser-e2e`에서 비차단, 확인 중 | 미검증·현재 e2e skip |
 
 기본 e2e는 13개 테스트 × 3엔진 = 39개 조합이고, 그중 7개는 설계상 skip이다
 (Chromium 전용인 Hiyori 품질·마이크·MediaPipe 카메라 3건 × WebKit·Firefox,

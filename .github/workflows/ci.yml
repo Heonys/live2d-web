@@ -54,10 +54,16 @@ jobs:
   # Hiyori and Cubism Core are licensed downloads: fetched fresh each run
   # against the official terms, never stored in the Actions cache or an
   # artifact. Fork PRs cannot receive them and are checked by the main run
-  # after merge instead.
+  # after merge instead. Firefox reports but does not block until headless
+  # WebGL2 on the Linux runner is confirmed (docs/compatibility.md).
   browser-e2e:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit, firefox]
+    continue-on-error: ${{ matrix.browser == 'firefox' }}
     env:
       LIVE2D_ACCEPT_TERMS: '1'
     steps:
@@ -69,13 +75,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm fetch-assets
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - uses: actions/cache@v4
+        with:
+          path: apps/playground/public/assets/mediapipe
+          key: mediapipe-web-1.0.1-face-landmarker-float16-v1
+      - run: pnpm fetch-mediapipe-assets
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
       - run: pnpm -F @live2d-web/playground build
-      - run: pnpm test:e2e
+      - run: pnpm test:e2e --project=${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: browser-e2e-results
+          name: browser-e2e-results-${{ matrix.browser }}
           path: test-results
           retention-days: 7
 

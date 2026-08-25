@@ -17,7 +17,17 @@ export default defineConfig({
     },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        // Headless Firefox on a GPU-less Linux runner reports no WebGL2
+        // unless it is told to fall back to software rendering.
+        launchOptions: {
+          firefoxUserPrefs: {
+            'webgl.disabled': false,
+            'webgl.force-enabled': true,
+          },
+        },
+      },
     },
   ],
   // The github reporter turns failures into check-run annotations, which are
