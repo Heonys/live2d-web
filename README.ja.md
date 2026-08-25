@@ -119,7 +119,9 @@ character.clearExpression()
 グループを指定でき、`false` で無効になり、
 `{ group: 'Idle', weights: [5, 2, 1] }` で重み付きランダムを設定できます。
 weights の長さはグループのモーション数と一致する必要があり、0の項目は選択
-されません。優先度は `'idle' | 'normal' | 'force'` の3段階です。表情フェード
+されません。優先度は `'idle' | 'normal' | 'force'` の3段階で、既定の `'force'`
+は再生中のモーションを中断します。存在しないグループ・表情・明示したアイドル
+グループ名は、有効な名前の一覧付きで拒否されます。表情フェード
 も0以上のミリ秒で指定し、省略時は exp3/Framework の既定値を保ちます。
 `clearExpression()` は従来通り即時リセットです。
 
@@ -232,9 +234,12 @@ requestAnimationFrame(frame)
 `dispose()`を呼びます。`auto`は52個のPerfect Syncパラメータが全てあれば
 直接マッピングし、それ以外は一般的な顔・目・眉・口・頬へ切り替えます。
 
-推論は端末内で実行されますが、カメラ利用の告知とMediaPipeのプライバシー
-案内はアプリ側の責任です。Firefoxのローカル計測がフレーム予算を超えたため、
-初版のメインスレッド既定値は15fpsです。別の上限は`maxFps`で指定できます。
+トラッキングは0.5.0では**experimental**です。1.0までにAPIが変わる可能性が
+あり、実カメラとPerfect Syncモデルでの体感はまだリポジトリ外で検証されて
+いません。推論は端末内で実行されますが、カメラ利用の告知とMediaPipeの
+プライバシー案内はアプリ側の責任です。推論はメインスレッドで30fpsから始まり、計測した
+推論時間が描画を妨げるときは上限を自動で下げます（最低10fps）。各updateが
+現在の`effectiveFps`を返します。開始上限は`maxFps`で変更できます。
 
 ## パラメータの直接制御
 
@@ -420,7 +425,7 @@ LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # 案内される規約を確認のう
 pnpm dev
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
-pnpm verify:packed-consumers             # 実際の tarball を3種類の利用側にインストール
+pnpm verify:packed-consumers             # 実際の tarball を4種類の利用側にインストール
 LIVE2D_SOAK_MINUTES=120 pnpm test:soak   # 任意の長時間ローカルゲート
 ```
 

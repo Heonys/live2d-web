@@ -50,10 +50,10 @@ Webpack, Rollup 직접 구성은 현재 미검증이다.
 | --- | --- | --- |
 | `@mediapipe/tasks-vision` | `^1.0.1` optional peer | `1.0.1`, CPU delegate와 VIDEO mode |
 | Chromium·WebKit·Firefox | 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성 |
-| 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 Hiyori 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증 |
+| 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 손으로 적은 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증. Perfect Sync는 ARKit 이름 픽스처(50개, `ParamTongueOut` 포함)로 판정·바인딩 검증 |
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
-| 메인 스레드 추론 성능 | 부분 검증 | Chromium은 기준 안, WebKit은 경계(17ms), Firefox headless는 기준 초과. 기본 15fps이며 Worker 검증이 남아 있다. |
+| 메인 스레드 추론 성능 | 부분 검증 | 모델 없는 페이지 측정(2026-08-25, 적응형 상한): Chromium 30fps 유지(p95 13.4ms), WebKit 20fps로 안착(p95 15ms), Firefox headless 10fps(p95 197ms, 프레임 100% 초과). Firefox tracking e2e는 통과하지만 CI에서는 비차단 게이트. Worker 검증이 남아 있다. |
 | 물리 카메라·모바일 실기 | 미검증 | 권한·장치별 자연스러움은 소비자 검증이 필요하다. |
 
 트래킹 전용 브라우저 게이트는 Apache-2.0 공식 모델·portrait와 npm 패키지의
@@ -71,8 +71,10 @@ Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독�
 | WebKit | `26.5` | 검증 | 검증 |
 | Firefox | `153.0` | 검증 | 미검증·현재 e2e skip |
 
-전체 결과는 30개 브라우저 조합 중 29개 통과, Firefox wLipSync source 1개
-skip이다. Firefox에서는 `wlipsync@1.3.0` worklet 오류가 있어 source 모드를
+기본 e2e는 13개 테스트 × 3엔진 = 39개 조합이고, 그중 7개는 설계상 skip이다
+(Chromium 전용인 Hiyori 품질·마이크·MediaPipe 카메라 3건 × WebKit·Firefox,
+Firefox wLipSync source 1건). 3엔진 전체 실행은 2026-08-25부터 CI
+`browser-e2e`(push)와 릴리스 잡이 담당한다. Firefox에서는 `wlipsync@1.3.0` worklet 오류가 있어 source 모드를
 지원 대상으로 승격하지 않았다. driver/value 모드는 AudioWorklet에 의존하지
 않아 세 엔진에서 검증한다.
 

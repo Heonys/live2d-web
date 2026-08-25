@@ -85,9 +85,14 @@ synthetic smoke-test fixture만 있으며 npm 패키지에는 포함하지 않�
 
 ## MediaPipe 선택 기능
 
-`@mediapipe/tasks-vision`과 공식 Face Landmarker 모델·portrait fixture는
-Apache License 2.0이다. npm 패키지는 Tasks를 optional peer로 선언할 뿐 코드,
-WASM, 모델과 테스트 이미지를 포함하지 않는다. 개발·CI는
+세 자산은 출처와 라이선스를 따로 본다. `@mediapipe/tasks-vision`(npm)은
+패키지 매니페스트의 `license` 필드가 Apache-2.0이고 fetch 스크립트가 이를
+검사한다. Face Landmarker 모델(`storage.googleapis.com/mediapipe-models/…`)은
+Google의 모델 카드가 Apache-2.0을 명시한다. portrait fixture
+(`storage.googleapis.com/mediapipe-assets/portrait.jpg`)는 MediaPipe 샘플
+자산이며 식별 가능한 인물 사진이라 **테스트 픽스처 외 용도로 쓰지 않는다**.
+npm 패키지는 Tasks를 optional peer로 선언할 뿐 코드, WASM, 모델과 테스트
+이미지를 포함하지 않는다. 개발·CI는
 `pnpm fetch-mediapipe-assets`로 고정 SHA-256을 확인해 ignored Playground 경로에
 준비한다. 이 자산은 Live2D Core/Hiyori 약관 동의와 무관하며 두 fetch 경로를
 섞지 않는다.

@@ -118,7 +118,9 @@ Idle playback runs automatically from the model's `Idle` group; use
 `{ group: 'Idle', weights: [5, 2, 1] }` for weighted random selection. Weights
 must match the group's motion count; zero-weight motions are never selected.
 Priorities are `'idle' | 'normal' | 'force'`, and the default `'force'`
-interrupts the current motion. Expression fades use the same non-negative
+interrupts the current motion. An unknown group, expression or explicitly
+named idle group rejects with an error that lists the valid names. Expression
+fades use the same non-negative
 millisecond rules as motion fades; omitted values keep exp3/Framework defaults,
 while `clearExpression()` remains immediate.
 
@@ -230,10 +232,13 @@ neutral pose, then `detach()` and `tracker.dispose()` on cleanup. `auto` uses
 all 52 Perfect Sync parameters when present and otherwise falls back to common
 pose, eye, brow, mouth and cheek parameters.
 
-Inference runs on-device, but applications must still disclose camera use and
-follow the MediaPipe privacy notice. The first version caps inference at 15fps
-on the main thread after Firefox exceeded the frame budget in local testing;
-use `maxFps` to opt into a different rate.
+Tracking is **experimental** in 0.5.0: the API may change before 1.0, and
+real-camera behaviour on Perfect Sync models has not yet been verified outside
+this repository. Inference runs on-device, but applications must still disclose
+camera use and follow the MediaPipe privacy notice. Inference starts at 30fps on the main
+thread and lowers its own cap, down to 10fps, whenever measured inference time
+would starve rendering; each update reports the current `effectiveFps`. Pass
+`maxFps` to set a different starting cap.
 
 ## Direct parameter control
 

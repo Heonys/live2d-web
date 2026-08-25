@@ -2,17 +2,26 @@
 
 ## Unreleased
 
-### Added
+Ships both roadmap scopes in one release; see the 2026-08-25 decision in
+docs/README.md. The tracking subpath is experimental until 1.0.
+
+### Added (0.5 scope, experimental)
 
 - Optional `live2d-web/tracking/mediapipe` face tracking dynamically loads
   MediaPipe Tasks Vision, performs one-second neutral calibration, smoothing
-  and face-loss recovery, then attaches standard or 52-parameter Perfect Sync
-  drivers to vanilla instances and React controllers. Camera capture,
+  and face-loss recovery, then attaches standard or Perfect Sync drivers to
+  vanilla instances and React controllers. Perfect Sync uses the ARKit 52
+  parameter names (a model with at least 45 of them is mapped directly);
+  `_neutral` never becomes a parameter and `ParamTongueOut` keeps its default. Camera capture,
   scheduling, WASM and model assets remain caller-owned and unbundled.
-  Main-thread inference defaults to 15fps after cross-browser measurement.
+  Main-thread inference starts at 30fps and lowers its own cap (down to 10fps)
+  while measured inference time would starve the render loop; `effectiveFps`
+  reports the current cap.
 - Built-in backends expose optional parameter ranges through
   `ModelInfo.parameters`; custom backends remain compatible. MediaPipe
   initialization and inference failures use the new `tracking-error` code.
+### Added (0.4 scope)
+
 - `createVolumeLipSync()` provides a React-free, SSR-safe driver that turns
   caller-sampled RMS volume into stable mouth openness with initial noise-floor
   calibration, attack/release smoothing and speaking hysteresis. Capture,
@@ -29,7 +38,17 @@
 - Automatic idle playback accepts validated per-motion weights, including zero
   weights that exclude entries. Expression calls accept isolated per-playback
   `fadeInMs` and `fadeOutMs` overrides while preserving authored exp3 defaults
-  and the immediate `clearExpression()` behaviour.
+  and the immediate `clearExpression()` behaviour. An explicitly named idle
+  group that the model lacks now rejects with `invalid-props`, matching the
+  weighted form; the implicit `'Idle'` default stays lenient.
+
+### Changed
+
+- Motion and expression caches keep only the parsed object; the raw file is
+  re-read and retained the first time a fade override needs it. Consumers who
+  never override fades keep the 0.3.1 memory profile.
+- The React binding validates `idleMotion` before rendering and reports a bad
+  value through `onError` as `invalid-props` instead of throwing from render.
 
 ## 0.3.1 - 2026-08-21
 

@@ -78,7 +78,7 @@ pnpm lint / lint:fix
 pnpm typecheck
 pnpm test
 pnpm test:e2e       # 실제 Core/Hiyori + Chromium/WebKit/Firefox
-pnpm test:tracking:e2e # MediaPipe portrait + Chromium/WebKit/Firefox
+pnpm test:tracking:e2e # MediaPipe portrait + Chromium/WebKit/Firefox (CI: Firefox 비차단)
 pnpm verify:package # tarball 내용물 + React 없는 소비자 번들 검증
 pnpm verify:packed-consumers # 실제 tarball 설치: vanilla/React/Next SSR + prod audit
 LIVE2D_SOAK_MINUTES=120 pnpm test:soak # 선택적인 Chromium 장시간 게이트
@@ -131,6 +131,18 @@ URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/quer
     peer이며 `/tracking/mediapipe`에서만 동적 import한다. root에 정적 import,
     기본 CDN, WASM·task 모델 동봉을 추가하지 않는다. 카메라·video·rAF·track은
     앱이 소유하고 tracker는 task와 Live2D parameter driver만 정리한다.
+24. **Perfect Sync 파라미터 집합은 ARKit 기준이다.** MediaPipe의 52개
+    blendshape와 다르다: MediaPipe는 `_neutral`이 있고 `tongueOut`이 없다.
+    `_neutral`은 입력 정규화에만 쓰고 파라미터로 내보내지 않으며, 판정은
+    ARKit 52개 중 45개 이상. 픽스처는 `PERFECT_SYNC_PARAMETER_IDS`로
+    생성하지 말고 ARKit 이름을 손으로 적는다(자기 검증 방지).
+25. **tracking e2e는 모델 없는 정지 초상이다.** CI의 `tracking-e2e`는
+    Face Landmarker 초기화·52개 출력·loss·dispose만 증명한다. 카메라·video·
+    모델 파라미터 반영은 검증하지 않으며 그 수치를 Live2D 프레임 예산
+    판정으로 인용하지 않는다. Firefox 프로젝트는 비차단이다.
+26. **릴리스 전 CHANGELOG 헤더.** `release.yml`은 첫 `## ` 절을 릴리스
+    노트로 쓴다. `## Unreleased`를 `## <version> - <date>`로 바꾸지 않으면
+    제목 없는 노트가 올라간다.
 
 ## 규칙
 

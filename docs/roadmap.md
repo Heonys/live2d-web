@@ -1,6 +1,6 @@
 # live2d-web 로드맵
 
-상태 기준일: **2026-08-24**. 현재 발행 버전은 `0.3.1`이다. 지나온 마일스톤
+상태 기준일: **2026-08-25**. 현재 발행 버전은 `0.3.1`이고 `develop`이 0.5.0 발행 후보다. 지나온 마일스톤
 (M0~M6)은 `private/docs/roadmap.md`에 이력으로 남아 있고, 이 문서는 앞으로의
 방향만 다룬다.
 
@@ -31,9 +31,8 @@
   peer로 격리한다
 - 기능은 소비자 주도로 추가한다. 이 문서의 항목은 **후보**이며, 실제 소비자가
   필요로 하거나 측정된 결함이 있을 때만 착수한다
-- 현재 자동화된 lint·typecheck·unit·tarball 소비자 3종 게이트를 줄이지 않는다.
-  브라우저 3종 e2e는 `0.3.x`에서 CI·릴리스 게이트로 승격한 뒤 같은 원칙을
-  적용한다
+- 릴리스마다 lint·typecheck·unit·tarball 소비자 4종·브라우저 3종 e2e를
+  통과한다(2026-08-25부터 push·릴리스 자동 게이트). 게이트를 줄이지 않는다
 - AI·TTS·아카이브 해제·OAuth·서버는 라이브러리 밖이다
 
 ## 현재 위치 (0.3.1)
@@ -43,7 +42,7 @@
 source / value), 자동 품질과 프레임 상한, 일시정지·재시도·정리, 에러 모델,
 `resolveAsset`로 메모리·저장소의 모델 로드, WebGL2 투명 배경.
 
-**못 하는 것**: 웹캠 이외 센서 입력, 모션 간 블렌딩 제어, 표정 동시 적용, Stage당
+**못 하는 것**: 웹캠·센서 입력, 모션 간 블렌딩 제어, 표정 동시 적용, Stage당
 모델 둘 이상, Worker 오프로드, 모바일 GPU 실측 게이트, 공식 MotionSync
 립싱크, 프레임워크 문서 사이트.
 
@@ -74,6 +73,12 @@ source / value), 자동 품질과 프레임 상한, 일시정지·재시도·정
 완료 조건은 문서의 게이트 설명과 실제 workflow가 일치하고, 위 기준선이 날짜와
 환경을 포함해 재현 가능하게 기록되는 것이다.
 
+**충족 (2026-08-25).** `ci.yml`의 `browser-e2e`(push)와 `release.yml`이
+Cubism Core·Hiyori를 받아 브라우저 3종 e2e를 돌린다. 기준선은
+`docs/benchmarks/2026-08-24-v0.3.1-baseline.md`, 호환성 표는
+`docs/compatibility.md`. 08-24 작업은 이 조건을 채우기 전에 0.4·0.5를
+구현했고, 그 순서 위반은 docs/README.md의 08-25 결정에 기록했다.
+
 ## 상시 품질 기준
 
 다음은 특정 기능 버전과 별개로 계속 적용한다.
@@ -91,12 +96,13 @@ source / value), 자동 품질과 프레임 상한, 일시정지·재시도·정
 
 ### 검증 단계
 
-- PR과 main은 lint·typecheck·unit·package boundary·실제 tarball 소비자 3종을
+- PR과 main은 lint·typecheck·unit·package boundary·실제 tarball 소비자 4종을
   자동 검증한다
+- 브라우저 3종 e2e는 develop·main push와 릴리스의 차단 게이트다. 라이선스
+  자산을 받을 수 없는 외부 PR에는 강제하지 않고, 병합 뒤 main 결과로
+  확인한다. MediaPipe tracking e2e는 Chromium·WebKit이 차단, Firefox는 비차단
+  (성능 기준 미달 기록, `docs/compatibility.md`)
 - 릴리스는 태그의 정확한 커밋에 같은 게이트를 다시 적용한다
-- 브라우저 3종 e2e는 `0.3.x`에서 자동화한 뒤 main과 릴리스의 차단 게이트로
-  유지한다. 라이선스 자산을 받을 수 없는 외부 PR에는 같은 게이트를 강제하지
-  않고, 병합 뒤 main 결과로 확인한다
 - 120분 soak와 실제 하드웨어·모바일 측정은 비용이 큰 주기 작업으로 분리하고,
   0.8에서 정기 게이트로 성숙시킨다
 
@@ -160,24 +166,30 @@ Livesona는 선택 기능을 얻고 VS Code 확장과 히비엔도 같은 입력
 
 **범위 밖.** 전신·손 추적, iPhone 앱 연동, 모델 편집.
 
-**검증.** 공식 portrait와 실제 Face Landmarker는 Chromium·WebKit·Firefox
-자동 게이트로 검증한다. 실제 웹캠의 고개 회전·눈 깜빡임·입 열림, 10분 연속
-실행과 Perfect Sync 모델의 체감은 로컬·소비자 검증으로 남긴다.
+**검증.** 실제 웹캠으로 Chromium·WebKit에서 고개 회전·눈 깜빡임·입 열림이
+모델에 반영되는 것, 30분 연속 실행에서 드리프트 없음, Perfect Sync 모델과
+일반 모델 각 1종. 이 중 **자동화된 것은 정지 초상으로 추론 경로만 검증하는
+CI**(모델 없이 Face Landmarker 초기화·52개 출력·loss·dispose)이고, 실제
+카메라·모델 반영·30분·Perfect Sync 체감은 발행 후 소비자 검증으로 남긴다.
 
 **의존과 리스크.** MediaPipe WASM 번들이 크다(수 MB). 동적 로드와 캐시
 전략이 먼저 정해져야 한다. AIRI의 `model-driver-mediapipe`가 참조
 구현(MIT)이며 매핑 표를 배울 수 있다.
 
-**0.5 구현 상태 (2026-08-24).** `develop`에 선택 서브패스, 표준·Perfect Sync
-자동 매핑, 1초 중립 보정·평활화·loss 복귀, React/vanilla attach, Playground
-웹캠 생명주기와 세 브라우저 실제 Face Landmarker CI를 구현했다. root에는
+**0.5 구현 상태 (2026-08-25).** `develop`에 선택 서브패스, 표준·Perfect Sync
+자동 매핑(ARKit 52개 기준, 45개 이상이면 Perfect Sync), 1초 벽시계 중립
+보정·평활화·loss 복귀, React/vanilla attach, Playground 웹캠 생명주기와
+세 브라우저 Face Landmarker CI(모델 없이 추론 경로만)를 구현했다. root에는
 MediaPipe와 자산이 들어가지 않는다. 실제 Perfect Sync 모델과 물리 카메라의
-최종 체감, Livesona/VS Code 소비자 채택이 남았으므로 **라이브러리 구현 완료,
-소비자 검증 대기** 상태다.
+최종 체감, Livesona/VS Code 소비자 채택이 남았으므로 **0.5.0으로 발행하되
+소비자 게이트는 열린 상태**다. 트래킹 API는 1.0 전까지 experimental이다.
 
-성능 측정에서 Chromium은 프레임 기준 안, WebKit은 경계였지만 Firefox
-headless의 동기 추론이 p95 202ms를 기록했다. 계획의 실패 기준에 따라 기본
-상한은 15fps로 낮췄으며, Worker 추론 경계가 0.5 이후 첫 성능 후속 작업이다.
+성능 측정(모델 없는 페이지, 2026-08-24)에서 Chromium은 추론 p95 14ms,
+WebKit 17ms(기준 16.7ms 초과), Firefox headless 202ms였다. 08-25 재측정은
+[0.5.0 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md). 고정 상한 하나로는
+셋을 만족할 수 없어 상한을 **적응형**(시작 30fps, 추론 시간이 간격의 60%를
+넘으면 절반, 최저 10fps)으로 두었고, Worker 추론 경계가 0.5 이후 첫 성능
+후속 작업이다.
 
 ### B. 립싱크 품질
 
@@ -232,12 +244,13 @@ suspend 복구와 장치 변경 대응.
 로직이 어디까지 쓸 만한지 먼저 읽는다. 우리 mouth controller의 "SDK update
 이후 쓰기" 순서와 충돌하지 않게 프레임 순서 계약을 유지한다.
 
-**0.4 구현 상태 (2026-08-24).** `develop`에서 모션별 페이드, 상세 종료 상태,
+**0.4 구현 상태 (2026-08-25).** `develop`에서 모션별 페이드, 상세 종료 상태,
 사전 검증 시퀀스, Idle 가중 랜덤과 표정 전환 페이드를 구현했다. 기존
-`motion(): Promise<void>`와 문자열 Idle 계약은 유지하며, 합성 motion3/exp3로
-세 브라우저 검증 경로를 마련했다. 여러 표정의 가중 블렌드, tween, 물리·포즈
-설정은 후속 C 범위다. 따라서 0.4는 **라이브러리 구현 완료, 소비자 검증 대기**
-상태이며 Livesona 전환 전에는 출시 완료로 표시하지 않는다.
+`motion(): Promise<void>`와 문자열 Idle 계약은 유지한다(명시한 idle 그룹이
+없으면 이제 가중 idle과 같이 `invalid-props`; 기본 `'Idle'`은 그대로 관대).
+합성 motion3/exp3와 실제 Hiyori로 세 브라우저 검증이 CI에 있다. 여러 표정의
+가중 블렌드, tween, 물리·포즈 설정은 후속 C 범위다. 0.4 범위는 0.5.0에 함께
+발행하며, Livesona 전환 전에는 완료로 표시하지 않는다.
 
 ### D. 다중 모델과 장면
 
@@ -340,9 +353,8 @@ suspend 복구와 장치 변경 대응.
 
 | 버전 | 내용 | 완료 조건 |
 | --- | --- | --- |
-| 0.3.x | 기반 안정화·검증 계약·호환성 기준선 | 문서와 실제 자동 게이트가 일치하고 브라우저 3종 e2e가 자동화되며 공개 API·번들·성능 기준선이 기록됨 |
-| 0.4 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼 | 라이브러리 구현 완료, Livesona 전환·소비자 검증 대기 |
-| 0.5 | A 웹캠 트래킹 `/tracking/mediapipe` | 라이브러리 구현 완료, Livesona 선택 기능 또는 VS Code 확장 채택 대기 |
+| 0.3.x | 기반 안정화·검증 계약·호환성 기준선 | 문서와 실제 자동 게이트가 일치하고 브라우저 3종 e2e가 자동화되며 공개 API·번들·성능 기준선이 기록됨. **충족 2026-08-25** |
+| 0.5.0 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼, A 웹캠 트래킹 `/tracking/mediapipe`(experimental) | Livesona가 볼륨 헬퍼를 받아쓰고 자체 구현을 제거하며, Livesona 선택 기능 또는 VS Code 확장이 트래킹을 사용. **상태: 발행 후보, 소비자 게이트 열림** |
 | 0.6 | D 다중 모델 Stage | 히비엔 또는 합방 데모가 사용 |
 | 0.7 | B 공식 MotionSync | 라이선스 확인 후, Livesona가 립싱크 모드로 채택 |
 | 0.8 | E 모바일 게이트·soak 정기화·Worker 검토 | 모바일·장시간 검증이 정기 릴리스 운영에 포함 |

@@ -17,7 +17,9 @@ The public package contains `wlipsync` as its only direct runtime dependency,
 plus optional React and `@mediapipe/tasks-vision` peers. MediaPipe is reachable
 only from `/tracking/mediapipe` and loads dynamically. Pixi, Next and benchmark
 tooling are not in its published dependency graph; `verify-package.mjs` checks
-that boundary and rejects bundled `.wasm` or `.task` assets.
+that boundary in both the root and React bundles, and rejects any `.bin`,
+`.json`, `.task` or `.wasm` file in `dist/` as well as the asset names inside
+the tracking entry.
 
 ## Camera tracking and remote boundaries
 

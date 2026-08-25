@@ -173,11 +173,13 @@ Face Landmarker 모델은 사용자 경로나 버퍼로 받으며 dist에 포함
 경우에만 켠다. 트래커 하나는 여러 모델에 붙을 수 있고, 각 detach와 전체
 dispose는 driver를 먼저 제거한 뒤 MediaPipe task를 한 번만 닫는다.
 
-MediaPipe의 동기 추론이 메인 스레드를 막을 수 있어 첫 구현은 기본 15fps로
-제한한다. 2026-08-24 reference Chromium은 inference p95 14.4ms와 33ms 초과
-프레임 0.16%였지만 Firefox headless는 p95 202ms로 임계값을 넘었다. 따라서
-초기 기본값을 15fps로 낮췄고, Worker는 Firefox·저성능 장치의 렌더 스레드를
-보호하는 다음 성능 작업으로 남긴다.
+MediaPipe의 동기 추론이 메인 스레드를 막을 수 있다. 2026-08-24 reference
+Chromium은 inference p95 14.4ms와 33ms 초과 프레임 0.16%였지만 Firefox
+headless는 p95 202ms로 임계값을 넘었다. 고정 상한 하나로는 둘을 함께 만족할
+수 없어 상한을 **적응형**으로 둔다: 30fps로 시작하고, 추론 시간 EMA가 간격의
+60%를 넘으면 절반으로(최저 10fps), 25% 아래로 내려오면 다시 두 배로 올린다.
+`update()`가 `effectiveFps`로 현재 상한을 알린다. Worker는 Firefox·저성능
+장치의 렌더 스레드를 보호하는 다음 성능 작업으로 남긴다.
 
 ## 오류와 정리
 

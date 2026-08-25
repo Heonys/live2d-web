@@ -117,7 +117,8 @@ character.clearExpression()
 `{ group: 'Idle', weights: [5, 2, 1] }`처럼 가중 랜덤도 설정할 수 있습니다.
 weights 길이는 그룹의 모션 수와 같아야 하며 0인 항목은 선택되지 않습니다.
 우선순위는 `'idle' | 'normal' | 'force'`이며 기본값 `'force'`는 재생 중인
-모션을 중단합니다. 표정 페이드는 모션과 같은 0 이상의 밀리초 규칙을 사용하고,
+모션을 중단합니다. 없는 그룹·표정·명시한 idle 그룹 이름은 유효한 이름 목록과
+함께 거부됩니다. 표정 페이드는 모션과 같은 0 이상의 밀리초 규칙을 사용하고,
 생략하면 exp3/Framework 기본값을 유지합니다. `clearExpression()`은 기존처럼
 즉시 초기화합니다.
 
@@ -229,9 +230,12 @@ requestAnimationFrame(frame)
 호출합니다. `auto`는 52개 Perfect Sync 파라미터가 모두 있으면 직접 매핑하고,
 아니면 일반적인 얼굴·눈·눈썹·입·볼 파라미터로 자동 전환합니다.
 
-추론은 기기 안에서 실행되지만 카메라 사용 고지와 MediaPipe 개인정보 안내는
-앱 책임입니다. Firefox 로컬 측정이 프레임 예산을 넘어서 첫 버전의 메인
-스레드 기본값은 15fps입니다. 다른 상한은 `maxFps`로 명시할 수 있습니다.
+트래킹은 0.5.0에서 **experimental**입니다. 1.0 전에 API가 바뀔 수 있고,
+실제 카메라와 Perfect Sync 모델의 체감은 아직 저장소 밖에서 검증되지
+않았습니다. 추론은 기기 안에서 실행되지만 카메라 사용 고지와 MediaPipe
+개인정보 안내는 앱 책임입니다. 추론은 메인 스레드에서 30fps로 시작하고, 측정된 추론 시간이
+렌더링을 굶기면 스스로 상한을 낮춥니다(최저 10fps). 매 update가 현재
+`effectiveFps`를 알려 줍니다. 시작 상한은 `maxFps`로 바꿀 수 있습니다.
 
 ## 파라미터 직접 제어
 
@@ -409,7 +413,7 @@ LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets   # 안내되는 약관 확인 후 Core�
 pnpm dev
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm verify:package
-pnpm verify:packed-consumers             # 실제 tarball을 소비자 3종에 설치
+pnpm verify:packed-consumers             # 실제 tarball을 소비자 4종에 설치
 LIVE2D_SOAK_MINUTES=120 pnpm test:soak   # 선택적인 장시간 로컬 게이트
 ```
 

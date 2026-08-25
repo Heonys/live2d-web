@@ -1,7 +1,8 @@
 # API Reference
 
-Status: 2026-08-24. The package is ESM-only, versioned `0.3.1`. The root
-entry has no React dependency;
+Status: 2026-08-25. The package is ESM-only. This document tracks `develop`,
+the `0.5.0` release candidate; `0.3.1` on npm lacks everything marked
+**(0.5.0)** below. The root entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
 ## Vanilla API
@@ -204,11 +205,27 @@ source inside this workspace for the benchmarks only.
 `addParameterDriver()` and `addLipSync()` return idempotent cleanup functions.
 Registered features survive `retry()` and attach to the new model generation.
 
-## MediaPipe face tracking (0.5 candidate)
+## MediaPipe face tracking (0.5.0, experimental)
 
 The optional package boundary is `live2d-web/tracking/mediapipe`. Importing it
 is SSR-evaluation safe; creating a tracker is browser-only and dynamically
-loads the optional `@mediapipe/tasks-vision` peer.
+loads the optional `@mediapipe/tasks-vision` peer. **Experimental**: the shape
+below may change before 1.0 without a deprecation window, because real-camera
+and real Perfect Sync model verification are still consumer-side.
+
+```ts
+function createMediaPipeFaceTracker(
+  options: CreateMediaPipeFaceTrackerOptions,
+): Promise<MediaPipeFaceTracker>
+```
+
+Perfect Sync detection uses the ARKit 52 parameter names (`ParamBrowDownLeft`
+… `ParamTongueOut`); a model that declares at least 45 of them is mapped
+directly, binding only the parameters it has. `_neutral` is a MediaPipe input,
+never a parameter, and `ParamTongueOut` is left at its default because
+MediaPipe does not report a tongue signal. Inference starts at `maxFps`
+(default 30) and adapts downward to 10fps while measured inference time would
+starve rendering; every non-skipped `update()` reports `effectiveFps`.
 
 ```ts
 type MediaPipeModelAsset =
