@@ -17,8 +17,13 @@ is excluded from the root static bundle.
   copyright Google LLC, Apache License 2.0. It is an optional peer loaded only
   by the MediaPipe tracking subpath. WASM, models and test images are not in the
   npm package.
-- [Inter](https://github.com/rsms/inter), copyright The Inter Project
-  Authors, SIL Open Font License 1.1. Self-hosted by the documentation site.
+- [MiSans Latin](https://hyperos.mi.com/font/en/), copyright Xiaomi Inc.,
+  MiSans Fonts Intellectual Property License Agreement. Unmodified official
+  WOFF2 files are embedded by the documentation site for Latin text and
+  numerals.
+- [Pretendard](https://github.com/orioncactus/pretendard), copyright Kil
+  Hyung-jin and contributors, SIL Open Font License 1.1. Self-hosted by the
+  documentation site for Korean text.
 - [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), copyright
   JetBrains s.r.o., SIL Open Font License 1.1. Self-hosted by the documentation
   site for code and technical labels.

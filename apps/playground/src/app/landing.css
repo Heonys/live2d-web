@@ -44,16 +44,16 @@
 .landing-final-cta a {
   padding: 10px 14px;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-1);
   background: var(--surface-1);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   text-decoration: none;
 }
 .landing-actions .primary-action {
-  border-color: #9d8bf3;
-  color: #0d0c13;
+  border-color: var(--accent);
+  color: #101116;
   background: var(--accent);
 }
 .landing-install {
@@ -66,15 +66,18 @@
 .landing-demo {
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: 18px;
+  border-radius: 12px;
   background: var(--surface-1);
-  box-shadow: 0 34px 90px rgb(0 0 0 / 38%);
+  box-shadow: 0 28px 72px rgb(0 0 0 / 30%);
 }
 .landing-stage {
   position: relative;
   height: 550px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 42%, #211c2b, var(--surface-0) 72%);
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgb(255 255 255 / 3%) 50%, transparent 50.1%),
+    linear-gradient(0deg, transparent 49.9%, rgb(255 255 255 / 3%) 50%, transparent 50.1%),
+    radial-gradient(circle at 50% 42%, #1a1d23, var(--surface-0) 72%);
 }
 .landing-stage canvas,
 .landing-stage .runtime-host {
@@ -90,6 +93,38 @@
   grid-template-columns: auto auto minmax(120px, 1fr);
   gap: 12px;
 }
+.landing-stage-status {
+  position: absolute;
+  z-index: 5;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  background: rgb(11 12 15 / 72%);
+  font: 9px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  align-items: center;
+  backdrop-filter: blur(8px);
+}
+.landing-stage-status span {
+  display: inline-flex;
+  min-height: 14px;
+  align-items: center;
+}
+.landing-stage-status span + span {
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+.landing-stage-status [data-state='ready'] {
+  color: var(--success);
+}
+.landing-stage-status [data-state='error'] {
+  color: var(--danger);
+}
 .landing-demo-controls > span {
   color: var(--text-3);
   font: 700 9px/1 var(--font-mono);
@@ -98,17 +133,18 @@
 }
 .landing-demo-controls button {
   padding: 8px 10px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .landing-demo-controls label {
   display: flex;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 13px;
   align-items: center;
   gap: 8px;
 }
 .landing-demo-controls input {
   width: 100%;
+  accent-color: var(--accent);
 }
 .landing-demo-error {
   position: absolute;
@@ -141,7 +177,7 @@
 .landing-features p {
   margin: 0;
   color: var(--text-3);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
@@ -162,12 +198,12 @@
 .landing-code-section p:not(.eyebrow) {
   max-width: 430px;
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.7;
 }
 .landing-code-section > div > a {
   color: var(--accent);
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: none;
 }
 .landing-code-section .docs-code {

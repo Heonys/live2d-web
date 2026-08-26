@@ -14,7 +14,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/jetbrains-mono": "catalog:",
     "@mdx-js/react": "catalog:",
     "@mediapipe/tasks-vision": "catalog:",
@@ -35,6 +34,7 @@
     "live2d-web": "workspace:^",
     "next": "catalog:",
     "pixi-live2d-display": "catalog:",
+    "pretendard": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "shiki": "catalog:"

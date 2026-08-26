@@ -114,6 +114,7 @@ test('keeps the landing page focused and links to the full playground', async ({
     '/playground',
   )
   await expect(page.locator('.landing-stage canvas')).toHaveCount(1)
+  await expect(page.locator('.landing-stage-status')).toContainText('ready')
   await expect(page.getByRole('button', { name: 'Play motion' })).toBeEnabled()
 })
 
@@ -363,17 +364,28 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Getting started')
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/docs\/en$/)
   await expect(page.locator('link[hreflang="ko"]')).toHaveAttribute('href', /\/docs\/ko$/)
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).fontFamily))
+    .toContain('MiSans Latin')
 
   await page.getByLabel('Search documentation').fill('MediaPipe')
   await page.locator('.docs-search-results a[href="/docs/en/mediapipe"]').click()
   await expect(page).toHaveURL(/\/docs\/en\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe face tracking')
 
-  await page.getByRole('link', { exact: true, name: 'KO' }).click()
+  const languageTrigger = page.getByRole('button', { name: 'Documentation language' })
+  await languageTrigger.click()
+  await page.getByRole('menuitem', { exact: true, name: '한국어' }).click()
   await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
-  await page.getByRole('link', { exact: true, name: 'JA' }).click()
+  await page.getByRole('button', { name: 'Documentation language' }).click()
+  await page.getByRole('menuitem', { exact: true, name: '日本語' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 顔トラッキング')
+
+  const japaneseLanguageTrigger = page.getByRole('button', { name: 'Documentation language' })
+  await japaneseLanguageTrigger.click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(japaneseLanguageTrigger).toBeFocused()
 
   await page.goto('/docs/en/vanilla')
   await page.getByRole('button', { name: 'Copy' }).click()

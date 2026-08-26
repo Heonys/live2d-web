@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import '@fontsource-variable/inter'
 import '@fontsource-variable/jetbrains-mono'
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'
 import './globals.css'
 import './site.css'
 import './docs.css'

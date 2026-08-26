@@ -9,7 +9,7 @@
 
 .docs-layout {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr) 210px;
+  grid-template-columns: 264px minmax(0, 1fr) 224px;
   width: min(1480px, 100%);
   min-height: calc(100dvh - var(--site-header-height));
   margin: 0 auto;
@@ -19,7 +19,7 @@
   top: var(--site-header-height);
   display: block;
   height: calc(100dvh - var(--site-header-height));
-  padding: 32px 24px 48px;
+  padding: 34px 26px 48px;
   overflow-y: auto;
   border: 0;
   border-right: 1px solid var(--line);
@@ -30,29 +30,30 @@
   display: block;
   margin-bottom: 18px;
   color: var(--text-1);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   text-decoration: none;
 }
 .docs-sidebar nav section {
-  margin: 20px 0 0;
+  margin: 24px 0 0;
 }
 .docs-sidebar nav h2 {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .docs-sidebar nav a {
+  position: relative;
   display: block;
   margin-left: -9px;
-  padding: 6px 9px;
-  border-radius: 6px;
-  color: var(--text-3);
-  font-size: 12px;
-  line-height: 1.35;
+  padding: 7px 10px;
+  border-radius: 5px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.4;
   text-decoration: none;
 }
 .docs-sidebar nav a:hover {
@@ -60,7 +61,14 @@
 }
 .docs-sidebar nav a[aria-current='page'] {
   color: var(--text-1);
-  background: var(--accent-soft);
+  background: var(--surface-2);
+}
+.docs-sidebar nav a[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset: 6px auto 6px 0;
+  width: 2px;
+  background: var(--accent);
 }
 .docs-search {
   position: relative;
@@ -68,18 +76,18 @@
 }
 .docs-search label {
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .docs-search input {
   width: 100%;
   margin-top: 7px;
-  padding: 9px 10px;
+  padding: 10px 11px;
   border: 1px solid var(--line-strong);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--text-1);
   background: var(--surface-1);
-  font-size: 12px;
+  font-size: 14px;
 }
 .docs-search input:focus {
   border-color: rgb(183 168 255 / 65%);
@@ -95,7 +103,7 @@
   overflow-y: auto;
   border: 1px solid var(--line-strong);
   border-radius: 9px;
-  background: var(--surface-3);
+  background: var(--surface-2);
   box-shadow: 0 20px 50px rgb(0 0 0 / 45%);
 }
 .docs-search-results > a,
@@ -121,44 +129,44 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 34px;
+  padding: 0 36px;
 }
 .docs-article {
-  width: min(760px, 100%);
+  width: min(780px, 100%);
   margin: 0 auto;
   padding: 72px 0 110px;
 }
 .docs-article .eyebrow {
   margin: 0 0 14px;
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
 }
 .docs-article > h1 {
   margin: 0;
   color: var(--text-1);
-  font-size: clamp(38px, 5vw, 58px);
+  font-size: clamp(40px, 5vw, 56px);
   line-height: 1.05;
   letter-spacing: -0.045em;
 }
 .docs-lead {
   margin: 18px 0 52px;
   color: var(--text-2);
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.7;
 }
 .docs-article h2 {
   margin: 52px 0 16px;
   scroll-margin-top: 84px;
   color: var(--text-1);
-  font-size: 23px;
+  font-size: 26px;
   letter-spacing: -0.025em;
 }
 .docs-article h3 {
   margin: 32px 0 10px;
   scroll-margin-top: 84px;
   color: var(--text-1);
-  font-size: 17px;
+  font-size: 19px;
 }
 .docs-article h2 a,
 .docs-article h3 a {
@@ -174,8 +182,8 @@
 .docs-article p,
 .docs-article li {
   color: var(--text-2);
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 16px;
+  line-height: 1.78;
 }
 .docs-article li + li {
   margin-top: 5px;
@@ -188,16 +196,16 @@
   padding: 2px 5px;
   border: 1px solid var(--line);
   border-radius: 5px;
-  color: #d4ccff;
-  background: rgb(255 255 255 / 4%);
-  font: 12px/1.5 var(--font-mono);
+  color: #d8dbe3;
+  background: var(--surface-2);
+  font: 13px/1.5 var(--font-mono);
 }
 .docs-callout {
   margin: 24px 0;
   padding: 12px 16px;
   border-left: 2px solid var(--accent);
   border-radius: 0 8px 8px 0;
-  background: var(--accent-soft);
+  background: var(--surface-1);
 }
 .docs-callout p {
   margin: 0;
@@ -227,8 +235,8 @@ figure[data-rehype-pretty-code-figure],
   margin: 24px 0;
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: #09080e;
+  border-radius: 8px;
+  background: #08090c;
   box-shadow: 0 14px 40px rgb(0 0 0 / 18%);
 }
 figure[data-rehype-pretty-code-figure] figcaption {
@@ -248,7 +256,7 @@ figure[data-rehype-pretty-code-figure] figcaption {
   border-radius: 6px;
   color: var(--text-3);
   background: var(--surface-2);
-  font-size: 10px;
+  font-size: 11px;
 }
 figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) .docs-code-copy,
 .docs-code > .docs-code-header {
@@ -260,7 +268,7 @@ figure[data-rehype-pretty-code-figure] pre,
   padding: 18px 16px;
   overflow-x: auto;
   background: transparent !important;
-  font: 12px/1.72 var(--font-mono);
+  font: 13px/1.72 var(--font-mono);
   tab-size: 2;
 }
 figure[data-rehype-pretty-code-figure] pre:focus-visible {
@@ -275,7 +283,7 @@ figure[data-rehype-pretty-code-figure] [data-highlighted-line] {
   margin-inline: -16px;
   padding-inline: 13px 16px;
   border-left: 3px solid var(--accent);
-  background: var(--accent-soft);
+  background: rgb(183 168 255 / 7%);
 }
 figure[data-rehype-pretty-code-figure] code[data-line-numbers] {
   counter-reset: line;
@@ -286,7 +294,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   display: inline-block;
   width: 2rem;
   margin-right: 1rem;
-  color: #4f4a59;
+  color: #555b65;
   text-align: right;
 }
 .docs-code-header {
@@ -295,7 +303,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   padding: 10px 66px 8px 13px;
   border-bottom: 1px solid var(--line);
   color: var(--text-3);
-  font: 10px/1 var(--font-mono);
+  font: 11px/1 var(--font-mono);
 }
 .docs-code .line {
   min-height: 1.72em;
@@ -312,7 +320,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   margin: 18px 0;
   padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface-1);
 }
 .api-symbol > span {
@@ -337,7 +345,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   gap: 5px;
   padding: 13px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-1);
   text-decoration: none;
 }
@@ -350,11 +358,11 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
 }
 .docs-pager span {
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
 }
 .docs-pager strong {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .docs-toc {
@@ -362,7 +370,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   top: var(--site-header-height);
   display: block;
   height: calc(100dvh - var(--site-header-height));
-  padding: 42px 20px;
+  padding: 44px 22px;
   overflow-y: auto;
   border: 0;
   border-radius: 0;
@@ -370,7 +378,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
 }
 .docs-toc > strong {
   color: var(--text-3);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -381,16 +389,16 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
 }
 .docs-toc a {
   margin-left: -1px;
-  padding: 5px 10px;
+  padding: 6px 11px;
   border-left: 1px solid transparent;
-  color: var(--text-3);
-  font-size: 11px;
-  line-height: 1.35;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.4;
   text-decoration: none;
 }
 .docs-toc a.is-child {
   padding-left: 18px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .docs-toc a[aria-current='location'] {
   border-color: var(--accent);
@@ -429,7 +437,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
     display: block;
     margin-inline: -20px;
     border-bottom: 1px solid var(--line);
-    background: rgb(13 12 19 / 94%);
+    background: rgb(11 12 15 / 94%);
     backdrop-filter: blur(14px);
   }
   .docs-mobile-navigation > button {
@@ -444,10 +452,10 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   }
   .docs-mobile-navigation > button span {
     color: var(--text-3);
-    font-size: 10px;
+    font-size: 11px;
   }
   .docs-mobile-navigation > button strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .docs-mobile-drawer {
     position: fixed;

@@ -46,6 +46,13 @@ export function LandingDemo() {
   return (
     <div className="landing-demo">
       <div className="landing-stage">
+        <output className="landing-stage-status" aria-live="polite">
+          <span data-state={error ? 'error' : controller ? 'ready' : 'loading'}>
+            {error ? 'error' : controller ? 'ready' : 'loading'}
+          </span>
+          <span>WebGL2</span>
+          <span>Cubism 4/5</span>
+        </output>
         {manifest
           ? (
               <Live2DCanvas
