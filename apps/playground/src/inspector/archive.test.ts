@@ -87,4 +87,30 @@ describe('model zip reader', () => {
       uncompressedBytes: ARCHIVE_LIMITS.expandedBytes + 1,
     }]))).toThrow('expanded archive limit')
   })
+
+  // The declared sizes are attacker-controlled: an entry can claim a few
+  // bytes and inflate to far more, and the pre-scan total cannot see that.
+  // JSZip's own length probe catches the per-entry lie mid-stream and the
+  // extraction budget bounds the running total; either way the archive must
+  // reject during extraction, not after filling memory.
+  it('stops an entry that inflates past what its directory declared', async () => {
+    const file = await zipFile({
+      'avatar/model.model3.json': JSON.stringify({ FileReferences: {}, Version: 3 }),
+      'avatar/padding.bin': 'a'.repeat(8_192),
+    })
+    const input = await file.arrayBuffer()
+    const view = new DataView(input)
+    // Understate every declared uncompressed size so the pre-scan total stays
+    // tiny while the real content still inflates to 8 KiB.
+    for (let offset = 0; offset <= view.byteLength - 4; offset++) {
+      if (view.getUint32(offset, true) === 0x02014B50)
+        view.setUint32(offset + 24, 8, true)
+    }
+    const patched = new File([input], 'liar.zip', { type: 'application/zip' })
+
+    await expect(readModelArchive(patched, undefined, {
+      ...ARCHIVE_LIMITS,
+      expandedBytes: 1_024,
+    })).rejects.toThrow(/expands past the archive limit|size mismatch/)
+  })
 })

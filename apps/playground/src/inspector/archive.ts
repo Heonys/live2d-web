@@ -52,16 +52,19 @@ function assertSafeArchivePath(path: string) {
   }
 }
 
-export function inspectZipDirectory(input: ArrayBuffer): ZipDirectoryInfo {
+export function inspectZipDirectory(
+  input: ArrayBuffer,
+  limits: typeof ARCHIVE_LIMITS = ARCHIVE_LIMITS,
+): ZipDirectoryInfo {
   const view = new DataView(input)
   const end = findEndOfDirectory(view)
   const entries = view.getUint16(end + 10, true)
   const directoryOffset = view.getUint32(end + 16, true)
   if (entries === 0xFFFF || directoryOffset === 0xFFFFFFFF)
     throw new ModelArchiveError('ZIP64 archives are not supported.')
-  if (entries > ARCHIVE_LIMITS.entries) {
+  if (entries > limits.entries) {
     throw new ModelArchiveError(
-      `The archive contains more than ${ARCHIVE_LIMITS.entries.toLocaleString()} entries.`,
+      `The archive contains more than ${limits.entries.toLocaleString()} entries.`,
     )
   }
 
@@ -91,9 +94,9 @@ export function inspectZipDirectory(input: ArrayBuffer): ZipDirectoryInfo {
       names.add(normalized)
     }
     expandedBytes += uncompressedBytes
-    if (expandedBytes > ARCHIVE_LIMITS.expandedBytes) {
+    if (expandedBytes > limits.expandedBytes) {
       throw new ModelArchiveError(
-        'The archive exceeds the 768 MiB expanded archive limit.',
+        'The archive exceeds the expanded archive limit.',
       )
     }
     offset = next
@@ -106,15 +109,68 @@ function throwIfAborted(signal?: AbortSignal) {
     throw signal.reason
 }
 
+// The declared sizes in the central directory are attacker-controlled, so the
+// pre-scan total is only a fast first gate: the streaming budget below is what
+// actually stops a small archive from inflating past the limit.
+// The runtime API jszip documents but its typings omit.
+interface StreamingZipObject extends JSZip.JSZipObject {
+  internalStream: (type: 'uint8array') => JSZip.JSZipStreamHelper<Uint8Array>
+}
+
+function entryBlob(
+  entry: JSZip.JSZipObject,
+  budget: number,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    let bytes = 0
+    let settled = false
+    const stream = (entry as StreamingZipObject).internalStream('uint8array')
+    const fail = (error: unknown) => {
+      if (settled)
+        return
+      settled = true
+      stream.pause()
+      reject(error)
+    }
+    stream.on('data', (chunk: Uint8Array) => {
+      if (settled)
+        return
+      if (signal?.aborted) {
+        fail(signal.reason)
+        return
+      }
+      bytes += chunk.length
+      if (bytes > budget) {
+        fail(new ModelArchiveError(
+          `${entry.name} expands past the archive limit.`,
+        ))
+        return
+      }
+      chunks.push(chunk)
+    })
+    stream.on('error', fail)
+    stream.on('end', () => {
+      if (!settled) {
+        settled = true
+        resolve(new Blob(chunks as BlobPart[]))
+      }
+    })
+    stream.resume()
+  })
+}
+
 export async function readModelArchive(
   file: File,
   signal?: AbortSignal,
+  limits: typeof ARCHIVE_LIMITS = ARCHIVE_LIMITS,
 ): Promise<LocalModelArchive> {
   if (!(file instanceof File))
     throw new ModelArchiveError('Choose a zip file.')
-  if (file.size > ARCHIVE_LIMITS.compressedBytes) {
+  if (file.size > limits.compressedBytes) {
     throw new ModelArchiveError(
-      `${file.name} exceeds the 256 MiB compressed archive limit.`,
+      `${file.name} exceeds the compressed archive limit.`,
     )
   }
 
@@ -122,7 +178,7 @@ export async function readModelArchive(
   try {
     input = await file.arrayBuffer()
     throwIfAborted(signal)
-    inspectZipDirectory(input)
+    inspectZipDirectory(input, limits)
   }
   catch (error) {
     if (signal?.aborted)
@@ -156,13 +212,11 @@ export async function readModelArchive(
   let expandedBytes = 0
   for (const entry of files) {
     throwIfAborted(signal)
-    const blob = await entry.async('blob')
+    // JSZip decodes names on its own path; they get the same rejection the
+    // pre-scan applied to the central directory, so the two cannot disagree.
+    assertSafeArchivePath(entry.name)
+    const blob = await entryBlob(entry, limits.expandedBytes - expandedBytes, signal)
     expandedBytes += blob.size
-    if (expandedBytes > ARCHIVE_LIMITS.expandedBytes) {
-      throw new ModelArchiveError(
-        `${file.name} exceeds the 768 MiB expanded archive limit.`,
-      )
-    }
     entries.push([entry.name, blob])
   }
   return collectArchiveFiles(entries, file.name)
