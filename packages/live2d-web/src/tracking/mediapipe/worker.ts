@@ -4,6 +4,7 @@ import type {
   MediaPipeWorkerResponse,
   SerializedFaceResult,
 } from './protocol'
+import { MEDIAPIPE_WORKER_PROTOCOL } from './protocol'
 
 function serializeResult(result: FaceLandmarkerResult): SerializedFaceResult | undefined {
   if (!result.faceLandmarks.length)
@@ -75,6 +76,12 @@ export function startMediaPipeFaceTrackerWorker(): void {
     }
     try {
       if (request.type === 'init') {
+        if (request.protocol !== MEDIAPIPE_WORKER_PROTOCOL) {
+          throw new Error(
+            `MediaPipe worker protocol mismatch: the worker chunk speaks v${MEDIAPIPE_WORKER_PROTOCOL} `
+            + `but the library sent v${request.protocol}. Rebuild or redeploy the app's worker entry.`,
+          )
+        }
         const vision = await import('@mediapipe/tasks-vision')
         // Vite and standards-compliant module workers use MediaPipe's ESM
         // loader. Some current framework bundlers (notably Next/Turbopack)

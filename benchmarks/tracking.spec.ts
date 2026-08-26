@@ -80,7 +80,10 @@ test('compares main and Worker tracking while Hiyori renders', async ({ browserN
   )
   expect(summary.worker.frameP95).toBeLessThanOrEqual(33)
   expect(summary.worker.frameOver33Ratio).toBeLessThanOrEqual(0.05)
+  // Anchored to the recorded baseline, not this run's own main measurement: a
+  // budget derived from the same run widens in step with a joint regression
+  // and can never fail.
   expect(summary.worker.roundTripP95).toBeLessThanOrEqual(
-    summary.main.inferenceP95 + 34,
+    mainInferenceBaselines[browserName] * 1.1 + timerResolutionToleranceMs + 34,
   )
 })

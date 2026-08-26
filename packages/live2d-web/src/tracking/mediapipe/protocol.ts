@@ -1,3 +1,8 @@
+// Bumped when a message shape changes. The app bundles its own worker chunk,
+// so a cached chunk from an older deploy can meet a newer library; the version
+// turns that skew into an explicit init error instead of silent misbehavior.
+export const MEDIAPIPE_WORKER_PROTOCOL = 1
+
 export interface SerializedFaceResult {
   blendshapes: Array<[string, number]>
   matrix: number[]
@@ -14,7 +19,7 @@ export interface WorkerTrackerOptions {
 }
 
 export type MediaPipeWorkerRequest
-  = | { id: number, type: 'init', options: WorkerTrackerOptions }
+  = | { id: number, type: 'init', options: WorkerTrackerOptions, protocol: number }
     | { id: number, type: 'detect', bitmap: ImageBitmap, timestampMs: number }
     | { id: number, type: 'dispose' }
 

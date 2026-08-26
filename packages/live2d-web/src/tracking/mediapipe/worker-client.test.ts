@@ -236,14 +236,18 @@ describe('mediaPipe worker face tracker', () => {
     vi.stubGlobal('createImageBitmap', vi.fn(() =>
       Promise.resolve({ close: vi.fn() } as unknown as ImageBitmap)))
     const tracker = await createMediaPipeFaceTracker(options(worker))
-    const drivers = new Map<string, { getValue: () => number }>()
+    const drivers = new Map<string, { getValue: () => number, phase?: string }>()
     tracker.attach({
-      addParameterDriver: (id: string, driver: { getValue: () => number }) => {
+      addParameterDriver: (id: string, driver: { getValue: () => number, phase?: string }) => {
         drivers.set(id, driver)
         return () => drivers.delete(id)
       },
       getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
     })
+    // Worker mode delegates attach to the shared core: the pose channel keeps
+    // its before-physics phase there too.
+    expect(drivers.get('ParamAngleX')?.phase).toBe('before-physics')
+    expect(drivers.get('ParamMouthOpenY')?.phase).toBe('after-motion')
 
     for (let timestamp = 0; timestamp <= 1_020; timestamp += 34)
       await tracker.update({} as TexImageSource, timestamp)

@@ -2,6 +2,12 @@ import process from 'node:process'
 import { defineConfig, devices } from '@playwright/test'
 
 const minutes = Number(process.env.LIVE2D_TRACKING_SOAK_MINUTES ?? 5)
+// The minute budget is split across the soaked execution modes, so the
+// per-test timeout follows the per-mode share, not the total.
+const modeCount = (process.env.LIVE2D_TRACKING_SOAK_MODES ?? 'main,worker')
+  .split(',')
+  .filter(mode => mode.trim())
+  .length
 
 export default defineConfig({
   expect: { timeout: 60_000 },
@@ -9,7 +15,7 @@ export default defineConfig({
   preserveOutput: 'always',
   reporter: 'list',
   testDir: './e2e/tracking-soak',
-  timeout: Math.max(1, minutes) * 60_000 + 120_000,
+  timeout: Math.max(1, minutes / Math.max(1, modeCount)) * 60_000 + 120_000,
   use: {
     baseURL: 'http://127.0.0.1:3103',
     screenshot: 'only-on-failure',

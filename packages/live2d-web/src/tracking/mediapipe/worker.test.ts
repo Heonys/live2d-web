@@ -4,6 +4,7 @@ import type {
   MediaPipeWorkerResponse,
 } from './protocol'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MEDIAPIPE_WORKER_PROTOCOL } from './protocol'
 
 // The runner refuses to start twice in one worker scope, so every test case
 // loads a fresh module instance instead of sharing a static import.
@@ -97,19 +98,32 @@ describe('mediaPipe worker runner', () => {
     scope.dispatch({
       id: 0,
       options: {
-        delegate: 'CPU',
-        minFaceDetectionConfidence: 0.4,
-        minFacePresenceConfidence: 0.4,
-        minTrackingConfidence: 0.3,
+        delegate: 'GPU',
+        minFaceDetectionConfidence: 0.6,
+        minFacePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.2,
         modelAssetPath: 'https://example.test/face.task',
         wasmPath: 'https://example.test/wasm',
       },
+      protocol: MEDIAPIPE_WORKER_PROTOCOL,
       type: 'init',
     })
     await vi.waitFor(() => expect(scope.messages).toContainEqual({ id: 0, type: 'ready' }))
     expect(mediaPipeMocks.forVisionTasks).toHaveBeenCalledWith(
       'https://example.test/wasm',
       useModule,
+    )
+    // The thresholds relaxed for real cameras in 0.5.0 have to survive the
+    // hop into the worker, or worker mode silently reverts to MediaPipe's
+    // stricter defaults.
+    expect(mediaPipeMocks.createFromOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        baseOptions: expect.objectContaining({ delegate: 'GPU' }),
+        minFaceDetectionConfidence: 0.6,
+        minFacePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.2,
+      }),
     )
 
     const bitmap = { close: vi.fn() } as unknown as ImageBitmap
@@ -130,6 +144,37 @@ describe('mediaPipe worker runner', () => {
     await vi.waitFor(() => expect(scope.messages).toContainEqual({ id: 2, type: 'disposed' }))
     expect(mediaPipeMocks.close).toHaveBeenCalledTimes(1)
     expect(scope.closed).toBe(true)
+  })
+
+  it('rejects an init from a different protocol version', async () => {
+    const scope = new FakeWorkerScope()
+    vi.stubGlobal('self', scope)
+    vi.stubGlobal('postMessage', scope.postMessage.bind(scope))
+    vi.stubGlobal('close', scope.close.bind(scope))
+    vi.stubGlobal('importScripts', undefined)
+    vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope))
+    const startMediaPipeFaceTrackerWorker = await loadWorkerRunner()
+    startMediaPipeFaceTrackerWorker()
+
+    scope.dispatch({
+      id: 0,
+      options: {
+        delegate: 'CPU',
+        minFaceDetectionConfidence: 0.4,
+        minFacePresenceConfidence: 0.4,
+        minTrackingConfidence: 0.3,
+        modelAssetPath: 'https://example.test/face.task',
+        wasmPath: 'https://example.test/wasm',
+      },
+      protocol: MEDIAPIPE_WORKER_PROTOCOL + 1,
+      type: 'init',
+    })
+    await vi.waitFor(() => expect(scope.messages.some(message => message.type === 'error')).toBe(true))
+    expect(scope.messages.at(-1)).toMatchObject({
+      error: { message: expect.stringContaining('protocol mismatch') },
+      type: 'error',
+    })
+    expect(mediaPipeMocks.forVisionTasks).not.toHaveBeenCalled()
   })
 
   // The bitmap is transferred to this thread, so every early-return path must

@@ -724,6 +724,16 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
   })
   expect(await metrics()).toMatchObject({ activeTracks: 1, calls: 1 })
 
+  // The pose readout and tuning controls are how the 0.5.0 real-camera fixes
+  // were found; this is their only automated presence check.
+  const readout = page.getByTestId('face-pose-readout')
+  await expect(readout).toBeVisible()
+  await expect(readout.locator('tbody tr')).toHaveCount(3)
+  await expect(page.getByRole('slider', { name: 'Pose sensitivity' })).toBeVisible()
+  await expect(page.getByLabel('Face lost behaviour')).toHaveValue('hold')
+  await expect(page.getByLabel('Face tracking execution')).toBeVisible()
+  await expect(page.getByLabel('Face mapping')).toHaveValue('auto')
+
   await page.getByRole('button', { name: 'Stop face tracking' }).click()
   await expect.poll(async () => (await metrics()).activeTracks).toBe(0)
   await page.getByRole('button', { name: 'Start face tracking' }).click()

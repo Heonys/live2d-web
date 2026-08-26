@@ -24,6 +24,7 @@ import type {
 import { Live2DError } from '../../core/errors'
 import { MEDIAPIPE_BLENDSHAPES } from './blendshapes'
 import { createParameterBindings } from './mapping'
+import { MEDIAPIPE_WORKER_PROTOCOL } from './protocol'
 import { FaceTrackingState, poseFromMatrix } from './state'
 
 export {
@@ -824,7 +825,12 @@ async function createWorkerTracker(
       worker.addEventListener('message', onMessage)
       worker.addEventListener('error', onError)
       worker.addEventListener('messageerror', onMessageError)
-      const request: MediaPipeWorkerRequest = { id: initId, options: workerOptions, type: 'init' }
+      const request: MediaPipeWorkerRequest = {
+        id: initId,
+        options: workerOptions,
+        protocol: MEDIAPIPE_WORKER_PROTOCOL,
+        type: 'init',
+      }
       if (workerOptions.modelAssetBuffer) {
         worker.postMessage(request, [workerOptions.modelAssetBuffer.buffer])
       }

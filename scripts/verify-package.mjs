@@ -120,6 +120,17 @@ if (mediaPipeBundle.includes('vision_wasm_internal') || mediaPipeBundle.includes
   failures.push('MediaPipe entry contains a bundled WASM or model asset')
 if (mediaPipeWorkerBundle.includes('vision_wasm_internal') || mediaPipeWorkerBundle.includes('face_landmarker.task'))
   failures.push('MediaPipe Worker entry contains a bundled WASM or model asset')
+if (!mediaPipeWorkerEntry.includes('import("@mediapipe/tasks-vision")'))
+  failures.push('MediaPipe Worker entry must load @mediapipe/tasks-vision dynamically')
+if (
+  mediaPipeWorkerBundle.includes('CubismFramework')
+  || mediaPipeWorkerBundle.includes('from "react"')
+  || mediaPipeWorkerBundle.includes('from \'react\'')
+) {
+  failures.push('MediaPipe Worker entry contains Framework or React runtime code')
+}
+if (devtoolsBundle.includes('jszip'))
+  failures.push('Devtools entry contains an archive dependency')
 if (
   inspectBundle.includes('jszip')
   || inspectBundle.includes('CubismFramework')
