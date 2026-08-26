@@ -1,9 +1,9 @@
 # live2d-web 로드맵
 
-상태 기준일: **2026-08-26**. 현재 발행 버전은 `0.5.0`이고 `develop`에는 원래
-0.6·0.7로 나눴던 Worker, 문서·검사·Devtools와 리뷰 보완이 함께 있다. 이 미발행
-범위는 다음 `0.6.0`으로 통합한다. 지나온 마일스톤은 `private/docs/roadmap.md`에
-이력으로 남아 있고, 이 문서는 앞으로의 방향만 다룬다.
+상태 기준일: **2026-08-26**. 현재 발행 버전은 `0.6.0`이다. Worker,
+문서·검사·Devtools와 리뷰 보완은 한 릴리스로 발행됐고, `develop`은 다음 0.7
+안정화 범위를 진행한다. 지나온 마일스톤은 `private/docs/roadmap.md`에 이력으로
+남아 있고, 이 문서는 앞으로의 방향만 다룬다.
 
 ## 목표
 
@@ -420,9 +420,9 @@ production build되며 세 브라우저 문서·검사 e2e와 기여 템플릿�
 | --- | --- | --- |
 | 0.3.x | 기반 안정화·검증 계약·호환성 기준선 | 브라우저 3종 e2e와 공개 API·번들·성능 기준선 기록. **충족 2026-08-25** |
 | 0.5.0 | 모션·표정 품질, 볼륨 helper, MediaPipe main 추적 | **2026-08-25 발행.** 실제 소비자·Perfect Sync·모바일 검증은 후속 증거로 유지 |
-| **0.6.0 다음 발행** | MediaPipe Worker와 안정성 게이트, 모델 검사, Devtools, 다국어 MDX 문서·예제, 사이트 개편과 리뷰 보완 | 버전·CHANGELOG 동기화, 원격 CI의 package·브라우저·tracking 게이트, 릴리스 5분 soak, 실제 카메라 smoke와 배포 사이트 확인. 모바일 미검증 상태는 호환성 표에 그대로 공개 |
+| 0.6.0 | MediaPipe Worker와 안정성 게이트, 모델 검사, Devtools, 다국어 MDX 문서·예제, 사이트 개편과 리뷰 보완 | **2026-08-26 발행.** 원격 CI, 릴리스 5분 soak, 실제 카메라 smoke와 배포 사이트를 확인했고 모바일은 미검증으로 공개 |
 | 0.6.x | 0.6에서 발견된 회귀·문서·호환성 수정 | patch에서 공개 계약을 깨지 않고 관련 회귀 테스트 통과 |
-| **0.7 안정화 후보** | API 계약 기준선, iOS Safari·Android Chrome 실기기 검증, 외부 프로젝트 온보딩, 접근성·호환성·오류 안내, 측정 기반 MediaPipe 조정 | 공개 export·오류·lifecycle snapshot, 모바일 결과표, 별도 소비자 repo 온보딩 기록과 발견된 결함 수정. 외부 프로젝트 수 자체는 발행 차단 조건이 아님 |
+| **0.7 안정화 후보** | API 계약 기준선, iOS Safari 실기기 검증, 독립 프로젝트 온보딩, 접근성·호환성·오류 안내, 측정 기반 MediaPipe 초기화 조정 | 공개 export·오류·lifecycle snapshot, iOS 결과표, out-of-tree 소비자 온보딩 기록과 발견된 결함 수정. Android와 외부 프로젝트 수 자체는 발행 차단 조건이 아님 |
 | 0.8 이후 | 아래 수요 기반 후보 중 증거가 가장 강한 한 묶음 | 착수 조건과 소비자·측정 결과를 결정 기록에 남긴 뒤 범위 확정 |
 
 ### 0.7 안정화 후보의 실제 범위
@@ -436,9 +436,10 @@ production build되며 세 브라우저 문서·검사 e2e와 기여 템플릿�
 - **접근성·호환성·오류 안내**: Canvas의 이름·fallback·키보드/모션 정책을 앱이
   전달할 수 있게 하고, 브라우저·Core·번들러 지원표와 Core 미로드·404·CORS·
   모델 손상 오류에 바로 실행할 수 있는 해결책을 연결한다
-- **모바일·MediaPipe**: iOS Safari와 Android Chrome에서 카메라 중지/재시작,
-  백그라운드 복귀, Worker, frame·추론·발열을 먼저 측정한다. 최적화는 그 결과가
-  가리키는 input resolution·FPS·skip·delegate 경로만 바꾼다
+- **모바일·MediaPipe**: iOS Safari에서 카메라 중지/재시작, 백그라운드 복귀,
+  Worker, 초기화·frame·추론을 먼저 측정한다. warm tracker 생성 중앙값 5초를
+  넘으면 다운로드·WASM/task 생성·직렬 초기화 중 측정된 병목만 고친다. Android
+  Chrome은 0.7의 비차단 미검증 항목으로 남긴다
 
 ### API 상태와 experimental 종료
 

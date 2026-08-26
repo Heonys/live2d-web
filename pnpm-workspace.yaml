@@ -16,6 +16,7 @@ packages:
 
 catalog:
   '@antfu/eslint-config': ^9.2.0
+  '@axe-core/playwright': ^4.13.0
   '@eslint-react/eslint-plugin': ^5.18.0
   '@fontsource-variable/jetbrains-mono': ^5.3.0
   '@fontsource-variable/noto-sans-jp': ^5.3.0
@@ -23,6 +24,7 @@ catalog:
   '@mdx-js/mdx': ^3.1.1
   '@mdx-js/react': ^3.1.1
   '@mediapipe/tasks-vision': ^1.0.1
+  '@microsoft/api-extractor': ^7.59.0
   '@next/mdx': 16.2.12
   # pixi-v6 어댑터용 (PIXI v6 고정 — pixi-live2d-display@0.4가 v7/v8 미지원)
   '@pixi/app': ^6.5.10

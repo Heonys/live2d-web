@@ -9,6 +9,8 @@ export default antfu({
     // Vendored Framework keeps its upstream formatting and license headers.
     'private/**',
     'packages/live2d-web/vendor/**',
+    // API Extractor reports are generated contract snapshots, not authored Markdown.
+    'packages/live2d-web/etc/api/**',
     'packages/live2d-web/src/backends/cubism-webgl/shaderSources.generated.ts',
     'tmp/**',
     'test-results/**',

@@ -1,7 +1,7 @@
 # API Reference
 
-Status: 2026-08-25. The package is ESM-only. This document tracks `develop`
-after the published `0.5.0`. The root entry has no React dependency;
+Status: 2026-08-26. The package is ESM-only. This document tracks `develop`
+after the published `0.6.0`. The root entry has no React dependency;
 React 18.2 and React 19 are supported through `live2d-web/react`.
 
 ## Vanilla API
