@@ -25,7 +25,7 @@ tracker.dispose()
 
 ## 任意の Worker
 
-Worker mode は推論を描画スレッドから分離します。update() は非同期で1 frameずつ処理し、busy frame は skipped になります。起動失敗時の暗黙 fallback はありません。
+Worker mode は推論を描画スレッドから分離します。update() は非同期で1 frameずつ処理し、busy frame は skipped になります。起動失敗時の暗黙 fallback はありません。初期化の期限は30秒、推論の期限は10秒です。timeout は `tracking-error` で reject し、その tracker を終了するため、アプリは新しい Worker tracker を作成するか main mode に切り替える必要があります。
 
 ```ts
 const tracker = await createMediaPipeFaceTracker({

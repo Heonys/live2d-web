@@ -25,7 +25,7 @@ tracker.dispose()
 
 ## Optional Worker
 
-Worker mode keeps inference away from rendering. update() becomes asynchronous, accepts one frame at a time and reports busy frames as skipped. If Worker startup fails, choose main mode explicitly; there is no silent fallback.
+Worker mode keeps inference away from rendering. update() becomes asynchronous, accepts one frame at a time and reports busy frames as skipped. If Worker startup fails, choose main mode explicitly; there is no silent fallback. Initialization has a 30-second deadline and inference has a 10-second deadline. A timeout rejects with `tracking-error`, terminates that tracker and requires the app to create a new Worker tracker or switch to main mode.
 
 ```ts
 const tracker = await createMediaPipeFaceTracker({

@@ -53,7 +53,10 @@ upload, persist or send telemetry about the archive.
 The library inspector uses lower model limits: 64 MiB per asset, 256 MiB total
 and 2,048 references by default. A resolver-backed local model that declares an
 external URL receives an error finding and no network request. URL inspection
-warns about cross-origin assets and still requires their server to allow CORS.
+fetches HTTP(S) references, warns about cross-origin assets and still requires
+their server to allow CORS. In Node there is no browser CORS or private-network
+boundary, so a server accepting untrusted model URLs must enforce its own host
+allow-list and network policy. The inspector does not block private IP ranges.
 Incompatible reports never create a Canvas; warning-only reports require an
 explicit render action.
 

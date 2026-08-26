@@ -360,7 +360,11 @@ blendshape scores, a 4×4 transform and inference time. Calibration, smoothing,
 loss recovery and model mapping remain on the main thread. Relative WASM and
 model URLs are resolved against `document.baseURI`; model buffers are copied
 before transfer. Worker initialization errors are `tracking-error` and never
-silently fall back to main mode.
+silently fall back to main mode. Initialization has a 30-second deadline and
+each inference has a 10-second deadline. A timeout rejects with
+`tracking-error`, terminates that tracker to preserve the one-frame-in-flight
+contract, and requires the application to create a new tracker or explicitly
+switch to main mode.
 
 ## Model sources (0.3.0)
 

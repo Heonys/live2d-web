@@ -25,7 +25,7 @@ tracker.dispose()
 
 ## 선택형 Worker
 
-Worker 모드는 추론을 렌더링 스레드에서 분리합니다. update()는 비동기가 되고 한 번에 한 frame만 받아 busy frame은 skipped로 끝냅니다. 시작 실패 시 앱이 main을 명시적으로 선택하며 조용한 fallback은 없습니다.
+Worker 모드는 추론을 렌더링 스레드에서 분리합니다. update()는 비동기가 되고 한 번에 한 frame만 받아 busy frame은 skipped로 끝냅니다. 시작 실패 시 앱이 main을 명시적으로 선택하며 조용한 fallback은 없습니다. 초기화 제한은 30초, 추론 제한은 10초입니다. timeout은 `tracking-error`로 reject하고 해당 트래커를 종료하므로 앱이 새 Worker 트래커를 만들거나 main 모드로 전환해야 합니다.
 
 ```ts
 const tracker = await createMediaPipeFaceTracker({

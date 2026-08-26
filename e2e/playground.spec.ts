@@ -209,6 +209,16 @@ test('keeps playground tools contained and mounts the public devtools', async ({
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(trigger).toBeFocused()
+
+  await trigger.click()
+  await page.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+
+  await trigger.click()
+  await page.locator('.code-drawer-backdrop').click({ position: { x: 4, y: 4 } })
+  await expect(dialog).toHaveCount(0)
+  await expect(trigger).toBeFocused()
   expect(await page.evaluate(() => scrollY)).toBe(0)
 })
 

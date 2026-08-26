@@ -135,16 +135,22 @@ function RuntimeDevtools({ target }: { target: Live2DModelController | null }) {
   )
 }
 
-function CodeDrawer({ close, open }: { close: () => void, open: boolean }) {
+function CodeDrawer({
+  close,
+  open,
+  returnFocusRef,
+}: {
+  close: () => void
+  open: boolean
+  returnFocusRef: { readonly current: HTMLElement | null }
+}) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open)
       return
     const dialog = dialogRef.current
-    const previous = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null
+    const returnFocus = returnFocusRef.current
     dialog?.querySelector<HTMLElement>('button')?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -173,21 +179,22 @@ function CodeDrawer({ close, open }: { close: () => void, open: boolean }) {
     return () => {
       document.body.classList.remove('drawer-open')
       document.removeEventListener('keydown', handleKeyDown)
-      previous?.focus()
+      if (returnFocus?.isConnected)
+        returnFocus.focus()
     }
-  }, [close, open])
+  }, [close, open, returnFocusRef])
 
   if (!open)
     return null
   return (
-    <div className="code-drawer-backdrop" role="presentation" onMouseDown={close}>
+    <div className="code-drawer-backdrop" role="presentation" onClick={close}>
       <div
         ref={dialogRef}
         aria-label="Playground source code"
         aria-modal="true"
         className="code-drawer"
         role="dialog"
-        onMouseDown={event => event.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
         <div className="code-drawer-header">
           <div>
@@ -273,6 +280,7 @@ export default function PlaygroundPage() {
   const playGenerationRef = useRef(0)
   const [activeTab, setActiveTab] = useState<PlaygroundTab>('model')
   const [codeDrawerOpen, setCodeDrawerOpen] = useState(false)
+  const codeDrawerTriggerRef = useRef<HTMLButtonElement>(null)
   const [expression, setExpression] = useState('')
   const [expressionFadePreset, setExpressionFadePreset]
     = useState<MotionFadePreset>('model')
@@ -1331,7 +1339,11 @@ export default function PlaygroundPage() {
                   <h2>Build the same scene</h2>
                   <p>Open a focused source drawer without moving the stage or page scroll.</p>
                 </div>
-                <button type="button" onClick={() => setCodeDrawerOpen(true)}>
+                <button
+                  ref={codeDrawerTriggerRef}
+                  type="button"
+                  onClick={() => setCodeDrawerOpen(true)}
+                >
                   View code
                 </button>
               </section>
@@ -1339,7 +1351,11 @@ export default function PlaygroundPage() {
           </aside>
         </section>
       </main>
-      <CodeDrawer close={() => setCodeDrawerOpen(false)} open={codeDrawerOpen} />
+      <CodeDrawer
+        close={() => setCodeDrawerOpen(false)}
+        open={codeDrawerOpen}
+        returnFocusRef={codeDrawerTriggerRef}
+      />
     </>
   )
 }

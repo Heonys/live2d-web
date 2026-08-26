@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       minutes:
-        description: Worker tracking soak duration
+        description: Total main + Worker tracking soak duration
         required: true
         default: '15'
         type: choice
@@ -16,7 +16,7 @@ on:
           - '120'
 
 jobs:
-  worker-tracking-soak:
+  tracking-soak:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:

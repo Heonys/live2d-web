@@ -1,6 +1,6 @@
 ## CSP and untrusted models
 
-Treat model3.json as an input manifest. Inspect limits, external URLs and CORS before rendering. Local archives never resolve external URLs through the library inspector.
+Treat model3.json as an input manifest. Inspect limits, external URLs and CORS before rendering. URL inspection fetches HTTP(S) references. Browsers apply CORS; Node servers do not have a browser CORS or private-network wall, so server-side inspection of untrusted URLs requires an application host allow-list and network policy. Local archive inspection never fetches declared external URLs.
 
 - Allow script-src for Cubism Core.
 - Allow connect-src for model, WASM and tracking assets.

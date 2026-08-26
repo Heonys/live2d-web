@@ -1,6 +1,15 @@
 import JSZip from 'jszip'
-import { describe, expect, it } from 'vitest'
-import { ARCHIVE_LIMITS, inspectZipDirectory, readModelArchive } from './archive'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  ARCHIVE_LIMITS,
+  inspectZipDirectory,
+  readModelArchive,
+  streamEntryBlob,
+} from './archive'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 function directory(
   entries: readonly { name: string, uncompressedBytes?: number }[],
@@ -112,5 +121,43 @@ describe('model zip reader', () => {
       ...ARCHIVE_LIMITS,
       expandedBytes: 1_024,
     })).rejects.toThrow(/expands past the archive limit|size mismatch/)
+  })
+
+  it('stops its own stream as soon as actual bytes exceed the remaining budget', async () => {
+    const handlers: {
+      data?: (chunk: Uint8Array) => void
+      end?: () => void
+      error?: (error: unknown) => void
+    } = {}
+    const pause = vi.fn()
+    const OriginalBlob = Blob
+    const createBlob = vi.fn((parts: BlobPart[]) => new OriginalBlob(parts))
+    vi.stubGlobal('Blob', createBlob)
+    const stream = {
+      on: vi.fn((event: 'data' | 'end' | 'error', handler: never) => {
+        Object.assign(handlers, { [event]: handler })
+        return stream
+      }),
+      pause,
+      resume: vi.fn(() => {
+        handlers.data?.(new Uint8Array(8))
+        handlers.data?.(new Uint8Array(8))
+        // A hostile stream can still emit after pause; settled guards must
+        // ignore every later chunk and terminal callback.
+        handlers.data?.(new Uint8Array(64))
+        handlers.error?.(new Error('late stream error'))
+        handlers.end?.()
+      }),
+    }
+    const entry = {
+      internalStream: () => stream,
+      name: 'avatar/padding.bin',
+    } as unknown as JSZip.JSZipObject
+
+    await expect(streamEntryBlob(entry, 12))
+      .rejects
+      .toThrow('avatar/padding.bin expands past the archive limit')
+    expect(pause).toHaveBeenCalledTimes(1)
+    expect(createBlob).not.toHaveBeenCalled()
   })
 })

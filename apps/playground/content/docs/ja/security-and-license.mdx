@@ -1,6 +1,6 @@
 ## CSP と信頼できないモデル
 
-model3.json を入力 manifest として扱い、描画前にサイズ・外部 URL・CORS を検査します。ローカル archive 検査は外部 URL を取得しません。
+model3.json を入力 manifest として扱い、描画前にサイズ・外部 URL・CORS を検査します。URL 検査は HTTP(S) 参照を取得します。ブラウザでは CORS が適用されますが、Node サーバーにはブラウザ CORS やプライベートネットワークの境界がないため、信頼できない URL のサーバー検査にはアプリ側の host allow-list とネットワークポリシーが必要です。ローカル archive 検査は宣言された外部 URL を取得しません。
 
 - Cubism Core 用の script-src を許可します。
 - model・WASM・tracking asset 用の connect-src を許可します。

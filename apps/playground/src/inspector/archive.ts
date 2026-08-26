@@ -117,7 +117,7 @@ interface StreamingZipObject extends JSZip.JSZipObject {
   internalStream: (type: 'uint8array') => JSZip.JSZipStreamHelper<Uint8Array>
 }
 
-function entryBlob(
+export function streamEntryBlob(
   entry: JSZip.JSZipObject,
   budget: number,
   signal?: AbortSignal,
@@ -215,7 +215,7 @@ export async function readModelArchive(
     // JSZip decodes names on its own path; they get the same rejection the
     // pre-scan applied to the central directory, so the two cannot disagree.
     assertSafeArchivePath(entry.name)
-    const blob = await entryBlob(entry, limits.expandedBytes - expandedBytes, signal)
+    const blob = await streamEntryBlob(entry, limits.expandedBytes - expandedBytes, signal)
     expandedBytes += blob.size
     entries.push([entry.name, blob])
   }

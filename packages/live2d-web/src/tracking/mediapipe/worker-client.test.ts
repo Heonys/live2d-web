@@ -2,7 +2,7 @@ import type {
   MediaPipeWorkerRequest,
   MediaPipeWorkerResponse,
 } from './protocol'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMediaPipeFaceTracker } from './index'
 
@@ -74,6 +74,10 @@ describe('mediaPipe worker face tracker', () => {
         this.message = init.message
       }
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('normalizes asset URLs and copies a model buffer before transfer', async () => {
@@ -180,6 +184,65 @@ describe('mediaPipe worker face tracker', () => {
     await expect(tracker.update({} as TexImageSource, 34)).resolves.toEqual({ status: 'skipped' })
   })
 
+  it('terminates an unresponsive worker instead of queueing more frames', async () => {
+    const worker = new FakeWorker()
+    const cleanup = vi.fn()
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }))
+    const tracker = await createMediaPipeFaceTracker(options(worker))
+    tracker.attach({
+      addParameterDriver: () => cleanup,
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
+    })
+    vi.useFakeTimers()
+
+    const pending = tracker.update({} as TexImageSource, 0)
+    const rejection = expect(pending).rejects.toMatchObject({ code: 'tracking-error' })
+    await vi.runAllTicks()
+    await Promise.resolve()
+    const detect = worker.messages.find(entry => entry.message.type === 'detect')!.message
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await rejection
+    expect(cleanup).toHaveBeenCalled()
+    expect(worker.terminated).toBe(true)
+    await expect(tracker.update({} as TexImageSource, 34)).resolves.toEqual({ status: 'skipped' })
+    expect(worker.messages.filter(entry => entry.message.type === 'detect')).toHaveLength(1)
+
+    worker.respond({ id: detect.id, inferenceMs: 10, type: 'result' })
+    expect(worker.messages.filter(entry => entry.message.type === 'detect')).toHaveLength(1)
+  })
+
+  it('terminates when a calibrated-away request never finishes', async () => {
+    const worker = new FakeWorker()
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }))
+    const tracker = await createMediaPipeFaceTracker(options(worker))
+    vi.useFakeTimers()
+
+    const pending = tracker.update({} as TexImageSource, 0)
+    await vi.runAllTicks()
+    await Promise.resolve()
+    expect(worker.messages.filter(entry => entry.message.type === 'detect')).toHaveLength(1)
+    tracker.calibrate()
+    await expect(pending).resolves.toEqual({ status: 'skipped' })
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(worker.terminated).toBe(true)
+    await expect(tracker.update({} as TexImageSource, 34)).resolves.toEqual({ status: 'skipped' })
+  })
+
+  it('rejects an unexpected response for a detect request', async () => {
+    const worker = new FakeWorker()
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }))
+    const tracker = await createMediaPipeFaceTracker(options(worker))
+    const pending = tracker.update({} as TexImageSource, 0)
+    await vi.waitFor(() => expect(worker.messages.some(entry => entry.message.type === 'detect')).toBe(true))
+    const detect = worker.messages.find(entry => entry.message.type === 'detect')!.message
+
+    worker.respond({ id: detect.id, type: 'ready' })
+    await expect(pending).rejects.toMatchObject({ code: 'tracking-error' })
+    expect(worker.terminated).toBe(true)
+  })
+
   // calibrate() while a capture is in flight used to clear the busy flag that
   // belonged to the next request, letting two detects fly at once and deliver
   // results out of order.
@@ -213,14 +276,16 @@ describe('mediaPipe worker face tracker', () => {
   })
 
   // The serialized path used to replace non-finite matrix entries with 0
-  // before poseFromMatrix, bypassing its reject-the-frame guard: a corrupted
-  // matrix that the main thread drops to {0,0,0} produced a full head turn.
-  it('rejects a corrupted matrix like the main-thread path does', async () => {
+  // before poseFromMatrix. Keep valid blendshapes, but neutralize pose exactly
+  // like the main-thread path instead of turning a corrupted matrix into a
+  // full head rotation.
+  it('neutralizes corrupted pose while keeping valid blendshapes', async () => {
     const worker = new FakeWorker()
     const c = Math.cos(Math.PI / 6)
     const s = Math.sin(Math.PI / 6)
     const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
     let matrix = identity
+    let blendshapes: Array<[string, number]> = []
     const original = worker.postMessage.bind(worker)
     worker.postMessage = (message, transfer) => {
       original(message, transfer)
@@ -228,7 +293,7 @@ describe('mediaPipe worker face tracker', () => {
         queueMicrotask(() => worker.respond({
           id: message.id,
           inferenceMs: 5,
-          result: { blendshapes: [], matrix },
+          result: { blendshapes, matrix },
           type: 'result',
         }))
       }
@@ -253,10 +318,33 @@ describe('mediaPipe worker face tracker', () => {
       await tracker.update({} as TexImageSource, timestamp)
 
     matrix = [c, 0, -s, 0, 0, 1, 0, 0, s, 0, Number.NaN, 0, 0, 0, 0, 1]
+    blendshapes = [['jawOpen', 1]]
     const update = await tracker.update({} as TexImageSource, 1_054)
     expect(update.status).toBe('tracked')
     expect(Math.abs(drivers.get('ParamAngleX')!.getValue())).toBeLessThan(0.5)
+    expect(drivers.get('ParamMouthOpenY')!.getValue()).toBeGreaterThan(0)
     tracker.dispose()
+  })
+
+  it('terminates even when parameter-driver cleanup throws', async () => {
+    const worker = new FakeWorker()
+    const cleanupError = new Error('cleanup failed')
+    const tracker = await createMediaPipeFaceTracker(options(worker))
+    worker.postMessage = vi.fn((message: MediaPipeWorkerRequest, transfer?: Transferable[]) => {
+      worker.messages.push({ message, transfer })
+    })
+    tracker.attach({
+      addParameterDriver: () => () => {
+        throw cleanupError
+      },
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
+    })
+    vi.useFakeTimers()
+
+    expect(() => tracker.dispose()).toThrow(cleanupError)
+    expect(worker.terminated).toBe(false)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(worker.terminated).toBe(true)
   })
 
   it('rejects invalid worker factories and aborts initialization', async () => {
@@ -279,5 +367,30 @@ describe('mediaPipe worker face tracker', () => {
     controller.abort()
     await expect(creation).rejects.toMatchObject({ name: 'AbortError' })
     expect(worker.terminated).toBe(true)
+  })
+
+  it('times out initialization and rejects unexpected init responses', async () => {
+    const silentWorker = new FakeWorker()
+    silentWorker.postMessage = vi.fn((message: MediaPipeWorkerRequest, transfer?: Transferable[]) => {
+      silentWorker.messages.push({ message, transfer })
+    })
+    vi.useFakeTimers()
+    const creation = createMediaPipeFaceTracker(options(silentWorker))
+    const rejection = expect(creation).rejects.toMatchObject({ code: 'tracking-error' })
+    await vi.advanceTimersByTimeAsync(30_000)
+    await rejection
+    expect(silentWorker.terminated).toBe(true)
+    vi.useRealTimers()
+
+    const malformedWorker = new FakeWorker()
+    malformedWorker.postMessage = vi.fn((message: MediaPipeWorkerRequest, transfer?: Transferable[]) => {
+      malformedWorker.messages.push({ message, transfer })
+      if (message.type === 'init')
+        queueMicrotask(() => malformedWorker.respond({ id: message.id, type: 'disposed' }))
+    })
+    await expect(createMediaPipeFaceTracker(options(malformedWorker)))
+      .rejects
+      .toMatchObject({ code: 'tracking-error' })
+    expect(malformedWorker.terminated).toBe(true)
   })
 })

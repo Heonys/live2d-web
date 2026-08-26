@@ -76,10 +76,13 @@ for (const execution of modes) {
     // report even on success.
     const summaryPath = testInfo.outputPath(`tracking-soak-${execution}.json`)
     await writeFile(summaryPath, Buffer.from(JSON.stringify({
+      configuredTotalMinutes: totalMinutes,
       errors,
       execution,
       heapMiB: heap.map(bytes => Number((bytes / 1024 / 1024).toFixed(2))),
+      modeCount: modes.length,
       minutes: minutesPerMode,
+      minutesPerMode,
       restarts,
     }, null, 2)))
     await testInfo.attach(`tracking-soak-${execution}`, {

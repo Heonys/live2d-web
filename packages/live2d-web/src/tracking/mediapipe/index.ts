@@ -70,9 +70,9 @@ const DEFAULT_DETECTION_CONFIDENCE = 0.4
 const DEFAULT_PRESENCE_CONFIDENCE = 0.4
 const DEFAULT_TRACKING_CONFIDENCE = 0.3
 const MIN_ADAPTIVE_FPS = 10
-// A worker that never answers must not wedge the tracker: without a deadline a
-// lost detect holds the one-frame-in-flight slot for the rest of the session.
-// Init gets longer because it downloads WASM and the model over the network.
+// A worker that never answers is no longer trustworthy. A deadline tears it
+// down instead of reopening the slot and queueing more frames behind a hung
+// inference. Init gets longer because it downloads WASM and the model.
 const WORKER_DETECT_TIMEOUT_MS = 10_000
 const WORKER_INIT_TIMEOUT_MS = 30_000
 const INFERENCE_EMA_WEIGHT = 0.2
@@ -651,8 +651,9 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
   }
 
   private expirePending(id: number) {
-    const pending = this.removePending(id)
-    pending?.reject(trackingError(
+    if (!this.pending.has(id))
+      return
+    this.fail(trackingError(
       new Error(`no response within ${WORKER_DETECT_TIMEOUT_MS}ms`),
       'MediaPipe worker inference timed out',
     ))
@@ -663,7 +664,10 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
     if (!stale)
       return
     this.staleRequests.delete(id)
-    this.release(stale.token)
+    this.fail(trackingError(
+      new Error(`no response within ${WORKER_DETECT_TIMEOUT_MS}ms`),
+      'MediaPipe worker inference timed out after calibration',
+    ))
   }
 
   private clearStaleRequests() {
@@ -700,22 +704,79 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
     this.worker.terminate()
   }
 
+  private fail(error: unknown) {
+    if (this.disposed)
+      return
+    this.disposed = true
+    this.generation++
+    this.abortCleanup?.()
+    this.abortCleanup = undefined
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer)
+      pending.reject(error)
+    }
+    this.pending.clear()
+    this.clearStaleRequests()
+    this.activeToken = undefined
+    try {
+      this.core.dispose()
+    }
+    catch {
+      // An asynchronous worker failure has no caller that can receive a
+      // parameter-driver cleanup error. The worker still has to terminate.
+    }
+    finally {
+      this.terminate()
+    }
+  }
+
   private onMessage = (event: MessageEvent<MediaPipeWorkerResponse>) => {
     const response = event.data
+    if (!response || typeof response !== 'object'
+      || typeof response.id !== 'number' || typeof response.type !== 'string') {
+      this.fail(trackingError(
+        new Error('MediaPipe worker returned an invalid response.'),
+        'MediaPipe worker protocol failed',
+      ))
+      return
+    }
     if (response.type === 'disposed') {
-      this.terminate()
+      if (this.disposed) {
+        this.terminate()
+      }
+      else {
+        this.fail(trackingError(
+          new Error('MediaPipe worker stopped before disposal was requested.'),
+          'MediaPipe worker protocol failed',
+        ))
+      }
       return
     }
     const stale = this.staleRequests.get(response.id)
     if (stale) {
+      if (response.type !== 'result' && response.type !== 'error') {
+        this.fail(trackingError(
+          new Error(`Unexpected ${response.type} response for a detect request.`),
+          'MediaPipe worker protocol failed',
+        ))
+        return
+      }
       this.staleRequests.delete(response.id)
       clearTimeout(stale.timer)
       this.release(stale.token)
       return
     }
-    const pending = this.removePending(response.id)
+    const pending = this.pending.get(response.id)
     if (!pending)
       return
+    if (response.type !== 'result' && response.type !== 'error') {
+      this.fail(trackingError(
+        new Error(`Unexpected ${response.type} response for a detect request.`),
+        'MediaPipe worker protocol failed',
+      ))
+      return
+    }
+    this.removePending(response.id)
     if (response.type === 'error') {
       const cause = new Error(response.error.message)
       cause.name = response.error.name ?? 'Error'
@@ -743,22 +804,7 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
       ? event.error ?? new Error(event.message)
       : new Error('MediaPipe worker message could not be deserialized.')
     const error = trackingError(cause, 'MediaPipe worker crashed')
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer)
-      pending.reject(error)
-    }
-    this.pending.clear()
-    this.clearStaleRequests()
-    this.activeToken = undefined
-    this.disposed = true
-    this.abortCleanup?.()
-    this.abortCleanup = undefined
-    try {
-      this.core.dispose()
-    }
-    finally {
-      this.terminate()
-    }
+    this.fail(error)
   }
 }
 
@@ -796,13 +842,16 @@ async function createWorkerTracker(
     await awaitWithAbort(new Promise<void>((resolve, reject) => {
       let cleanup = () => {}
       const onMessage = (event: MessageEvent<MediaPipeWorkerResponse>) => {
-        if (event.data.id !== initId)
+        const response = event.data
+        if (!response || response.id !== initId)
           return
         cleanup()
-        if (event.data.type === 'ready')
+        if (response.type === 'ready')
           resolve()
-        else if (event.data.type === 'error')
-          reject(new Error(event.data.error.message))
+        else if (response.type === 'error')
+          reject(new Error(response.error.message))
+        else
+          reject(new Error(`unexpected ${response.type} response during initialization`))
       }
       const onError = (event: ErrorEvent) => {
         cleanup()

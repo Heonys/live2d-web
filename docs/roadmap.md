@@ -314,9 +314,10 @@ suspend 복구와 장치 변경 대응.
 - 모바일 실기기 smoke: iOS Safari·Android Chrome 각 1회, startup·frame·
   트래킹 추론을 기록하고 결과를 `docs/compatibility.md`에 승격. 정기
   게이트화는 그 결과를 보고 결정
-- soak 정기화: 릴리스 5분, 주간 15분, 수동 dispatch 5/15/120분. 로컬
-  Chromium Worker 15분은 2026-08-25 통과. 일반 120분 Hiyori soak는 결함
-  조사 때만 실행
+- soak 정기화: main+Worker 합산 릴리스 5분(각 2.5분), 주간 15분(각
+  7.5분), 수동 dispatch 총 5/15/120분. 한 모드만 선택하면 전체 시간을 그
+  모드가 사용한다. 로컬 Chromium Worker-only 15분은 2026-08-25 통과했다.
+  일반 120분 Hiyori soak는 결함 조사 때만 실행
 - 번들 예산 단언: react·tracking entry의 raw/gzip 상한을 `verify-package`에
   적용. **구현·실측 통과**
 - Worker 오프로드 검토(물리·모션·`OffscreenCanvas`): 추론 Worker 뒤에

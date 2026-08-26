@@ -19,6 +19,8 @@ if (report.status === 'compatible') {
 }
 ```
 
+URL mode fetches HTTP(S) references declared by the model. Browsers enforce CORS, but a Node server has no browser CORS or private-network boundary. If a server accepts untrusted model URLs, put a host allow-list and network policy in front of inspection. The library does not guess which private IP ranges your server may access. Resolver-backed local inspection never fetches an external URL declared by the archive.
+
 ## Browser zip inspector
 
 The /inspect tool opens a zip only in the current tab. It validates size, count, paths and model references, and never uploads, stores or sends telemetry. Incompatible archives are not rendered.
