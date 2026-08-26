@@ -15,9 +15,9 @@
 - Cubism 4/5 model loading with a bundled Framework 5-r.5 WebGL2 adapter
 - One React-free root API plus an optional React binding
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
-- Volume/wLipSync inputs and optional MediaPipe main/Worker face tracking
+- Volume/wLipSync inputs and optional MediaPipe main/Worker face tracking (experimental until 1.0)
 - Explicit lifecycle cleanup, stable errors and real tarball/browser gates
-- Optional `live2d-web/inspect` model reports and `live2d-web/devtools` controls
+- Optional `live2d-web/inspect` model reports and `live2d-web/devtools` controls (experimental until 1.0)
 
 ## Quick start
 

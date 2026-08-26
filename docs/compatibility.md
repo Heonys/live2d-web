@@ -76,7 +76,7 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 손으로 적은 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증. Perfect Sync는 ARKit 이름 픽스처(50개, `ParamTongueOut` 포함)로 판정·바인딩 검증 |
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
-| 추론 성능 | 데스크톱 검증 | Hiyori 동시 렌더 3회 중앙값에서 Worker frame p95는 Chromium 10ms, WebKit 18ms, Firefox 9.8ms이고 33ms 초과는 모두 0%. Firefox main의 191.6ms/100% 초과를 렌더 스레드에서 분리. [상세 측정](benchmarks/2026-08-25-0.6-worker-tracking.md) |
+| 추론 성능 | 데스크톱 검증 | Hiyori 동시 렌더 3회 중앙값에서 Worker frame p95는 Chromium 10ms, WebKit 18ms, Firefox 9.8ms이고 33ms 초과는 모두 0%. Firefox main의 191.6ms/100% 초과를 렌더 스레드에서 분리. 08-26에 worker 모드의 적응형 상한 하향을 제거한 재측정에서도 33ms 초과 0%가 유지되고(skip: Chromium 75%, WebKit 52.5%, Firefox 95.7%. Firefox는 추론 ~193ms의 본질적 배압), 상세는 벤치 문서의 08-26 절. [상세 측정](benchmarks/2026-08-25-0.6-worker-tracking.md) |
 | Worker 안정성 | 데스크톱 검증 | Chromium 15분 soak에서 두 차례 재생성, pending 요청 정착, 최종 dispose, console/page error와 heap 증가 한계를 통과(2026-08-25) |
 | 물리 카메라 | **부분 검증** | 2026-08-25 실측에서 세 결함을 찾아 고쳤다. 얼굴을 너무 일찍 놓침(임계값 기본 0.5), 놓치면 0.55초 만에 정면 복귀, 경계 프레임의 자세 튐. 여기에 물리보다 뒤에 적용되어 머리카락이 따라오지 않던 문제까지 넷이다. |
 | 모바일 실기 | **미검증·0.6 완료 대기** | iOS Safari·Android Chrome 실기기 각 5분과 실제 전면 카메라 지표가 필요하다. 자동화·데스크톱 수치로 대체하지 않는다. |
@@ -100,7 +100,7 @@ delegate for CPU.`를 `console.error`로 내보낸다. 정보성 로그이므로
 ## 브라우저
 
 2026-08-25 로컬 `pnpm test:e2e`는 Playwright `1.62.0`과 다음 엔진에서
-실행했고(38 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식
+실행했고(44 통과, 7 skip), 같은 명령이 CI `browser-e2e`에서 돈다. 공식
 Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
 
 | 엔진 | 실제 버전 | 일반 runtime·driver/value 립싱크 | wLipSync source |
@@ -109,7 +109,7 @@ Hiyori와 Core는 약관 동의 후 받은 ignored 로컬 자산이다.
 | WebKit | `26.5` | 검증 | 검증 |
 | Firefox | `153.0` | 검증. Linux 러너의 헤드리스 Firefox는 WebGL2가 없어(`webgl.force-enabled`도 무효, 2026-08-25) CI에서는 Xvfb 위에서 headed로 실행한다 | 미검증·현재 e2e skip |
 
-기본 e2e는 15개 테스트 × 3엔진 = 45개 조합이고, 그중 7개는 설계상 skip이다
+기본 e2e는 17개 테스트 × 3엔진 = 51개 조합이고, 그중 7개는 설계상 skip이다
 (Chromium 전용인 Hiyori 품질·마이크·MediaPipe 카메라 3건 × WebKit·Firefox,
 Firefox wLipSync source 1건). 3엔진 전체 실행은 2026-08-25부터 CI
 `browser-e2e`(push)와 릴리스 잡이 담당한다. Firefox에서는 `wlipsync@1.3.0`

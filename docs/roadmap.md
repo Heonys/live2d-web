@@ -346,8 +346,11 @@ suspend 복구와 장치 변경 대응.
   누락 자산·외부 URL·Cubism 버전·모션 목록을 보고한다. Livesona의 importer를
   재사용하며, 리거와 개발자 모두에게 쓸모가 있다
 - opt-in 진단 정보: 선택형 `live2d-web/devtools`가 공개 runtime/model 상태와
-  현재 parameter를 복사 가능한 snapshot으로 제공한다. URL·자산·카메라·얼굴
-  데이터와 기본 telemetry는 포함하지 않는다
+  현재 parameter를 복사 가능한 snapshot으로 제공하고, 같은 패널에서 parameter
+  슬라이더·모션 재생·표정 적용 같은 쓰기 조작도 노출한다. 원래 계획(저빈도
+  snapshot 검토)보다 넓게 나갔으며 그 경위와 근거는 docs/README.md의
+  2026-08-26 결정에 있다. URL·자산·카메라·얼굴 데이터와 기본 telemetry는
+  포함하지 않는다
 - Canvas가 장식인지 상호작용 대상인지 앱이 설명할 수 있는 접근성 전달 경로,
   fallback과 `prefers-reduced-motion` 대응을 실제 소비자 요구와 함께 검토한다
 - 릴리스 체크리스트(`docs/release-checklist.md`, 2026-08-25 신설): 자동
@@ -401,9 +404,9 @@ production build되며 세 브라우저 문서·검사 e2e와 기여 템플릿�
 | 버전 | 내용 | 완료 조건 |
 | --- | --- | --- |
 | 0.3.x | 기반 안정화·검증 계약·호환성 기준선 | 문서와 실제 자동 게이트가 일치하고 브라우저 3종 e2e가 자동화되며 공개 API·번들·성능 기준선이 기록됨. **충족 2026-08-25** |
-| 0.5.0 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼, A 웹캠 트래킹 `/tracking/mediapipe`(experimental) | **2026-08-25 발행.** 소비자 채택·Perfect Sync 실모델 검증은 성장 게이트로 계속 추적 |
-| 0.6 | E 추론 Worker·모바일 smoke·soak 정기화·번들 예산 단언 | Worker·데스크톱 성능·번들·단계형 soak는 구현됨. **iOS/Android 실측 대기** |
-| 0.7 | F 문서 사이트·예제 갤러리·모델 검사기·기여 가이드 | 구현 완료. **외부 기여자의 첫 PR 병합 또는 외부 의존 프로젝트 +1 대기** |
+| 0.5.0 | C 모션·표정 품질 일부(상세 상태·페이드·시퀀스·가중 Idle), B 볼륨 driver 헬퍼, A 웹캠 트래킹 `/tracking/mediapipe`(experimental) | Livesona가 볼륨 헬퍼를 받아쓰고 자체 구현을 제거하며, Livesona 선택 기능 또는 VS Code 확장이 트래킹을 사용. **상태: 2026-08-25 발행, 소비자 게이트 열림** |
+| 0.6 | E 추론 Worker·모바일 smoke·soak 정기화·번들 예산 단언 | 트래킹이 Worker에서 돌고, 모바일 2종 결과가 호환성 표에 있으며, 예산이 CI 단언임. **상태: Worker·soak·예산 구현, 모바일 실측 미충족** |
+| 0.7 | F 문서 사이트·예제 갤러리·모델 검사기·기여 가이드 | 외부 기여자의 첫 PR 병합 또는 외부 의존 프로젝트 +1. **상태: 구현 완료, 미충족** |
 | 0.8 | D 다중 모델 Stage | 히비엔 또는 합방 데모가 사용 |
 | 0.9 | B 공식 MotionSync | 소비자가 볼륨 드라이버의 한계를 말한 뒤, 라이선스 확인, Livesona가 립싱크 모드로 채택 |
 | 1.0 | G 계약 동결 | 외부 의존 최소 3개, 1년간 breaking 0, 모바일 실측 통과(성장 목표는 10개) |

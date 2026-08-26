@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+The tracking Worker entry, `inspect` and `devtools` are experimental until
+1.0, like the tracking subpath they extend.
+
 ### Added
 
 - A React-free, SSR-safe `live2d-web/devtools` entry mounts isolated overview,
@@ -27,7 +30,17 @@
   tracker as the default while adding an asynchronous, one-frame-in-flight
   tracker through an application-provided module Worker. The new
   `live2d-web/tracking/mediapipe/worker` entry owns task startup and cleanup;
-  frames, landmarks, WASM and model assets remain unbundled.
+  frames, landmarks, WASM and model assets remain unbundled. Detect and init
+  requests carry deadlines and a protocol version so a wedged or version-skewed
+  worker fails loudly, and the adaptive fps cap stays off in worker mode, where
+  inference no longer competes with rendering.
+- The tracking soak gate is tiered: five minutes on every release tag, fifteen
+  weekly on a schedule, and a manual dispatch up to two hours, covering the
+  main and Worker execution modes and attaching a heap/error summary to each
+  run. Entry-level bundle budgets (raw and gzip) for React, tracking, its
+  Worker, `inspect` and `devtools` are asserted by `verify:package` on every
+  push, and the tracking benchmark compares main against Worker while Hiyori
+  renders.
 
 ## 0.5.0 - 2026-08-25
 

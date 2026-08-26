@@ -232,9 +232,12 @@ Perfect Sync detection uses the ARKit 52 parameter names (`ParamBrowDownLeft`
 … `ParamTongueOut`); a model that declares at least 45 of them is mapped
 directly, binding only the parameters it has. `_neutral` is a MediaPipe input,
 never a parameter, and `ParamTongueOut` is left at its default because
-MediaPipe does not report a tongue signal. Inference starts at `maxFps`
-(default 30) and adapts downward to 10fps while measured inference time would
-starve rendering; every non-skipped `update()` reports `effectiveFps`.
+MediaPipe does not report a tongue signal. In main-thread mode inference
+starts at `maxFps` (default 30) and adapts downward to 10fps while measured
+inference time would starve rendering. In worker mode the cap stays at the
+requested value: inference no longer competes with rendering, and
+one-frame-in-flight already provides the backpressure. Every non-skipped
+`update()` reports `effectiveFps`.
 
 ```ts
 type MediaPipeModelAsset =

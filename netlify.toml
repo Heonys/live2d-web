@@ -10,6 +10,10 @@ publish = "apps/playground/.next"
 
 [build.environment]
 NODE_VERSION = "24"
+# The docs build runs six TypeDoc passes and ~470 Shiki tokenizations before
+# 45 static renders; headroom set ahead of time instead of after an OOM, which
+# this account has hit once already (Monaco).
+NODE_OPTIONS = "--max-old-space-size=4096"
 # Confirms the official terms that the fetch script prints (Cubism Core,
 # Hiyori, CubismWebSamples). Not a secret, and keeping it here means a build
 # never depends on hidden dashboard state.

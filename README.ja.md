@@ -15,9 +15,9 @@
 - Framework 5-r.5 WebGL2 アダプターによる Cubism 4・5 モデル読み込み
 - React を含まない root API と任意の React binding
 - motion・sequence・fade・weighted Idle・表情・pointer interaction
-- 音量/wLipSync と任意の MediaPipe main/Worker 顔トラッキング
+- 音量/wLipSync と任意の MediaPipe main/Worker 顔トラッキング（1.0まで experimental）
 - 明確な resource cleanup、安定した error code、tarball・browser 検証
-- 任意の `live2d-web/inspect` モデル検査と `live2d-web/devtools` 操作パネル
+- 任意の `live2d-web/inspect` モデル検査と `live2d-web/devtools` 操作パネル（1.0まで experimental）
 
 ## クイックスタート
 
@@ -87,7 +87,7 @@ Cubism Core、Live2D model は npm パッケージに含まれません。
 ## ライセンスとコントリビューション
 
 live2d-web は株式会社Live2Dとは無関係の非公式ライブラリです。配布前に
-[LICENSES.md](LICENSES.md)、[ライセンス文書](docs/licensing.md)、Live2D の
+[LICENSES.md](packages/live2d-web/LICENSES.md)、[ライセンス文書](docs/licensing.md)、Live2D の
 [SDK ライセンス](https://www.live2d.com/ja/sdk/license/)を確認してください。
 
 コントリビューションは [CONTRIBUTING.md](CONTRIBUTING.md) を参照して

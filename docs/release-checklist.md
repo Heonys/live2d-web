@@ -37,10 +37,15 @@
 2. `packages/live2d-web/package.json`의 `version`을 같은 값으로. 태그와 다르면
    워크플로가 실패한다.
 3. develop → main 병합. main의 `browser-e2e`·`tracking-e2e`가 초록인지 본다.
-4. `git tag vx.y.z && git push origin vx.y.z`. 태그 푸시가 발행이다. 게이트가
+4. **Netlify 배포가 main을 따라잡은 것을 확인한 뒤에만 태그를 올린다.**
+   README 3종·npm README·docs/README.md가 `/docs/*`·`/playground` 같은 배포
+   경로를 링크하는데, npm 발행이 배포보다 앞서면 패키지 페이지의 링크가
+   404인 채 공개된다. `content/docs/*/examples.mdx`의 `tree/main/examples`
+   링크도 main 병합 전에는 404다.
+5. `git tag vx.y.z && git push origin vx.y.z`. 태그 푸시가 발행이다. 게이트가
    `npm publish`보다 앞에 있으므로 여기서 실패하면 발행은 일어나지 않는다.
    고친 뒤 `git push --delete origin vx.y.z`로 태그를 지우고 다시 올린다.
-5. Actions `Release` 잡이 끝나면 npm 페이지에서 버전과 provenance 배지를
+6. Actions `Release` 잡이 끝나면 npm 페이지에서 버전과 provenance 배지를
    확인한다.
 
 ## 4. 발행 뒤

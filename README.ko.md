@@ -15,9 +15,9 @@
 - Framework 5-r.5 WebGL2 어댑터를 통한 Cubism 4·5 모델 로드
 - React 없는 루트 API와 선택형 React binding
 - 모션·시퀀스·fade·가중 Idle·표정·포인터 상호작용
-- 볼륨/wLipSync와 선택형 MediaPipe main/Worker 얼굴 추적
+- 볼륨/wLipSync와 선택형 MediaPipe main/Worker 얼굴 추적(1.0 전까지 experimental)
 - 명확한 자원 정리, 안정적인 오류 코드, tarball·브라우저 검증
-- 선택형 `live2d-web/inspect` 모델 검사와 `live2d-web/devtools` 제어 패널
+- 선택형 `live2d-web/inspect` 모델 검사와 `live2d-web/devtools` 제어 패널(1.0 전까지 experimental)
 
 ## 빠른 시작
 
@@ -87,7 +87,7 @@ MediaPipe main/Worker, inspect, devtools, Cubism backend는 별도 경계로 유
 ## 라이선스와 기여
 
 live2d-web은 Live2D Inc.와 무관한 비공식 라이브러리입니다. 배포 전에
-[LICENSES.md](LICENSES.md), [라이선스 문서](docs/licensing.md), Live2D의
+[LICENSES.md](packages/live2d-web/LICENSES.md), [라이선스 문서](docs/licensing.md), Live2D의
 [SDK 라이선스](https://www.live2d.com/en/sdk/license/)를 확인하세요.
 
 기여 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다. Cubism Core,
