@@ -1,26 +1,16 @@
 'use client'
 
 import type { HTMLAttributes } from 'react'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
+import { CodeCopyButton } from './CodeCopyButton'
 
 export function CodeFigure({ children, ...props }: HTMLAttributes<HTMLElement>) {
   const figureRef = useRef<HTMLElement>(null)
-  const [copied, setCopied] = useState(false)
   return (
     <figure {...props} ref={figureRef}>
-      <button
-        className="docs-code-copy"
-        type="button"
-        onClick={() => {
-          const value = figureRef.current?.querySelector('pre')?.textContent ?? ''
-          void navigator.clipboard.writeText(value).then(() => {
-            setCopied(true)
-            window.setTimeout(setCopied, 1_500, false)
-          })
-        }}
-      >
-        {copied ? 'Copied' : 'Copy'}
-      </button>
+      <CodeCopyButton
+        readText={() => figureRef.current?.querySelector('pre')?.textContent ?? ''}
+      />
       {children}
     </figure>
   )

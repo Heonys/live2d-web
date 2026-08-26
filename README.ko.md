@@ -1,4 +1,7 @@
-# live2d-web
+<p align="center">
+  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="" width="96" height="96">
+</p>
+<h1 align="center">live2d-web</h1>
 
 [English](README.md) | **한국어** | [日本語](README.ja.md)
 

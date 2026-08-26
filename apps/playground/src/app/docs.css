@@ -21,6 +21,7 @@
   height: calc(100dvh - var(--site-header-height));
   padding: 34px 26px 48px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 0;
   border-right: 1px solid var(--line);
   border-radius: 0;
@@ -90,8 +91,8 @@
   font-size: 14px;
 }
 .docs-search input:focus {
-  border-color: rgb(183 168 255 / 65%);
-  outline: 2px solid rgb(183 168 255 / 15%);
+  border-color: rgb(255 113 143 / 65%);
+  outline: 2px solid rgb(255 113 143 / 15%);
 }
 .docs-search-results {
   position: absolute;
@@ -250,6 +251,7 @@ figure[data-rehype-pretty-code-figure] figcaption {
   z-index: 2;
   top: 7px;
   right: 8px;
+  display: inline-flex;
   min-height: 27px;
   padding: 4px 8px;
   border-color: var(--line-strong);
@@ -257,9 +259,24 @@ figure[data-rehype-pretty-code-figure] figcaption {
   color: var(--text-3);
   background: var(--surface-2);
   font-size: 11px;
+  line-height: 1;
+  align-items: center;
+  gap: 5px;
 }
-figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) .docs-code-copy,
-.docs-code > .docs-code-header {
+.docs-code-copy:hover {
+  color: var(--text-2);
+  background: var(--surface-3);
+}
+.docs-code-copy svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+}
+figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) .docs-code-copy {
   top: 8px;
 }
 figure[data-rehype-pretty-code-figure] pre,
@@ -283,7 +300,7 @@ figure[data-rehype-pretty-code-figure] [data-highlighted-line] {
   margin-inline: -16px;
   padding-inline: 13px 16px;
   border-left: 3px solid var(--accent);
-  background: rgb(183 168 255 / 7%);
+  background: rgb(255 113 143 / 7%);
 }
 figure[data-rehype-pretty-code-figure] code[data-line-numbers] {
   counter-reset: line;
@@ -300,10 +317,18 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
 .docs-code-header {
   display: flex;
   min-height: 38px;
-  padding: 10px 66px 8px 13px;
+  padding: 5px 7px 5px 13px;
   border-bottom: 1px solid var(--line);
   color: var(--text-3);
   font: 11px/1 var(--font-mono);
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.docs-code-header .docs-code-copy {
+  position: static;
+  min-height: 28px;
+  flex: none;
 }
 .docs-code .line {
   min-height: 1.72em;
@@ -372,6 +397,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   height: calc(100dvh - var(--site-header-height));
   padding: 44px 22px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 0;
   border-radius: 0;
   background: transparent;

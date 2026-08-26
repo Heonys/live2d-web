@@ -1,5 +1,6 @@
 export const DEVTOOLS_STYLES = `
 :host {
+  --devtools-accent: #ff718f;
   color-scheme: dark;
   display: block;
   min-width: 0;
@@ -21,11 +22,11 @@ button, select { min-height: 34px; padding: 7px 9px; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .45; }
 button:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #b7a8ff;
+  outline: 2px solid var(--devtools-accent);
   outline-offset: 2px;
 }
 input[type='text'], input[type='number'] { width: 100%; padding: 7px 9px; }
-input[type='range'] { width: 100%; accent-color: #b7a8ff; }
+input[type='range'] { width: 100%; accent-color: var(--devtools-accent); }
 
 .shell { display: flex; min-height: 100%; flex-direction: column; }
 .top { padding: 14px; border-bottom: 1px solid #292d34; }
@@ -40,8 +41,12 @@ input[type='range'] { width: 100%; accent-color: #b7a8ff; }
 }
 .tabs button { position: relative; min-width: 0; border-color: transparent; background: transparent; color: #b9bdc6; font-size: 12px; }
 .tabs button[aria-selected='true'] { border-color: #343942; background: #171a20; color: #f5f5f6; }
-.tabs button[aria-selected='true']::after { content: ''; position: absolute; right: 8px; bottom: -9px; left: 8px; height: 2px; background: #b7a8ff; }
-.panel { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+.tabs button[aria-selected='true']::after { content: ''; position: absolute; right: 8px; bottom: -9px; left: 8px; height: 2px; background: var(--devtools-accent); }
+.panel { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; scrollbar-color: #343942 transparent; scrollbar-width: thin; }
+.panel::-webkit-scrollbar { width: 10px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: #343942; background-clip: padding-box; }
+.panel::-webkit-scrollbar-thumb:hover { background: #505762; background-clip: padding-box; }
 .stack { display: grid; gap: 10px; }
 .card { padding: 11px; border: 1px solid #292d34; border-radius: 7px; background: #171a20; }
 .card h3 { margin: 0 0 8px; font-size: 12px; }

@@ -2,8 +2,9 @@ import type { BundledLanguage } from 'shiki'
 import { codeToTokens } from 'shiki'
 import { CodeFrame } from './CodeFrame'
 
-export async function HighlightedCode({ code, language = 'ts' }: {
+export async function HighlightedCode({ code, filename, language = 'ts' }: {
   code: string
+  filename?: string
   language?: BundledLanguage
 }) {
   const result = await codeToTokens(code, {
@@ -26,7 +27,7 @@ export async function HighlightedCode({ code, language = 'ts' }: {
     }
   })
   return (
-    <CodeFrame data-language={language}>
+    <CodeFrame data-language={language} filename={filename}>
       <code>
         {lines.map(line => (
           <span className="line" key={line.key}>

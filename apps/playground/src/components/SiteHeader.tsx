@@ -79,7 +79,8 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
     <header className="site-header">
       <div className="site-header-inner">
         <Link className="site-wordmark" href="/" onClick={closeNavigation}>
-          live2d-web
+          <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
+          <span>live2d-web</span>
         </Link>
         <button
           aria-expanded={navigationOpen}
@@ -174,7 +175,9 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
                       onClick={closeNavigation}
                     >
                       <span>{languageNames[language]}</span>
-                      <span aria-hidden="true">{language === locale ? '✓' : ''}</span>
+                      <span aria-hidden="true" className="site-language-check">
+                        {language === locale ? '✓' : ''}
+                      </span>
                     </Link>
                   ))}
                 </div>

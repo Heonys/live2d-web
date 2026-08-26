@@ -101,9 +101,25 @@ test('preloads Cubism Core from the server-rendered HTML', async ({ page }) => {
 })
 
 test('keeps the landing page focused and links to the full playground', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText(value: string) {
+          Object.assign(window, { __landingClipboard: value })
+          return Promise.resolve()
+        },
+      },
+    })
+  })
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Live2D that feels native to your app.',
+    'Live2D, directly in the browser.',
+  )
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /icon/)
+  await expect(page.locator('.site-wordmark img')).toHaveAttribute(
+    'src',
+    '/brand/live2d-web-avatar.png',
   )
   await expect(page.getByRole('link', { name: 'Read the docs' })).toHaveAttribute(
     'href',
@@ -116,6 +132,52 @@ test('keeps the landing page focused and links to the full playground', async ({
   await expect(page.locator('.landing-stage canvas')).toHaveCount(1)
   await expect(page.locator('.landing-stage-status')).toContainText('ready')
   await expect(page.getByRole('button', { name: 'Play motion' })).toBeEnabled()
+
+  const speechButton = page.getByRole('button', { name: 'Hold to speak' })
+  await speechButton.hover()
+  await page.mouse.down()
+  await expect(speechButton).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(async () => Number(await speechButton.getAttribute('data-mouth-open')))
+    .toBeGreaterThan(0.1)
+  await page.mouse.up()
+  await expect(speechButton).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(async () => Number(await speechButton.getAttribute('data-mouth-open')))
+    .toBe(0)
+
+  await speechButton.focus()
+  await page.keyboard.down('Space')
+  await expect(speechButton).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.up('Space')
+  await expect(speechButton).toHaveAttribute('aria-pressed', 'false')
+
+  await speechButton.hover()
+  await page.mouse.down()
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+  await expect(speechButton).toHaveAttribute('aria-pressed', 'false')
+  await page.mouse.up()
+
+  const codeHeader = page.locator('.landing-code-section .docs-code-header')
+  await expect(codeHeader.locator('> span')).toHaveText('Avatar.tsx')
+  const copyButton = codeHeader.locator('.docs-code-copy')
+  await expect(copyButton).toHaveAccessibleName('Copy')
+  const [headerBox, copyBox] = await Promise.all([
+    codeHeader.boundingBox(),
+    copyButton.boundingBox(),
+  ])
+  expect(headerBox).not.toBeNull()
+  expect(copyBox).not.toBeNull()
+  expect(copyBox!.x + copyBox!.width).toBeLessThanOrEqual(headerBox!.x + headerBox!.width - 6)
+  await copyButton.click()
+  await expect(copyButton).toContainText('Copied')
+  await expect.poll(() => page.evaluate(() => (window as typeof window & {
+    __landingClipboard?: string
+  }).__landingClipboard)).toContain('from \'live2d-web/react\'')
+
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true)
+  await page.setViewportSize({ height: 844, width: 390 })
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true)
 })
 
 test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, page }) => {

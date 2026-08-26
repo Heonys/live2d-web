@@ -48,7 +48,7 @@ button:focus-visible,
 select:focus-visible,
 input:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--accent, #b7a8ff);
+  outline: 2px solid var(--accent, #ff718f);
   outline-offset: 2px;
 }
 
@@ -86,7 +86,7 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
 
 .benchmark-page > header a {
   flex: none;
-  color: #b7a8ff;
+  color: var(--accent);
 }
 
 .benchmark-page > header nav {
@@ -127,7 +127,7 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
 }
 
 .input-tabs button[aria-selected='true'] {
-  border-color: #b7a8ff;
+  border-color: var(--accent);
   background: #1d2128;
 }
 
@@ -450,7 +450,7 @@ label output {
 }
 
 .site-footer a {
-  color: #b7a8ff;
+  color: var(--accent);
 }
 
 .stage-overlay,
@@ -630,7 +630,7 @@ label output {
   display: block;
   height: 6px;
   border-radius: 3px;
-  background: #b7a8ff;
+  background: var(--accent);
 }
 
 .benchmark-page {

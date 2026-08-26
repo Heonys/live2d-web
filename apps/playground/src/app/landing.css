@@ -1,5 +1,5 @@
 .landing-page {
-  width: min(1240px, calc(100% - 48px));
+  width: min(1280px, calc(100% - 56px));
   margin: 0 auto;
   padding: 0 0 90px;
 }
@@ -7,19 +7,35 @@
 .landing-hero {
   display: grid;
   min-height: min(760px, calc(100dvh - var(--site-header-height)));
-  padding: 70px 0 58px;
+  padding: 78px 0 68px;
   align-items: center;
-  grid-template-columns: minmax(0, 0.82fr) minmax(520px, 1.18fr);
-  gap: clamp(44px, 7vw, 104px);
+  grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
+  gap: clamp(52px, 7vw, 108px);
 }
 .landing-copy h1 {
-  max-width: 650px;
-  margin: 12px 0 22px;
-  font-size: clamp(48px, 6vw, 82px);
-  line-height: 0.98;
-  letter-spacing: -0.06em;
+  max-width: 620px;
+  margin: 18px 0 22px;
+  font-size: clamp(46px, 5.4vw, 74px);
+  line-height: 1.02;
+  letter-spacing: -0.055em;
 }
-.landing-copy .eyebrow,
+.landing-status-line {
+  display: flex;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  align-items: center;
+  gap: 9px;
+}
+.landing-status-line > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .playground-intro .eyebrow {
   margin: 0;
   color: var(--accent);
@@ -50,11 +66,28 @@
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+}
+.landing-actions a:hover,
+.landing-final-cta a:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
 }
 .landing-actions .primary-action {
   border-color: var(--accent);
   color: #101116;
   background: var(--accent);
+}
+.landing-actions .primary-action:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+.landing-actions .primary-action:active {
+  border-color: var(--accent-pressed);
+  background: var(--accent-pressed);
 }
 .landing-install {
   display: inline-block;
@@ -66,13 +99,13 @@
 .landing-demo {
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--surface-1);
-  box-shadow: 0 28px 72px rgb(0 0 0 / 30%);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 14%);
 }
 .landing-stage {
   position: relative;
-  height: 550px;
+  height: 540px;
   overflow: hidden;
   background:
     linear-gradient(90deg, transparent 49.9%, rgb(255 255 255 / 3%) 50%, transparent 50.1%),
@@ -86,11 +119,11 @@
 }
 .landing-demo-controls {
   display: grid;
-  min-height: 64px;
-  padding: 12px 14px;
+  min-height: 70px;
+  padding: 10px 14px;
   border-top: 1px solid var(--line);
   align-items: center;
-  grid-template-columns: auto auto minmax(120px, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .landing-stage-status {
@@ -103,11 +136,10 @@
   padding: 0 9px;
   border: 1px solid var(--line);
   color: var(--text-3);
-  background: rgb(11 12 15 / 72%);
+  background: rgb(11 12 15 / 90%);
   font: 9px/1 var(--font-mono);
   letter-spacing: 0.06em;
   align-items: center;
-  backdrop-filter: blur(8px);
 }
 .landing-stage-status span {
   display: inline-flex;
@@ -125,26 +157,74 @@
 .landing-stage-status [data-state='error'] {
   color: var(--danger);
 }
-.landing-demo-controls > span {
+.landing-demo-action {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 8px;
+}
+.landing-demo-action > span {
   color: var(--text-3);
   font: 700 9px/1 var(--font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.landing-demo-controls button {
-  padding: 8px 10px;
-  font-size: 13px;
-}
-.landing-demo-controls label {
-  display: flex;
-  color: var(--text-3);
+.landing-demo-action button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: 6px;
   font-size: 13px;
   align-items: center;
-  gap: 8px;
-}
-.landing-demo-controls input {
   width: 100%;
-  accent-color: var(--accent);
+  justify-content: center;
+}
+.landing-hold-speech[data-active='true'] {
+  border-color: color-mix(in srgb, var(--accent) 62%, transparent);
+  color: var(--text-1);
+  background: var(--accent-soft);
+}
+.landing-speech-meter {
+  display: inline-flex;
+  width: 15px;
+  height: 14px;
+  margin-right: 7px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.landing-speech-meter i {
+  width: 2px;
+  height: 4px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.landing-hold-speech[data-active='true'] .landing-speech-meter i:nth-child(1) {
+  animation: landing-speech-level 420ms ease-in-out infinite alternate;
+}
+.landing-hold-speech[data-active='true'] .landing-speech-meter i:nth-child(2) {
+  animation: landing-speech-level 360ms 80ms ease-in-out infinite alternate-reverse;
+}
+.landing-hold-speech[data-active='true'] .landing-speech-meter i:nth-child(3) {
+  animation: landing-speech-level 480ms 40ms ease-in-out infinite alternate;
+}
+.landing-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@keyframes landing-speech-level {
+  to {
+    height: 12px;
+  }
 }
 .landing-demo-error {
   position: absolute;
@@ -209,6 +289,7 @@
 .landing-code-section .docs-code {
   width: 100%;
   margin: 0;
+  box-shadow: none;
 }
 .landing-final-cta {
   display: flex;
@@ -245,7 +326,7 @@
 
 @media (max-width: 620px) {
   .landing-page {
-    width: min(100% - 28px, 1240px);
+    width: min(100% - 28px, 1280px);
   }
   .landing-hero {
     min-height: auto;
@@ -259,10 +340,8 @@
     height: 480px;
   }
   .landing-demo-controls {
-    grid-template-columns: auto 1fr;
-  }
-  .landing-demo-controls label {
-    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
   .landing-features {
     grid-template-columns: 1fr;
@@ -274,5 +353,12 @@
   .landing-final-cta {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hold-speech[data-active='true'] .landing-speech-meter i {
+    height: 8px;
+    animation: none;
   }
 }

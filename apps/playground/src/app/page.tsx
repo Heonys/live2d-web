@@ -20,11 +20,14 @@ export default function LandingPage() {
       <main className="landing-page">
         <section className="landing-hero">
           <div className="landing-copy">
-            <p className="eyebrow">Cubism on the modern web</p>
-            <h1>Live2D that feels native to your app.</h1>
+            <p className="landing-status-line">
+              <span aria-hidden="true" />
+              Cubism 4/5 · WebGL2 · Vanilla + React
+            </p>
+            <h1>Live2D, directly in the browser.</h1>
             <p className="landing-lead">
-              A focused runtime for Vanilla, React and modern browsers—motions,
-              lip sync and face tracking without a required rendering framework.
+              A focused WebGL2 runtime for Cubism models. Add motion, lip sync,
+              face tracking and devtools only when your app needs them.
             </p>
             <div className="landing-actions">
               <Link className="primary-action" href="/docs/en">Read the docs</Link>
@@ -38,29 +41,29 @@ export default function LandingPage() {
         <section className="landing-features" aria-label="Highlights">
           <article>
             <span>01</span>
-            <h2>Small by default</h2>
-            <p>React, MediaPipe, inspection and devtools stay in optional subpaths.</p>
+            <h2>Optional by design</h2>
+            <p>React, MediaPipe, inspection and devtools stay in separate entry points.</p>
           </article>
           <article>
             <span>02</span>
-            <h2>Real model controls</h2>
-            <p>Compose motions, expressions, weighted idle and application-owned lip sync.</p>
+            <h2>Playback you control</h2>
+            <p>Sequence motions, fade expressions and connect application-owned lip sync.</p>
           </article>
           <article>
             <span>03</span>
-            <h2>Built for debugging</h2>
-            <p>Inspect model packages and mount an isolated parameter devtools panel.</p>
+            <h2>Tools when needed</h2>
+            <p>Inspect model packages or mount isolated parameter devtools during development.</p>
           </article>
         </section>
 
         <section className="landing-code-section">
           <div>
-            <p className="eyebrow">React optional</p>
-            <h2>Start with one component boundary.</h2>
-            <p>Use the root API in any framework, or take the small React binding when it helps.</p>
+            <p className="eyebrow">Optional entry · live2d-web/react</p>
+            <h2>A small React boundary.</h2>
+            <p>The renderer stays framework-agnostic. Add the React binding only at the client boundary that owns your model.</p>
             <Link href="/docs/en/react">React guide →</Link>
           </div>
-          <HighlightedCode code={QUICK_START} language="tsx" />
+          <HighlightedCode code={QUICK_START} filename="Avatar.tsx" language="tsx" />
         </section>
 
         <section className="landing-final-cta">

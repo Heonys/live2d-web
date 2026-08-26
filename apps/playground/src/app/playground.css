@@ -95,8 +95,7 @@
   padding: 18px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-color: #343942 transparent;
-  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 .playground-panel-scroll > section {
   display: grid;
