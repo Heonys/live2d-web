@@ -180,6 +180,81 @@ describe('mediaPipe worker face tracker', () => {
     await expect(tracker.update({} as TexImageSource, 34)).resolves.toEqual({ status: 'skipped' })
   })
 
+  // calibrate() while a capture is in flight used to clear the busy flag that
+  // belonged to the next request, letting two detects fly at once and deliver
+  // results out of order.
+  it('keeps one frame in flight across a mid-capture calibrate', async () => {
+    const worker = new FakeWorker()
+    const captures: Array<(bitmap: ImageBitmap) => void> = []
+    vi.stubGlobal('createImageBitmap', vi.fn(() =>
+      new Promise<ImageBitmap>(resolve => captures.push(resolve))))
+    const tracker = await createMediaPipeFaceTracker(options(worker))
+
+    const first = tracker.update({} as TexImageSource, 0)
+    tracker.calibrate()
+    const second = tracker.update({} as TexImageSource, 34)
+
+    // The slot still belongs to the first frame's capture; calibrate() must
+    // not have freed it on that frame's behalf.
+    expect(captures).toHaveLength(1)
+    await expect(second).resolves.toEqual({ status: 'skipped' })
+
+    captures[0]({ close: vi.fn() } as unknown as ImageBitmap)
+    await expect(first).resolves.toEqual({ status: 'skipped' })
+
+    const third = tracker.update({} as TexImageSource, 68)
+    await vi.waitFor(() => expect(captures).toHaveLength(2))
+    captures[1]({ close: vi.fn() } as unknown as ImageBitmap)
+    await vi.waitFor(() =>
+      expect(worker.messages.filter(entry => entry.message.type === 'detect')).toHaveLength(1))
+
+    tracker.dispose()
+    await expect(third).resolves.toEqual({ status: 'skipped' })
+  })
+
+  // The serialized path used to replace non-finite matrix entries with 0
+  // before poseFromMatrix, bypassing its reject-the-frame guard: a corrupted
+  // matrix that the main thread drops to {0,0,0} produced a full head turn.
+  it('rejects a corrupted matrix like the main-thread path does', async () => {
+    const worker = new FakeWorker()
+    const c = Math.cos(Math.PI / 6)
+    const s = Math.sin(Math.PI / 6)
+    const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    let matrix = identity
+    const original = worker.postMessage.bind(worker)
+    worker.postMessage = (message, transfer) => {
+      original(message, transfer)
+      if (message.type === 'detect') {
+        queueMicrotask(() => worker.respond({
+          id: message.id,
+          inferenceMs: 5,
+          result: { blendshapes: [], matrix },
+          type: 'result',
+        }))
+      }
+    }
+    vi.stubGlobal('createImageBitmap', vi.fn(() =>
+      Promise.resolve({ close: vi.fn() } as unknown as ImageBitmap)))
+    const tracker = await createMediaPipeFaceTracker(options(worker))
+    const drivers = new Map<string, { getValue: () => number }>()
+    tracker.attach({
+      addParameterDriver: (id: string, driver: { getValue: () => number }) => {
+        drivers.set(id, driver)
+        return () => drivers.delete(id)
+      },
+      getModelInfo: () => ({ expressions: [], hitAreas: [], motions: {} }),
+    })
+
+    for (let timestamp = 0; timestamp <= 1_020; timestamp += 34)
+      await tracker.update({} as TexImageSource, timestamp)
+
+    matrix = [c, 0, -s, 0, 0, 1, 0, 0, s, 0, Number.NaN, 0, 0, 0, 0, 1]
+    const update = await tracker.update({} as TexImageSource, 1_054)
+    expect(update.status).toBe('tracked')
+    expect(Math.abs(drivers.get('ParamAngleX')!.getValue())).toBeLessThan(0.5)
+    tracker.dispose()
+  })
+
   it('rejects invalid worker factories and aborts initialization', async () => {
     await expect(createMediaPipeFaceTracker({
       execution: 'worker',

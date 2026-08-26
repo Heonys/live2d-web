@@ -69,6 +69,11 @@ const DEFAULT_DETECTION_CONFIDENCE = 0.4
 const DEFAULT_PRESENCE_CONFIDENCE = 0.4
 const DEFAULT_TRACKING_CONFIDENCE = 0.3
 const MIN_ADAPTIVE_FPS = 10
+// A worker that never answers must not wedge the tracker: without a deadline a
+// lost detect holds the one-frame-in-flight slot for the rest of the session.
+// Init gets longer because it downloads WASM and the model over the network.
+const WORKER_DETECT_TIMEOUT_MS = 10_000
+const WORKER_INIT_TIMEOUT_MS = 30_000
 const INFERENCE_EMA_WEIGHT = 0.2
 const SLOW_DOWN_LOAD = 0.6
 const SPEED_UP_LOAD = 0.25
@@ -219,22 +224,25 @@ function swapLeftRight(name: string) {
   return name
 }
 
-function inputFromResult(result: FaceLandmarkerResult, mirrored: boolean) {
-  if (!result.faceLandmarks.length)
-    return undefined
-  const categories = result.faceBlendshapes[0]?.categories ?? []
-  const matrix = result.facialTransformationMatrixes[0]?.data
-  if (categories.length === 0 || !matrix || matrix.length < 16)
+function faceInput(
+  entries: Iterable<readonly [string, number]>,
+  matrix: readonly number[] | undefined,
+  mirrored: boolean,
+) {
+  if (!matrix || matrix.length < 16)
     return undefined
   const scores = new Map<string, number>()
-  for (const category of categories) {
-    const name = mirrored ? swapLeftRight(category.categoryName) : category.categoryName
-    scores.set(name, normalizeScore(category.score))
+  for (const [categoryName, score] of entries) {
+    const name = mirrored ? swapLeftRight(categoryName) : categoryName
+    scores.set(name, normalizeScore(score))
   }
   for (const name of MEDIAPIPE_BLENDSHAPES) {
     if (!scores.has(name))
       scores.set(name, 0)
   }
+  // The matrix goes to poseFromMatrix untouched: its non-finite guard rejects
+  // a corrupted frame as a whole, and pre-sanitizing entries here would turn
+  // that rejection into a garbage pose.
   const pose = poseFromMatrix(matrix)
   return {
     blendshapes: scores,
@@ -243,25 +251,23 @@ function inputFromResult(result: FaceLandmarkerResult, mirrored: boolean) {
   }
 }
 
-function inputFromSerializedResult(result: SerializedFaceResult | undefined, mirrored: boolean) {
-  if (!result || result.matrix.length < 16)
+function inputFromResult(result: FaceLandmarkerResult, mirrored: boolean) {
+  if (!result.faceLandmarks.length)
     return undefined
-  const scores = new Map<string, number>()
-  for (const [categoryName, score] of result.blendshapes) {
-    const name = mirrored ? swapLeftRight(categoryName) : categoryName
-    scores.set(name, normalizeScore(score))
-  }
-  for (const name of MEDIAPIPE_BLENDSHAPES) {
-    if (!scores.has(name))
-      scores.set(name, 0)
-  }
-  const matrix = result.matrix.map(value => Number.isFinite(value) ? value : 0)
-  const pose = poseFromMatrix(matrix)
-  return {
-    blendshapes: scores,
-    matrix,
-    pose: mirrored ? { x: -pose.x, y: pose.y, z: -pose.z } : pose,
-  }
+  const categories = result.faceBlendshapes[0]?.categories ?? []
+  if (categories.length === 0)
+    return undefined
+  return faceInput(
+    categories.map(category => [category.categoryName, category.score] as const),
+    result.facialTransformationMatrixes[0]?.data,
+    mirrored,
+  )
+}
+
+function inputFromSerializedResult(result: SerializedFaceResult | undefined, mirrored: boolean) {
+  if (!result)
+    return undefined
+  return faceInput(result.blendshapes, result.matrix, mirrored)
 }
 
 function trackingError(error: unknown, message: string, url?: string) {
@@ -360,6 +366,13 @@ class MediaPipeFaceTrackerImpl implements MediaPipeFaceTracker {
   }
 
   private adaptCap(inferenceMs: number) {
+    // The cap exists to keep synchronous inference from starving the render
+    // thread. Without a task, inference runs in a worker: the render thread is
+    // not under load, and one-frame-in-flight already provides backpressure,
+    // so lowering the request rate would only discard frames (measured on
+    // Firefox as 95.6% skipped while render p95 sat at 9.8ms).
+    if (!this.task)
+      return
     this.inferenceEmaMs = this.inferenceEmaMs === undefined
       ? inferenceMs
       : this.inferenceEmaMs * (1 - INFERENCE_EMA_WEIGHT) + inferenceMs * INFERENCE_EMA_WEIGHT
@@ -503,17 +516,23 @@ interface PendingWorkerRequest {
   generation: number
   reject: (error: unknown) => void
   resolve: (result: MediaPipeFaceTrackingUpdate) => void
+  timer: ReturnType<typeof setTimeout>
   timestampMs: number
+  token: number
 }
 
 class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
   private abortCleanup: (() => void) | undefined
-  private busy = false
+  // The one-frame-in-flight slot is owned by a token, not a boolean: only the
+  // request that took the slot may free it, so a stale frame settling late
+  // cannot free the slot on behalf of the frame that came after it.
+  private activeToken: number | undefined
   private disposed = false
   private generation = 0
   private nextId = 1
+  private nextToken = 1
   private pending = new Map<number, PendingWorkerRequest>()
-  private staleRequestIds = new Set<number>()
+  private staleRequests = new Map<number, { timer: ReturnType<typeof setTimeout>, token: number }>()
   private terminateTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor(
@@ -526,18 +545,26 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
   }
 
   bindAbortSignal(signal: AbortSignal) {
-    const onAbort = () => this.dispose()
+    // An abort listener has no caller to receive a cleanup failure; the
+    // tracker is torn down regardless, so the error has nowhere useful to go.
+    const onAbort = () => {
+      try {
+        this.dispose()
+      }
+      catch {}
+    }
     signal.addEventListener('abort', onAbort, { once: true })
     this.abortCleanup = () => signal.removeEventListener('abort', onAbort)
   }
 
   update(source: TexImageSource, timestampMs: number): Promise<MediaPipeFaceTrackingUpdate> {
-    if (this.disposed || this.busy || !this.core.canUpdate(timestampMs))
+    if (this.disposed || this.activeToken !== undefined || !this.core.canUpdate(timestampMs))
       return Promise.resolve({ status: 'skipped' })
-    this.busy = true
+    const token = this.nextToken++
+    this.activeToken = token
     const generation = this.generation
     return createImageBitmap(source as ImageBitmapSource).catch((error) => {
-      this.busy = false
+      this.release(token)
       if (this.disposed)
         return undefined
       throw trackingError(error, 'MediaPipe worker frame capture failed')
@@ -546,19 +573,19 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
         return { status: 'skipped' } as const
       if (this.disposed || generation !== this.generation) {
         bitmap.close()
-        this.busy = false
+        this.release(token)
         return { status: 'skipped' } as const
       }
       return new Promise<MediaPipeFaceTrackingUpdate>((resolve, reject) => {
         const id = this.nextId++
-        this.pending.set(id, { generation, reject, resolve, timestampMs })
+        const timer = setTimeout(() => this.expirePending(id), WORKER_DETECT_TIMEOUT_MS)
+        this.pending.set(id, { generation, reject, resolve, timer, timestampMs, token })
         const request: MediaPipeWorkerRequest = { bitmap, id, timestampMs, type: 'detect' }
         try {
           this.worker.postMessage(request, [bitmap])
         }
         catch (error) {
-          this.pending.delete(id)
-          this.busy = false
+          this.removePending(id)
           bitmap.close()
           reject(trackingError(error, 'MediaPipe worker frame transfer failed'))
         }
@@ -588,25 +615,78 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
     this.abortCleanup?.()
     this.abortCleanup = undefined
     this.settlePendingAsSkipped()
-    this.core.dispose()
-    const id = this.nextId++
+    this.clearStaleRequests()
+    this.activeToken = undefined
     try {
-      this.worker.postMessage({ id, type: 'dispose' } satisfies MediaPipeWorkerRequest)
-      this.terminateTimer = setTimeout(() => this.terminate(), 1_000)
+      this.core.dispose()
     }
-    catch {
-      this.terminate()
+    finally {
+      // A throwing driver cleanup must not strand the worker thread: the
+      // shutdown message and the terminate fallback run regardless.
+      const id = this.nextId++
+      try {
+        this.worker.postMessage({ id, type: 'dispose' } satisfies MediaPipeWorkerRequest)
+        this.terminateTimer = setTimeout(() => this.terminate(), 1_000)
+      }
+      catch {
+        this.terminate()
+      }
     }
+  }
+
+  private release(token: number) {
+    if (this.activeToken === token)
+      this.activeToken = undefined
+  }
+
+  private removePending(id: number) {
+    const pending = this.pending.get(id)
+    if (!pending)
+      return undefined
+    this.pending.delete(id)
+    clearTimeout(pending.timer)
+    this.release(pending.token)
+    return pending
+  }
+
+  private expirePending(id: number) {
+    const pending = this.removePending(id)
+    pending?.reject(trackingError(
+      new Error(`no response within ${WORKER_DETECT_TIMEOUT_MS}ms`),
+      'MediaPipe worker inference timed out',
+    ))
+  }
+
+  private expireStale(id: number) {
+    const stale = this.staleRequests.get(id)
+    if (!stale)
+      return
+    this.staleRequests.delete(id)
+    this.release(stale.token)
+  }
+
+  private clearStaleRequests() {
+    for (const stale of this.staleRequests.values())
+      clearTimeout(stale.timer)
+    this.staleRequests.clear()
   }
 
   private settlePendingAsSkipped(waitForWorker = false) {
     for (const [id, pending] of this.pending) {
+      clearTimeout(pending.timer)
       pending.resolve({ status: 'skipped' })
-      if (waitForWorker)
-        this.staleRequestIds.add(id)
+      if (waitForWorker) {
+        // The worker is still computing this frame: its token stays held so a
+        // new frame is not queued behind an unfinished one, and expires with
+        // the same deadline a live request gets.
+        const timer = setTimeout(() => this.expireStale(id), WORKER_DETECT_TIMEOUT_MS)
+        this.staleRequests.set(id, { timer, token: pending.token })
+      }
+      else {
+        this.release(pending.token)
+      }
     }
     this.pending.clear()
-    this.busy = waitForWorker && this.staleRequestIds.size > 0
   }
 
   private terminate() {
@@ -625,15 +705,16 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
       this.terminate()
       return
     }
-    if (this.staleRequestIds.delete(response.id)) {
-      this.busy = false
+    const stale = this.staleRequests.get(response.id)
+    if (stale) {
+      this.staleRequests.delete(response.id)
+      clearTimeout(stale.timer)
+      this.release(stale.token)
       return
     }
-    const pending = this.pending.get(response.id)
+    const pending = this.removePending(response.id)
     if (!pending)
       return
-    this.pending.delete(response.id)
-    this.busy = false
     if (response.type === 'error') {
       const cause = new Error(response.error.message)
       cause.name = response.error.name ?? 'Error'
@@ -661,10 +742,13 @@ class MediaPipeWorkerFaceTrackerImpl implements MediaPipeWorkerFaceTracker {
       ? event.error ?? new Error(event.message)
       : new Error('MediaPipe worker message could not be deserialized.')
     const error = trackingError(cause, 'MediaPipe worker crashed')
-    for (const pending of this.pending.values())
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer)
       pending.reject(error)
+    }
     this.pending.clear()
-    this.busy = false
+    this.clearStaleRequests()
+    this.activeToken = undefined
     this.disposed = true
     this.abortCleanup?.()
     this.abortCleanup = undefined
@@ -727,7 +811,12 @@ async function createWorkerTracker(
         cleanup()
         reject(new Error('MediaPipe worker initialization response was invalid.'))
       }
+      const deadline = setTimeout(() => {
+        cleanup()
+        reject(new Error(`no ready response within ${WORKER_INIT_TIMEOUT_MS}ms`))
+      }, WORKER_INIT_TIMEOUT_MS)
       cleanup = () => {
+        clearTimeout(deadline)
         worker.removeEventListener('message', onMessage)
         worker.removeEventListener('error', onError)
         worker.removeEventListener('messageerror', onMessageError)

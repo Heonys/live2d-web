@@ -39,11 +39,18 @@ function isClassicWorker() {
   }
 }
 
+let started = false
+
 /**
  * Starts the MediaPipe module-worker message loop. Call this once from the
  * application's own worker entry; importing this module has no side effects.
  */
 export function startMediaPipeFaceTrackerWorker(): void {
+  // A second call would register a second listener and answer every request
+  // twice, so repeat calls are a no-op.
+  if (started)
+    return
+  started = true
   const scope = globalThis as unknown as {
     addEventListener: (
       type: 'message',
@@ -58,8 +65,14 @@ export function startMediaPipeFaceTrackerWorker(): void {
   const send = (message: MediaPipeWorkerResponse) => scope.postMessage(message)
   scope.addEventListener('message', async (event: MessageEvent<MediaPipeWorkerRequest>) => {
     const request = event.data
-    if (!request || disposed)
+    if (!request)
       return
+    if (disposed) {
+      // The bitmap was transferred to this thread; nobody else can free it.
+      if (request.type === 'detect')
+        request.bitmap.close()
+      return
+    }
     try {
       if (request.type === 'init') {
         const vision = await import('@mediapipe/tasks-vision')
@@ -92,10 +105,10 @@ export function startMediaPipeFaceTrackerWorker(): void {
         return
       }
       if (request.type === 'detect') {
-        if (!task)
-          throw new Error('MediaPipe worker has not been initialized.')
-        const startedAt = performance.now()
         try {
+          if (!task)
+            throw new Error('MediaPipe worker has not been initialized.')
+          const startedAt = performance.now()
           const result = task.detectForVideo(request.bitmap, request.timestampMs)
           send({
             id: request.id,
@@ -109,11 +122,15 @@ export function startMediaPipeFaceTrackerWorker(): void {
         }
         return
       }
-      disposed = true
-      task?.close()
-      task = undefined
-      send({ id: request.id, type: 'disposed' })
-      scope.close()
+      if (request.type === 'dispose') {
+        disposed = true
+        task?.close()
+        task = undefined
+        send({ id: request.id, type: 'disposed' })
+        scope.close()
+      }
+      // Anything else is a newer protocol this build does not know; tearing
+      // the worker down over it would turn a version skew into a dead tracker.
     }
     catch (error) {
       send({ id: request.id, error: serializeError(error), type: 'error' })

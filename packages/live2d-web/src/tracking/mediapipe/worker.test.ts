@@ -5,7 +5,13 @@ import type {
 } from './protocol'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { startMediaPipeFaceTrackerWorker } from './worker'
+// The runner refuses to start twice in one worker scope, so every test case
+// loads a fresh module instance instead of sharing a static import.
+async function loadWorkerRunner() {
+  vi.resetModules()
+  const { startMediaPipeFaceTrackerWorker } = await import('./worker')
+  return startMediaPipeFaceTrackerWorker
+}
 
 const mediaPipeMocks = vi.hoisted(() => ({
   close: vi.fn(),
@@ -85,6 +91,7 @@ describe('mediaPipe worker runner', () => {
     else
       vi.stubGlobal('importScripts', undefined)
     vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope))
+    const startMediaPipeFaceTrackerWorker = await loadWorkerRunner()
     startMediaPipeFaceTrackerWorker()
 
     scope.dispatch({
@@ -123,5 +130,36 @@ describe('mediaPipe worker runner', () => {
     await vi.waitFor(() => expect(scope.messages).toContainEqual({ id: 2, type: 'disposed' }))
     expect(mediaPipeMocks.close).toHaveBeenCalledTimes(1)
     expect(scope.closed).toBe(true)
+  })
+
+  // The bitmap is transferred to this thread, so every early-return path must
+  // close it; and an unknown message is version skew, not a shutdown order.
+  it('closes stray bitmaps and survives unknown message types', async () => {
+    const scope = new FakeWorkerScope()
+    vi.stubGlobal('self', scope)
+    vi.stubGlobal('postMessage', scope.postMessage.bind(scope))
+    vi.stubGlobal('close', scope.close.bind(scope))
+    vi.stubGlobal('importScripts', undefined)
+    vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope))
+    const startMediaPipeFaceTrackerWorker = await loadWorkerRunner()
+    startMediaPipeFaceTrackerWorker()
+
+    const early = { close: vi.fn() } as unknown as ImageBitmap
+    scope.dispatch({ bitmap: early, id: 1, timestampMs: 10, type: 'detect' })
+    await vi.waitFor(() => expect(scope.messages.some(message => message.type === 'error')).toBe(true))
+    expect(early.close).toHaveBeenCalledTimes(1)
+
+    scope.dispatch({ id: 2, type: 'future-request' } as never)
+    await Promise.resolve()
+    expect(scope.closed).toBe(false)
+    expect(mediaPipeMocks.close).not.toHaveBeenCalled()
+
+    scope.dispatch({ id: 3, type: 'dispose' })
+    await vi.waitFor(() => expect(scope.messages).toContainEqual({ id: 3, type: 'disposed' }))
+
+    const late = { close: vi.fn() } as unknown as ImageBitmap
+    scope.dispatch({ bitmap: late, id: 4, timestampMs: 20, type: 'detect' })
+    await Promise.resolve()
+    expect(late.close).toHaveBeenCalledTimes(1)
   })
 })
