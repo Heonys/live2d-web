@@ -1,11 +1,13 @@
 'use client'
 
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type { DocLocale } from '../docs/manifest'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { useDocsNavigation } from '../docs/docsNavigationContext'
 import { docHref } from '../docs/manifest'
+import { warmLocaleFonts } from '../docs/searchClient'
 
 const languageNames: Record<DocLocale, string> = {
   en: 'English',
@@ -20,10 +22,25 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
   locale?: DocLocale
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { markPending } = useDocsNavigation()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
   const languageRootRef = useRef<HTMLDivElement>(null)
   const languageTriggerRef = useRef<HTMLButtonElement>(null)
+  const prefetchedRef = useRef(new Set<string>())
+  const docsMatch = pathname.match(/^\/docs\/(en|ko|ja)(?:\/(.*))?$/)
+  const currentLocale = (docsMatch?.[1] as DocLocale | undefined) ?? locale
+  const currentDocSlug = docsMatch?.[2] ?? docSlug
+
+  const prepareLanguage = (language: DocLocale) => {
+    const href = docHref(language, currentDocSlug)
+    if (!prefetchedRef.current.has(href)) {
+      prefetchedRef.current.add(href)
+      router.prefetch(href)
+    }
+    return warmLocaleFonts(language, currentDocSlug)
+  }
 
   useEffect(() => {
     if (!languageOpen)
@@ -52,6 +69,10 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
   }
   const openLanguageMenu = () => {
     setLanguageOpen(true)
+    for (const language of languages) {
+      if (language !== currentLocale)
+        void prepareLanguage(language)
+    }
     requestAnimationFrame(() => {
       languageRootRef.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]')?.focus()
     })
@@ -74,6 +95,29 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
     items[next]?.focus()
   }
   const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  const handleLanguageClick = async (
+    event: ReactMouseEvent<HTMLAnchorElement>,
+    language: DocLocale,
+  ) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      closeNavigation()
+      return
+    }
+    event.preventDefault()
+    if (language === currentLocale) {
+      setLanguageOpen(false)
+      languageTriggerRef.current?.focus()
+      return
+    }
+    setLanguageOpen(false)
+    const href = docHref(language, currentDocSlug)
+    await Promise.race([
+      prepareLanguage(language),
+      new Promise<void>(resolve => setTimeout(resolve, 250)),
+    ])
+    markPending()
+    router.push(href)
+  }
 
   return (
     <header className="site-header">
@@ -96,7 +140,8 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
           <div className="site-nav-links">
             <Link
               aria-current={pathname.startsWith('/docs/') ? 'page' : undefined}
-              href={docHref(locale, '')}
+              href={docHref(currentLocale, '')}
+              prefetch={false}
               onClick={closeNavigation}
             >
               Documentation
@@ -104,6 +149,7 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
             <Link
               aria-current={isCurrent('/playground') ? 'page' : undefined}
               href="/playground"
+              prefetch={false}
               onClick={closeNavigation}
             >
               Playground
@@ -111,13 +157,15 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
             <Link
               aria-current={isCurrent('/inspect') ? 'page' : undefined}
               href="/inspect"
+              prefetch={false}
               onClick={closeNavigation}
             >
               Inspector
             </Link>
             <Link
               aria-current={pathname.includes('/examples') ? 'page' : undefined}
-              href={docHref(locale, 'examples')}
+              href={docHref(currentLocale, 'examples')}
+              prefetch={false}
               onClick={closeNavigation}
             >
               Examples
@@ -142,7 +190,7 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
                 aria-label="Documentation language"
                 className="site-language-trigger"
                 type="button"
-                onClick={() => setLanguageOpen(value => !value)}
+                onClick={() => languageOpen ? setLanguageOpen(false) : openLanguageMenu()}
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowDown') {
                     event.preventDefault()
@@ -154,7 +202,7 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
                   <circle cx="12" cy="12" r="9" />
                   <path d="M3 12h18M12 3c2.3 2.46 3.5 5.46 3.5 9s-1.2 6.54-3.5 9c-2.3-2.46-3.5-5.46-3.5-9S9.7 5.46 12 3Z" />
                 </svg>
-                <span lang={locale}>{languageNames[locale]}</span>
+                <span lang={currentLocale}>{languageNames[currentLocale]}</span>
                 <span aria-hidden="true" className="site-language-chevron">⌄</span>
               </button>
               {languageOpen && (
@@ -167,16 +215,19 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
                   {languages.map(language => (
                     <Link
                       key={language}
-                      aria-current={language === locale ? 'page' : undefined}
-                      href={docHref(language, docSlug)}
+                      aria-current={language === currentLocale ? 'page' : undefined}
+                      href={docHref(language, currentDocSlug)}
                       hrefLang={language}
                       lang={language}
+                      prefetch={false}
                       role="menuitem"
-                      onClick={closeNavigation}
+                      onClick={event => void handleLanguageClick(event, language)}
+                      onFocus={() => void prepareLanguage(language)}
+                      onPointerEnter={() => void prepareLanguage(language)}
                     >
                       <span>{languageNames[language]}</span>
                       <span aria-hidden="true" className="site-language-check">
-                        {language === locale ? '✓' : ''}
+                        {language === currentLocale ? '✓' : ''}
                       </span>
                     </Link>
                   ))}

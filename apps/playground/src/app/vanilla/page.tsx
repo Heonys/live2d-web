@@ -93,7 +93,7 @@ export default function VanillaPlayground() {
       <main>
         <section className="page-hero">
           <div>
-            <p className="eyebrow">Vanilla runtime playground</p>
+            <p className="eyebrow">JavaScript runtime playground</p>
             <h1>Live2D without React bindings</h1>
             <p>
               This page mounts one imperative

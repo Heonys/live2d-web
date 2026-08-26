@@ -19,6 +19,10 @@ export interface ApiReference {
   sections: readonly ApiSection[]
 }
 
+export function apiAnchor(section: string, symbol: string) {
+  return `${section.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}-${symbol.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`
+}
+
 export function readApiReference(): ApiReference {
   const applicationRoot = process.cwd().endsWith(path.join('apps', 'playground'))
     ? process.cwd()

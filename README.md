@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  An unofficial Live2D Cubism runtime for vanilla JavaScript and React.<br>
+  An unofficial Live2D Cubism runtime for JavaScript and React.<br>
   Direct WebGL2 rendering without PixiJS.
 </p>
 
@@ -64,12 +64,12 @@ export function Avatar() {
 }
 ```
 
-The host element needs an explicit CSS size. Dispose the vanilla instance when
+The host element needs an explicit CSS size. Dispose the JavaScript instance when
 the host view is removed; React components clean themselves up on unmount.
 
 ## Learn and verify
 
-The localized guides cover Core/model preparation, Vanilla, React,
+The localized guides cover Core/model preparation, JavaScript, React,
 motion/expression, lip sync, MediaPipe main/Worker, Next SSR, mobile,
 troubleshooting, security and licenses:
 
@@ -78,7 +78,7 @@ troubleshooting, security and licenses:
 - [日本語ドキュメント](https://live2d-web-demo.netlify.app/docs/ja)
 - [Generated API reference](https://live2d-web-demo.netlify.app/docs/en/api)
 
-The repository includes production-built Vite Vanilla, Next React, Vue Vite
+The repository includes production-built Vite JavaScript, Next React, Vue Vite
 and transparent OBS overlay examples. Run them after providing
 `/live2dcubismcore.min.js` and `/models/model.model3.json`:
 

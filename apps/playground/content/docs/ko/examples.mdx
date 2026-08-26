@@ -1,8 +1,8 @@
 ## 실제 빌드되는 프로젝트
 
-저장소에는 Vite Vanilla·Next React·Vue Vite·투명 OBS overlay 예제가 있습니다. CI가 네 예제를 typecheck하고 production build합니다. 기본 경로는 Core /live2dcubismcore.min.js, 모델 /models/model.model3.json입니다.
+저장소에는 Vite JavaScript·Next React·Vue Vite·투명 OBS overlay 예제가 있습니다. CI가 네 예제를 typecheck하고 production build합니다. 기본 경로는 Core /live2dcubismcore.min.js, 모델 /models/model.model3.json입니다.
 
-- [Vite Vanilla 전체 소스](https://github.com/Heonys/live2d-web/tree/main/examples/vanilla-vite)
+- [Vite JavaScript 전체 소스](https://github.com/Heonys/live2d-web/tree/main/examples/vanilla-vite)
 - [Next React 전체 소스](https://github.com/Heonys/live2d-web/tree/main/examples/next-react)
 - [Vue Vite 전체 소스](https://github.com/Heonys/live2d-web/tree/main/examples/vue-vite)
 - [OBS overlay 전체 소스](https://github.com/Heonys/live2d-web/tree/main/examples/obs-overlay)
@@ -15,7 +15,7 @@ pnpm --filter @live2d-web/example-vue-vite dev
 pnpm --filter @live2d-web/example-obs-overlay dev
 ```
 
-```ts title="Vite Vanilla"
+```ts title="Vite JavaScript"
 import { createLive2D } from 'live2d-web'
 
 const character = await createLive2D({

@@ -22,7 +22,7 @@ export default function LandingPage() {
           <div className="landing-copy">
             <p className="landing-status-line">
               <span aria-hidden="true" />
-              Cubism 4/5 · WebGL2 · Vanilla + React
+              Cubism 4/5 · WebGL2 · JavaScript + React
             </p>
             <h1>Live2D, directly in the browser.</h1>
             <p className="landing-lead">

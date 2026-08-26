@@ -490,7 +490,7 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/docs\/en$/)
   await expect(page.locator('link[hreflang="ko"]')).toHaveAttribute('href', /\/docs\/ko$/)
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).fontFamily))
-    .toContain('MiSans Latin')
+    .toContain('miSans')
 
   await page.getByLabel('Search documentation').fill('MediaPipe')
   await page.locator('.docs-search-results a[href="/docs/en/mediapipe"]').click()
@@ -528,6 +528,119 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
     elements.map(element => (element as HTMLAnchorElement).href))
   for (const href of links)
     expect((await page.request.get(href)).ok()).toBe(true)
+})
+
+test('keeps documentation navigation stable and loads search on intent', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The deterministic docs UX regression runs once in Chromium.')
+
+  await page.addInitScript(() => {
+    const state = window as typeof window & { __docsCls?: number }
+    state.__docsCls = 0
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as (PerformanceEntry & { hadRecentInput?: boolean, value?: number })[]) {
+        if (!entry.hadRecentInput)
+          state.__docsCls = (state.__docsCls ?? 0) + (entry.value ?? 0)
+      }
+    }).observe({ type: 'layout-shift', buffered: true })
+  })
+
+  const searchRequests: string[] = []
+  const prefetchedDocs: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.startsWith('/docs-search/'))
+      searchRequests.push(url.pathname)
+    if (url.pathname.startsWith('/docs/en/') && url.searchParams.has('_rsc'))
+      prefetchedDocs.push(url.pathname)
+  })
+
+  await page.goto('/docs/en')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Getting started')
+  await page.waitForTimeout(250)
+  expect(searchRequests).toEqual([])
+  expect(prefetchedDocs).toEqual([])
+
+  const before = await page.evaluate(() => ({
+    mainX: document.querySelector('.docs-main')?.getBoundingClientRect().x,
+    scrollTop: (() => {
+      const element = document.querySelector<HTMLElement>('.docs-sidebar')
+      if (!element)
+        return 0
+      element.scrollTop = element.scrollHeight
+      return element.scrollTop
+    })(),
+  }))
+  const examples = page.locator('.docs-sidebar a[href="/docs/en/examples"]')
+  await examples.hover()
+  await expect.poll(() => prefetchedDocs.length).toBeGreaterThan(0)
+  await page.waitForTimeout(150)
+  expect(new Set(prefetchedDocs)).toEqual(new Set(['/docs/en/examples']))
+  const intentRequestCount = prefetchedDocs.length
+  await examples.click()
+  await expect(page).toHaveURL(/\/docs\/en\/examples$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Examples')
+  await expect(page.locator('.docs-toc')).toContainText('Buildable projects')
+  expect(prefetchedDocs).toHaveLength(intentRequestCount)
+  const after = await page.evaluate(() => ({
+    mainX: document.querySelector('.docs-main')?.getBoundingClientRect().x,
+    scrollTop: document.querySelector<HTMLElement>('.docs-sidebar')?.scrollTop ?? 0,
+  }))
+  expect(Math.abs((after.mainX ?? 0) - (before.mainX ?? 0))).toBeLessThanOrEqual(1)
+  expect(after.scrollTop).toBeGreaterThanOrEqual(before.scrollTop - 1)
+  expect(await page.evaluate(() =>
+    (window as typeof window & { __docsCls?: number }).__docsCls ?? 0)).toBeLessThanOrEqual(0.02)
+
+  const search = page.getByLabel('Search documentation')
+  await page.keyboard.press('/')
+  await expect(search).toBeFocused()
+  await expect.poll(() => searchRequests.length).toBe(1)
+  await search.fill('MediaPipe')
+  await expect(page.getByRole('option', { name: /MediaPipe face tracking/ })).toBeVisible()
+  await search.press('ArrowDown')
+  await search.press('Enter')
+  await expect(page).toHaveURL(/\/docs\/en\/mediapipe$/)
+  expect(searchRequests).toHaveLength(1)
+})
+
+test('keeps regular documentation RSC payloads within the UX budget', async ({ browserName }) => {
+  test.skip(browserName !== 'chromium', 'The build artifact budget only needs one project.')
+  const docsRoot = new URL('../apps/playground/.next/server/app/docs/', import.meta.url)
+  const files = readdirSync(docsRoot, { recursive: true })
+    .map(relative => String(relative))
+    .filter(relative => /^(?:en|ko|ja)(?:\/[^/]+)?\.rsc$/.test(relative))
+    .filter(relative => !relative.endsWith('/api.rsc'))
+  expect(files.length).toBeGreaterThan(30)
+  for (const file of files) {
+    expect(
+      statSync(new URL(file, docsRoot)).size,
+      `${file} exceeds the 45 KiB regular documentation RSC budget`,
+    ).toBeLessThanOrEqual(45 * 1024)
+  }
+})
+
+test('keeps documentation search inside supported viewports', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The responsive docs UX regression runs once in Chromium.')
+  for (const viewport of [
+    { height: 900, width: 1440 },
+    { height: 768, width: 1024 },
+    { height: 844, width: 390 },
+  ]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/docs/en')
+    if (viewport.width <= 800) {
+      await page.getByRole('button', { name: 'Browse documentation' }).click()
+      const drawer = await page.locator('.docs-mobile-drawer').boundingBox()
+      expect(drawer?.height).toBe(viewport.height)
+    }
+    const search = page.getByLabel('Search documentation').filter({ visible: true })
+    await search.fill('motion')
+    await expect(page.getByRole('listbox')).toBeVisible()
+    const bounds = await page.getByRole('listbox').boundingBox()
+    expect(bounds).not.toBeNull()
+    expect(bounds?.x ?? -1).toBeGreaterThanOrEqual(0)
+    expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
+  }
 })
 
 test('runs and cleans up the source AudioWorklet smoke test', async ({ browserName, page }) => {

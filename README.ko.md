@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  바닐라 JavaScript와 React를 위한 비공식 Live2D Cubism 런타임입니다.<br>
+  JavaScript와 React를 위한 비공식 Live2D Cubism 런타임입니다.<br>
   PixiJS 없이 WebGL2로 직접 렌더링합니다.
 </p>
 
@@ -64,18 +64,18 @@ export function Avatar() {
 }
 ```
 
-호스트 요소에는 CSS 크기가 필요합니다. 바닐라 인스턴스는 화면에서 제거할 때
+호스트 요소에는 CSS 크기가 필요합니다. JavaScript 인스턴스는 화면에서 제거할 때
 dispose하고, React 컴포넌트는 unmount 시 스스로 정리합니다.
 
 ## 자세한 문서와 예제
 
 [한국어 문서 사이트](https://live2d-web-demo.netlify.app/docs/ko)는 Core·모델
-준비, Vanilla, React, 모션·표정, 립싱크, MediaPipe main/Worker, Next SSR,
+준비, JavaScript, React, 모션·표정, 립싱크, MediaPipe main/Worker, Next SSR,
 모바일, 오류 해결, 보안·라이선스를 다룹니다. API 시그니처는 공개 TypeScript
 소스에서 생성한 [공통 레퍼런스](https://live2d-web-demo.netlify.app/docs/ko/api)를
 사용합니다.
 
-저장소의 Vite Vanilla·Next React·Vue Vite·투명 OBS overlay 예제는 CI에서
+저장소의 Vite JavaScript·Next React·Vue Vite·투명 OBS overlay 예제는 CI에서
 production build됩니다.
 
 ```sh

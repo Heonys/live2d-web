@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  Vanilla JavaScript と React 向けの非公式 Live2D Cubism ランタイムです。<br>
+  JavaScript と React 向けの非公式 Live2D Cubism ランタイムです。<br>
   PixiJS を使わず WebGL2 で直接描画します。
 </p>
 
@@ -64,18 +64,18 @@ export function Avatar() {
 }
 ```
 
-host 要素には CSS のサイズが必要です。Vanilla instance は画面から外すときに
+host 要素には CSS のサイズが必要です。JavaScript instance は画面から外すときに
 dispose します。React component は unmount 時に自動で破棄します。
 
 ## 詳細ドキュメントとサンプル
 
 [日本語ドキュメント](https://live2d-web-demo.netlify.app/docs/ja)では Core・
-モデル準備、Vanilla、React、motion・表情、lip sync、MediaPipe main/Worker、
+モデル準備、JavaScript、React、motion・表情、lip sync、MediaPipe main/Worker、
 Next SSR、mobile、troubleshooting、security・license を説明します。API
 signature は公開 TypeScript source から生成した
 [共通リファレンス](https://live2d-web-demo.netlify.app/docs/ja/api)を使います。
 
-repository の Vite Vanilla・Next React・Vue Vite・透明 OBS overlay の例は
+repository の Vite JavaScript・Next React・Vue Vite・透明 OBS overlay の例は
 CI で production build されます。
 
 ```sh

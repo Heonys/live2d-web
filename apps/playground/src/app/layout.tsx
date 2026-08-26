@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import localFont from 'next/font/local'
 import '@fontsource-variable/jetbrains-mono'
 import '@fontsource-variable/noto-sans-jp'
 import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'
@@ -8,6 +9,19 @@ import './docs.css'
 import './landing.css'
 import './playground.css'
 
+const miSans = localFont({
+  display: 'swap',
+  fallback: ['Arial', 'sans-serif'],
+  preload: true,
+  src: [
+    { path: '../../public/fonts/MiSansLatin-Regular.woff2', weight: '400' },
+    { path: '../../public/fonts/MiSansLatin-Medium.woff2', weight: '500' },
+    { path: '../../public/fonts/MiSansLatin-Semibold.woff2', weight: '600' },
+    { path: '../../public/fonts/MiSansLatin-Bold.woff2', weight: '700' },
+  ],
+  variable: '--font-mi-sans',
+})
+
 export const metadata: Metadata = {
   title: 'live2d-web',
   description:
@@ -16,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html className={miSans.variable} lang="en">
       <body>{children}</body>
     </html>
   )

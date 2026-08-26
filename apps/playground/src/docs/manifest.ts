@@ -48,9 +48,9 @@ export const DOC_PAGES = [
       ko: 'React 없는 루트 API를 사용합니다.',
     },
     title: {
-      en: 'Vanilla JavaScript',
-      ja: 'Vanilla JavaScript',
-      ko: '바닐라 JavaScript',
+      en: 'JavaScript',
+      ja: 'JavaScript',
+      ko: 'JavaScript',
     },
   },
   {

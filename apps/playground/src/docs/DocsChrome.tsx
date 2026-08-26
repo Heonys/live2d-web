@@ -1,8 +1,10 @@
 'use client'
 
 import type { DocLocale, DocPageMeta } from './manifest'
-import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { DocSearch } from './DocSearch'
+import { DocsIntentLink } from './DocsNavigation'
 import { docHref } from './manifest'
 
 const mobileLabels: Record<DocLocale, { close: string, menu: string, onPage: string }> = {
@@ -12,20 +14,30 @@ const mobileLabels: Record<DocLocale, { close: string, menu: string, onPage: str
 }
 
 export function ReadingProgress() {
-  const [progress, setProgress] = useState(0)
+  const pathname = usePathname()
+  const progressRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
+    let frame = 0
     const update = () => {
+      frame = 0
       const total = document.documentElement.scrollHeight - window.innerHeight
-      setProgress(total > 0 ? Math.min(1, window.scrollY / total) : 0)
+      const progress = total > 0 ? Math.min(1, window.scrollY / total) : 0
+      progressRef.current?.style.setProperty('--docs-reading-progress', String(progress))
     }
-    const frame = requestAnimationFrame(update)
-    window.addEventListener('scroll', update, { passive: true })
+    const schedule = () => {
+      if (!frame)
+        frame = requestAnimationFrame(update)
+    }
+    schedule()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule, { passive: true })
     return () => {
       cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', update)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
     }
-  }, [])
-  return <div className="reading-progress" style={{ transform: `scaleX(${progress})` }} />
+  }, [pathname])
+  return <div ref={progressRef} className="reading-progress" />
 }
 
 export function DocsMobileNavigation({ current, locale, pages }: {
@@ -89,16 +101,17 @@ export function DocsMobileNavigation({ current, locale, pages }: {
             <strong>live2d-web</strong>
             <button aria-label={mobileLabels[locale].close} type="button" onClick={close}>×</button>
           </div>
+          <DocSearch locale={locale} />
           <nav aria-label="Documentation">
             {pages.map(page => (
-              <Link
+              <DocsIntentLink
                 key={page.slug}
                 aria-current={page.slug === current ? 'page' : undefined}
                 href={docHref(locale, page.slug)}
                 onClick={close}
               >
                 {page.title[locale]}
-              </Link>
+              </DocsIntentLink>
             ))}
           </nav>
         </div>
@@ -110,6 +123,7 @@ export function DocsMobileNavigation({ current, locale, pages }: {
 interface TocHeading { depth: number, id: string, text: string }
 
 export function DocsToc({ locale }: { locale: DocLocale }) {
+  const pathname = usePathname()
   const [headings, setHeadings] = useState<TocHeading[]>([])
   const [active, setActive] = useState('')
   useEffect(() => {
@@ -134,7 +148,7 @@ export function DocsToc({ locale }: { locale: DocLocale }) {
       cancelAnimationFrame(frame)
       observer?.disconnect()
     }
-  }, [])
+  }, [pathname])
   if (!headings.length)
     return <aside aria-label="On this page" className="docs-toc" />
   return (

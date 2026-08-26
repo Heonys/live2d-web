@@ -1,8 +1,8 @@
 ## Buildable projects
 
-The repository includes Vite Vanilla, Next React, Vue Vite and transparent OBS overlay examples. CI typechecks and production-builds all four. Each expects Core at /live2dcubismcore.min.js and a model at /models/model.model3.json.
+The repository includes Vite JavaScript, Next React, Vue Vite and transparent OBS overlay examples. CI typechecks and production-builds all four. Each expects Core at /live2dcubismcore.min.js and a model at /models/model.model3.json.
 
-- [Complete Vite Vanilla source](https://github.com/Heonys/live2d-web/tree/main/examples/vanilla-vite)
+- [Complete Vite JavaScript source](https://github.com/Heonys/live2d-web/tree/main/examples/vanilla-vite)
 - [Complete Next React source](https://github.com/Heonys/live2d-web/tree/main/examples/next-react)
 - [Complete Vue Vite source](https://github.com/Heonys/live2d-web/tree/main/examples/vue-vite)
 - [Complete OBS overlay source](https://github.com/Heonys/live2d-web/tree/main/examples/obs-overlay)
@@ -15,7 +15,7 @@ pnpm --filter @live2d-web/example-vue-vite dev
 pnpm --filter @live2d-web/example-obs-overlay dev
 ```
 
-```ts title="Vite Vanilla"
+```ts title="Vite JavaScript"
 import { createLive2D } from 'live2d-web'
 
 const character = await createLive2D({
