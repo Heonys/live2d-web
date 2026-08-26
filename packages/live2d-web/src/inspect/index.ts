@@ -1,7 +1,6 @@
 export { inspectModelCapabilities } from './capabilities'
 export { inspectModelSource } from './source'
 export type {
-  InspectableModelInfo,
   InspectModelSourceOptions,
   ModelCapabilityReport,
   ModelInspectionAsset,

@@ -1,7 +1,4 @@
-import type {
-  Live2DAssetResolver,
-  ModelInfo,
-} from '../core/contract'
+import type { Live2DAssetResolver } from '../core/contract'
 import type { Live2DAssetType } from '../core/errors'
 
 export interface ModelInspectionLimits {
@@ -80,12 +77,10 @@ export interface ModelCapabilityReport {
   perfectSync: {
     compatible: boolean
     matched: number
-    minimum: 45
+    minimum: number
     missing: readonly string[]
-    total: 52
+    total: number
   }
   recommendedMapping: 'standard' | 'perfect-sync' | 'none'
   standardChannels: Readonly<Record<ModelTrackingChannel, ModelTrackingChannelSupport>>
 }
-
-export type InspectableModelInfo = ModelInfo

@@ -3,11 +3,17 @@ import type { MediaPipeBlendshape } from './blendshapes'
 import type { FaceTrackingSignals } from './state'
 import type { MediaPipeAttachOptions, MediaPipeFaceChannel } from './types'
 import {
+  hasPerfectSyncParameters,
+  missingPerfectSyncParameters,
+} from '../../core/perfect-sync'
+import {
   ARKIT_BLENDSHAPES,
   PERFECT_SYNC_MINIMUM_PARAMETERS,
   PERFECT_SYNC_PARAMETER_IDS,
   perfectSyncParameterId,
 } from './blendshapes'
+
+export { hasPerfectSyncParameters, missingPerfectSyncParameters }
 
 export interface ParameterBinding {
   channel: MediaPipeFaceChannel
@@ -86,18 +92,6 @@ const DEFAULT_SENSITIVITY: Record<MediaPipeFaceChannel, number> = {
 
 function gain(options: MediaPipeAttachOptions, channel: MediaPipeFaceChannel) {
   return options.sensitivity?.[channel] ?? DEFAULT_SENSITIVITY[channel]
-}
-
-export function missingPerfectSyncParameters(info: ModelInfo) {
-  const ids = new Set(info.parameters?.map(parameter => parameter.id) ?? [])
-  return PERFECT_SYNC_PARAMETER_IDS.filter(id => !ids.has(id))
-}
-
-// Riggers routinely drop a few ARKit parameters (tongue, cheeks), so demanding
-// all 52 would reject nearly every real model.
-export function hasPerfectSyncParameters(info: ModelInfo) {
-  const missing = missingPerfectSyncParameters(info).length
-  return PERFECT_SYNC_PARAMETER_IDS.length - missing >= PERFECT_SYNC_MINIMUM_PARAMETERS
 }
 
 export function createParameterBindings(

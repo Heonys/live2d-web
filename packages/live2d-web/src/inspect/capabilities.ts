@@ -5,6 +5,7 @@ import type {
   ModelTrackingChannelSupport,
 } from './types'
 import {
+  missingPerfectSyncParameters,
   PERFECT_SYNC_MINIMUM_PARAMETERS,
   PERFECT_SYNC_PARAMETER_IDS,
 } from '../core/perfect-sync'
@@ -36,7 +37,7 @@ export function inspectModelCapabilities(info: ModelInfo): ModelCapabilityReport
       channelSupport(parameterIds, required),
     ]),
   ) as Record<ModelTrackingChannel, ModelTrackingChannelSupport>
-  const missing = PERFECT_SYNC_PARAMETER_IDS.filter(id => !parameterIds.has(id))
+  const missing = missingPerfectSyncParameters(info)
   const matched = PERFECT_SYNC_PARAMETER_IDS.length - missing.length
   const perfectSync = matched >= PERFECT_SYNC_MINIMUM_PARAMETERS
   const standard = Object.values(standardChannels).some(value => value !== 'missing')
@@ -49,7 +50,7 @@ export function inspectModelCapabilities(info: ModelInfo): ModelCapabilityReport
       matched,
       minimum: PERFECT_SYNC_MINIMUM_PARAMETERS,
       missing,
-      total: 52,
+      total: PERFECT_SYNC_PARAMETER_IDS.length,
     },
     recommendedMapping: perfectSync ? 'perfect-sync' : standard ? 'standard' : 'none',
     standardChannels: Object.freeze(standardChannels),
