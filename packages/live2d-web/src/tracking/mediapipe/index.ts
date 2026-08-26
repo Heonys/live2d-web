@@ -241,9 +241,10 @@ function faceInput(
     if (!scores.has(name))
       scores.set(name, 0)
   }
-  // The matrix goes to poseFromMatrix untouched: its non-finite guard rejects
-  // a corrupted frame as a whole, and pre-sanitizing entries here would turn
-  // that rejection into a garbage pose.
+  // The matrix goes to poseFromMatrix untouched: its non-finite guard
+  // neutralizes pose to {0,0,0} on a corrupted matrix, and pre-sanitizing
+  // entries here would turn that neutral pose into a garbage rotation instead.
+  // Blendshapes are a separate signal and stay valid even when pose is not.
   const pose = poseFromMatrix(matrix)
   return {
     blendshapes: scores,
