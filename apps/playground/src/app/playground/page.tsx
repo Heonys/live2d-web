@@ -34,6 +34,7 @@ import { SiteHeader } from '../../components/SiteHeader'
 import { StageLoading } from '../../components/StageLoading'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../../lib/syntheticLipSyncProfile'
+import PlaygroundCode from './PlaygroundCode.mdx'
 
 const POSE_PARAMETER_IDS = [
   'ParamAngleX',
@@ -69,46 +70,6 @@ function expressionOptionsForFadePreset(
     return undefined
   const milliseconds = preset === 'instant' ? 0 : 500
   return { fadeInMs: milliseconds, fadeOutMs: milliseconds }
-}
-
-const DEMO_CODE = `import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
-
-<Live2DCanvas coreUrl="/live2dcubismcore.min.js" quality="auto">
-  <Live2DModel
-    src="/models/hiyori/hiyori.model3.json"
-    fit="upper-body"
-    followPointer
-    onTap={(hitAreas) => hitAreas.includes('Body') && controller.motion('Tap')}
-    onLoad={setController}
-  >
-    <LipSync mouthOpen={mouth} speaking={mouth > 0} />
-  </Live2DModel>
-</Live2DCanvas>`
-
-// Dependency-free demo highlighter: strings, keywords, JSX tags, attributes.
-const CODE_TOKENS = /('[^']*'|"[^"]*")|(\b(?:import|from|return)\b)|(<\/?[A-Z][A-Za-z0-9]*|\/>)|([a-zA-Z]\w*(?==))/g
-
-function HighlightedCode({ code }: { code: string }) {
-  const parts: React.ReactNode[] = []
-  let cursor = 0
-  for (const match of code.matchAll(CODE_TOKENS)) {
-    if (match.index > cursor)
-      parts.push(code.slice(cursor, match.index))
-    const [text, string, keyword, tag, attribute] = match
-    const className = string
-      ? 'tok-s'
-      : keyword
-        ? 'tok-k'
-        : tag
-          ? 'tok-t'
-          : attribute
-            ? 'tok-a'
-            : undefined
-    parts.push(<span key={match.index} className={className}>{text}</span>)
-    cursor = match.index + text.length
-  }
-  parts.push(code.slice(cursor))
-  return <code>{parts}</code>
 }
 
 function RuntimeDevtools({ target }: { target: Live2DModelController | null }) {
@@ -203,7 +164,9 @@ function CodeDrawer({
           </div>
           <button type="button" onClick={close}>Close</button>
         </div>
-        <pre><HighlightedCode code={DEMO_CODE} /></pre>
+        <div className="code-drawer-code">
+          <PlaygroundCode />
+        </div>
       </div>
     </div>
   )

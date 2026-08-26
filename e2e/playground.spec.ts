@@ -240,6 +240,17 @@ test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, p
 })
 
 test('keeps playground tools contained and mounts the public devtools', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText(value: string) {
+          Object.assign(window, { __playgroundClipboard: value })
+          return Promise.resolve()
+        },
+      },
+    })
+  })
   await page.setViewportSize({ height: 900, width: 1440 })
   await page.goto('/playground')
   await expect(page.getByTestId('stage-status')).toContainText('ready')
@@ -268,6 +279,16 @@ test('keeps playground tools contained and mounts the public devtools', async ({
   await trigger.click()
   const dialog = page.getByRole('dialog', { name: 'Playground source code' })
   await expect(dialog).toBeVisible()
+  const codeFigure = dialog.locator('figure[data-rehype-pretty-code-figure]')
+  await expect(codeFigure).toHaveCount(1)
+  await expect(codeFigure.locator('figcaption')).toHaveText('Avatar.tsx')
+  expect(await codeFigure.locator('code span[style*="color"]').count()).toBeGreaterThan(0)
+  const copyButton = codeFigure.locator('.docs-code-copy')
+  await copyButton.click()
+  await expect(copyButton).toContainText('Copied')
+  await expect.poll(() => page.evaluate(() => (window as typeof window & {
+    __playgroundClipboard?: string
+  }).__playgroundClipboard)).toContain(`from 'live2d-web/react'`)
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(trigger).toBeFocused()

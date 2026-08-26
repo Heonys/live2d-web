@@ -200,12 +200,9 @@
 .code-drawer-header strong {
   font-size: 15px;
 }
-.code-drawer pre {
-  min-width: max-content;
-  margin: 0;
-  padding: 24px;
-  color: #d8dbe3;
-  font: 13px/1.75 var(--font-mono);
+.code-drawer-code figure[data-rehype-pretty-code-figure] {
+  margin: 20px;
+  box-shadow: none;
 }
 body.drawer-open {
   overflow: hidden;

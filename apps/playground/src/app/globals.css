@@ -382,22 +382,6 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
   line-height: 1.6;
 }
 
-.tok-k {
-  color: #9fb4dc;
-}
-
-.tok-s {
-  color: #a8c793;
-}
-
-.tok-t {
-  color: #d3a2ac;
-}
-
-.tok-a {
-  color: #bfb2dd;
-}
-
 label {
   display: grid;
   gap: 8px;
