@@ -1,18 +1,30 @@
+import type { Locator, Page } from '@playwright/test'
 import { Buffer } from 'node:buffer'
 import { writeFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
 test.describe.configure({ mode: 'serial' })
 
+async function expectTracked(page: Page, status: Locator, timeout: number) {
+  await expect(status).toHaveText(/^(?:error|tracked)$/, { timeout })
+  if (await status.textContent() === 'error') {
+    const message = await page.getByTestId('tracking-error').textContent()
+    throw new Error(`Face Landmarker initialization failed: ${message ?? 'unknown error'}`)
+  }
+}
+
 for (const execution of ['main', 'worker'] as const) {
   test(`runs the real Face Landmarker in ${execution} mode and releases it cleanly`, async ({ browserName, page }) => {
-    const startup = browserName === 'firefox' ? 150_000 : 60_000
+    // Linux WebKit can serialize a worker's WASM compilation with its content
+    // process. This is a functional gate, not a CI performance budget, so give
+    // WebKit the same initialization room as the slower Firefox runner.
+    const startup = browserName === 'chromium' ? 60_000 : 150_000
     const pageErrors: string[] = []
     page.on('pageerror', error => pageErrors.push(error.message))
     await page.goto(`/tracking-e2e?execution=${execution}`)
 
     const status = page.getByTestId('tracking-status')
-    await expect(status).toHaveText('tracked', { timeout: startup })
+    await expectTracked(page, status, startup)
     await expect(page.getByTestId('tracking-error')).toHaveCount(0)
     await expect(page.getByTestId('tracking-inference')).not.toHaveText('0.00')
     await expect(page.getByTestId('tracking-metrics')).not.toHaveText('', {
@@ -40,7 +52,7 @@ for (const execution of ['main', 'worker'] as const) {
     await expect(status).toHaveText('lost')
 
     await page.getByRole('button', { name: 'Restart' }).click()
-    await expect(status).toHaveText('tracked', { timeout: startup })
+    await expectTracked(page, status, startup)
     await page.getByRole('button', { name: 'Dispose' }).click()
     await expect(status).toHaveText('disposed')
     expect(pageErrors).toEqual([])
