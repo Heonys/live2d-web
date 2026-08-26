@@ -47,6 +47,16 @@ interface Live2DBackend {
     loadModel: (stage: StageHandle, url: string, options?: LoadModelOptions) => Promise<ModelHandle>;
 }
 
+// @public
+type Live2DCanvasAccessibility = {
+    mode: 'decorative';
+} | {
+    mode?: 'image';
+    label: string;
+    describedBy?: string;
+    fallbackText?: string;
+};
+
 // @public (undocumented)
 class Live2DError extends Error {
     constructor(code: Live2DErrorCode, message: string, options?: Live2DErrorOptions);
@@ -221,6 +231,8 @@ interface StageHandle {
 
 // @public (undocumented)
 interface StageOptions extends Size {
+    // (undocumented)
+    accessibility?: Live2DCanvasAccessibility;
     // (undocumented)
     maxFps?: number;
     resolution?: number;

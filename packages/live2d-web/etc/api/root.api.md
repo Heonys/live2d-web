@@ -21,6 +21,7 @@ export interface AutoQualityPolicy {
 
 // @public (undocumented)
 interface BaseCreateLive2DOptions {
+    accessibility?: Live2DCanvasAccessibility;
     backend?: Live2DBackend;
     container: HTMLElement;
     coreUrl?: string;
@@ -116,6 +117,16 @@ export interface Live2DBackend {
     // (undocumented)
     loadModel: (stage: StageHandle, url: string, options?: LoadModelOptions) => Promise<ModelHandle>;
 }
+
+// @public
+export type Live2DCanvasAccessibility = {
+    mode: 'decorative';
+} | {
+    mode?: 'image';
+    label: string;
+    describedBy?: string;
+    fallbackText?: string;
+};
 
 // @public (undocumented)
 export class Live2DError extends Error {
@@ -457,6 +468,8 @@ export interface StageHandle {
 
 // @public (undocumented)
 export interface StageOptions extends Size {
+    // (undocumented)
+    accessibility?: Live2DCanvasAccessibility;
     // (undocumented)
     maxFps?: number;
     resolution?: number;

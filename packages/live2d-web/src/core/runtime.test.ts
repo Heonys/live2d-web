@@ -17,6 +17,7 @@ interface RuntimeHarness {
   events: string[]
   renderErrors: Set<(error: Live2DError) => void>
   resolvePendingModel?: (model: ModelHandle) => void
+  stageOptions: StageOptions[]
 }
 
 function createRuntimeHarness(pending = false, withBeforePhysics = true): RuntimeHarness {
@@ -24,6 +25,7 @@ function createRuntimeHarness(pending = false, withBeforePhysics = true): Runtim
   const beforePhysicsCallbacks = new Set<(deltaMs: number) => void>()
   const events: string[] = []
   const renderErrors = new Set<(error: Live2DError) => void>()
+  const stageOptions: StageOptions[] = []
   let resolvePendingModel: ((model: ModelHandle) => void) | undefined
   const pendingModel = pending
     ? new Promise<ModelHandle>((resolve) => {
@@ -94,6 +96,7 @@ function createRuntimeHarness(pending = false, withBeforePhysics = true): Runtim
 
   const backend: Live2DBackend = {
     createStage(_element: HTMLElement, options: StageOptions) {
+      stageOptions.push(options)
       events.push('stage:create')
       let disposed = false
       let resolution = options.resolution ?? 1
@@ -139,6 +142,7 @@ function createRuntimeHarness(pending = false, withBeforePhysics = true): Runtim
     resolvePendingModel: resolvePendingModel
       ? model => resolvePendingModel!(model)
       : undefined,
+    stageOptions,
   }
 }
 
@@ -202,6 +206,43 @@ describe('createLive2D', () => {
     expect(harness.events).toContain('clearParameter:ParamAngleX')
     expect(instance.getParameter('ParamAngleX')).toBe(0)
     instance.dispose()
+  })
+
+  it('passes canvas accessibility to custom backends and keeps it on retry', async () => {
+    const harness = createRuntimeHarness()
+    const accessibility = {
+      describedBy: 'avatar-help',
+      fallbackText: 'Animated guide character',
+      label: 'Guide character',
+    } as const
+    const instance = await createLive2D({
+      accessibility,
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    })
+
+    expect(harness.stageOptions[0].accessibility).toEqual(accessibility)
+    await instance.retry()
+    expect(harness.stageOptions).toHaveLength(2)
+    expect(harness.stageOptions[1].accessibility).toEqual(accessibility)
+    instance.dispose()
+  })
+
+  it.each([
+    [null, 'accessibility must be'],
+    [{}, 'requires a non-empty label'],
+    [{ label: 'Avatar', mode: 'button' }, 'accessibility.mode'],
+    [{ label: 'Avatar', describedBy: 42 }, 'accessibility.describedBy'],
+  ])('rejects malformed accessibility options', async (accessibility, message) => {
+    const harness = createRuntimeHarness()
+    await expect(createLive2D({
+      accessibility,
+      backend: harness.backend,
+      container: document.body,
+      src: '/hiyori.model3.json',
+    } as never)).rejects.toMatchObject({ code: 'invalid-props', message: expect.stringContaining(message) })
+    expect(harness.stageOptions).toHaveLength(0)
   })
 
   it('keeps detailed motion optional for custom backends', async () => {

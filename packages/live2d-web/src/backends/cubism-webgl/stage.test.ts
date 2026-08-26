@@ -40,6 +40,52 @@ describe('cubism-webgl Stage', () => {
       .toThrow(expect.objectContaining({ code: 'webgl-unsupported' }))
   })
 
+  it('leaves canvas semantics unchanged when accessibility is omitted', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(createGl())
+    const stage = createWebGLStage(document.body, { height: 100, width: 100 })
+    const canvas = document.querySelector('canvas')!
+
+    expect(canvas.hasAttribute('role')).toBe(false)
+    expect(canvas.hasAttribute('aria-label')).toBe(false)
+    expect(canvas.textContent).toBe('')
+    stage.dispose()
+  })
+
+  it('marks decorative canvases as hidden presentation content', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(createGl())
+    const stage = createWebGLStage(document.body, {
+      accessibility: { mode: 'decorative' },
+      height: 100,
+      width: 100,
+    })
+    const canvas = document.querySelector('canvas')!
+
+    expect(canvas.getAttribute('role')).toBe('presentation')
+    expect(canvas.getAttribute('aria-hidden')).toBe('true')
+    expect(canvas.hasAttribute('tabindex')).toBe(false)
+    stage.dispose()
+  })
+
+  it('applies image semantics and fallback text', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(createGl())
+    const stage = createWebGLStage(document.body, {
+      accessibility: {
+        describedBy: 'avatar-help',
+        label: 'Animated guide character',
+      },
+      height: 100,
+      width: 100,
+    })
+    const canvas = document.querySelector('canvas')!
+
+    expect(canvas.getAttribute('role')).toBe('img')
+    expect(canvas.getAttribute('aria-label')).toBe('Animated guide character')
+    expect(canvas.getAttribute('aria-describedby')).toBe('avatar-help')
+    expect(canvas.textContent).toBe('Animated guide character')
+    expect(canvas.hasAttribute('tabindex')).toBe(false)
+    stage.dispose()
+  })
+
   it('updates metrics before draw and reports context loss once', () => {
     const gl = createGl()
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl)

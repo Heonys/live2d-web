@@ -15,3 +15,29 @@ export function Avatar() {
   )
 }
 ```
+
+## Canvas のアクセシビリティ
+
+意味のあるキャラクターは画像として説明し、装飾だけの Canvas は支援技術から
+隠します。ライブラリは Canvas を自動的にキーボードフォーカスの対象にしません。
+タップやモーションには通常の DOM ボタンも用意し、
+`prefers-reduced-motion` ではアニメーションを抑えてください。
+
+```tsx
+<Live2DCanvas
+  accessibility={{
+    label: '動く案内キャラクター',
+    describedBy: 'avatar-help',
+  }}
+  coreUrl="/live2dcubismcore.min.js"
+>
+  <Live2DModel src="/models/model.model3.json" />
+</Live2DCanvas>
+
+<p id="avatar-help">下のモーションボタンに反応するキャラクターです。</p>
+<button type="button" onClick={() => controller?.motion('TapBody', 0)}>
+  あいさつを再生
+</button>
+```
+
+情報を伝えない Canvas には `accessibility={{ mode: 'decorative' }}` を使います。

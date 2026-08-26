@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties, ReactNode } from 'react'
-import type { Live2DBackend } from '../core/contract'
+import type { Live2DBackend, Live2DCanvasAccessibility } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { AutoQualityPolicy } from '../core/quality'
 import type { LoadingStage } from './store'
@@ -10,6 +10,8 @@ import { RuntimeHostContext, StageContext } from './context'
 import { StageStore } from './store'
 
 interface BaseLive2DCanvasProps {
+  /** Optional accessibility semantics for the rendered canvas. */
+  accessibility?: Live2DCanvasAccessibility
   /**
    * Omit to use the official Framework-based cubism-webgl adapter. A changed
    * backend reloads the model, so keep the value stable: use the exported
@@ -58,6 +60,25 @@ function useStableQuality(quality: 'auto' | AutoQualityPolicy | undefined) {
   ])
 }
 
+function useStableAccessibility(accessibility: Live2DCanvasAccessibility | undefined) {
+  const decorative = accessibility?.mode === 'decorative'
+  const image = accessibility && !decorative ? accessibility : undefined
+  return useMemo(() => {
+    if (!accessibility)
+      return undefined
+    if (decorative)
+      return { mode: 'decorative' } as const
+    return {
+      describedBy: image?.describedBy,
+      fallbackText: image?.fallbackText,
+      label: image?.label ?? '',
+      mode: 'image' as const,
+    }
+    // Scalar dependencies keep an inline object from rebooting the runtime.
+    // eslint-disable-next-line react/exhaustive-deps
+  }, [decorative, image?.describedBy, image?.fallbackText, image?.label])
+}
+
 // A backend built inline is a new object on every render, and each one rebuilds
 // the stage and reloads the model. Nothing can detect that from the value, so
 // warn once instead of guessing.
@@ -87,6 +108,7 @@ function useUnstableBackendWarning(
 
 export function Live2DCanvas(props: Live2DCanvasProps) {
   const {
+    accessibility,
     backend,
     children,
     className,
@@ -99,6 +121,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     style,
   } = props
   const quality = 'quality' in props ? props.quality : undefined
+  const stableAccessibility = useStableAccessibility(accessibility)
   const stableQuality = useStableQuality(quality)
   const resolution = 'resolution' in props ? props.resolution : undefined
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
@@ -113,6 +136,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
   const lastReportedErrorRef = useRef<Live2DError | undefined>(undefined)
   useUnstableBackendWarning(backend, coreUrl)
   const runtimeHost = useMemo(() => ({
+    accessibility: stableAccessibility,
     backend,
     container,
     coreUrl,
@@ -121,7 +145,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     quality: stableQuality,
     resolution,
     retryVersion,
-  }), [backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableQuality])
+  }), [backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableAccessibility, stableQuality])
 
   useEffect(() => {
     if (!snapshot.error || snapshot.error === lastReportedErrorRef.current)

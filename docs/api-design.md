@@ -443,7 +443,27 @@ import { LipSync, Live2DModel, Live2DCanvas } from 'live2d-web/react'
 
 `Live2DCanvasProps` contains the same backend/Core/quality controls plus
 `pauseWhenOffscreen`, `className`, `style`, loading/error fallbacks and
-`onError`.
+`onError`. Both the vanilla options and React Canvas accept the same optional
+Canvas accessibility contract:
+
+```ts
+type Live2DCanvasAccessibility
+  = | { mode: 'decorative' }
+    | {
+      mode?: 'image'
+      label: string
+      describedBy?: string
+      fallbackText?: string
+    }
+```
+
+Decorative canvases use `role="presentation"` and `aria-hidden="true"`.
+Image canvases use `role="img"`, the supplied label and optional description;
+their fallback text defaults to the label. Omitting `accessibility` preserves
+the pre-0.7 Canvas markup. The runtime deliberately does not add `tabIndex` or
+`role="application"`: applications should expose keyboard alternatives for
+tap and motion actions as ordinary DOM controls and honor
+`prefers-reduced-motion` in those controls.
 
 `Live2DModelProps` provides `src`, `fit`, `followPointer`, `idleMotion`,
 `paused`, `retries`, `onLoad`, `onError`, `onTap` and children. Only one model

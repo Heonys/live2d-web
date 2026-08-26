@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Optional Canvas accessibility semantics let vanilla and React consumers mark
+  a model as decorative or expose it as a labelled image with fallback text,
+  without making the Canvas keyboard-focusable or changing existing defaults.
+
 ## 0.6.0 - 2026-08-26
 
 The tracking Worker entry, `inspect` and `devtools` remain experimental. Their

@@ -162,6 +162,7 @@ export function Live2DModel({
     let resource: { dispose: () => void, handle: ModelHandle } | undefined
     let invalidateController: (() => void) | undefined
     const runtime = new Live2DRuntime({
+      accessibility: currentRuntimeHost.accessibility,
       backend: currentRuntimeHost.backend,
       container,
       coreUrl: currentRuntimeHost.coreUrl,

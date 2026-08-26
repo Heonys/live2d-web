@@ -59,6 +59,17 @@ export function createWebGLStage(
     throw new Live2DError('browser-only', 'cubism-webgl can only run in a browser.')
 
   const canvas = document.createElement('canvas')
+  if (options.accessibility?.mode === 'decorative') {
+    canvas.setAttribute('aria-hidden', 'true')
+    canvas.setAttribute('role', 'presentation')
+  }
+  else if (options.accessibility) {
+    canvas.setAttribute('aria-label', options.accessibility.label)
+    canvas.setAttribute('role', 'img')
+    if (options.accessibility.describedBy)
+      canvas.setAttribute('aria-describedby', options.accessibility.describedBy)
+    canvas.textContent = options.accessibility.fallbackText ?? options.accessibility.label
+  }
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     antialias: true,

@@ -15,3 +15,29 @@ export function Avatar() {
   )
 }
 ```
+
+## Canvas accessibility
+
+Describe a meaningful character as an image, or hide a purely decorative one.
+The library does not make the Canvas keyboard-focusable; provide ordinary DOM
+buttons for tap or motion actions and reduce their animation when
+`prefers-reduced-motion` is enabled.
+
+```tsx
+<Live2DCanvas
+  accessibility={{
+    label: 'Animated support character',
+    describedBy: 'avatar-help',
+  }}
+  coreUrl="/live2dcubismcore.min.js"
+>
+  <Live2DModel src="/models/model.model3.json" />
+</Live2DCanvas>
+
+<p id="avatar-help">The character reacts to the motion buttons below.</p>
+<button type="button" onClick={() => controller?.motion('TapBody', 0)}>
+  Play greeting
+</button>
+```
+
+Use `accessibility={{ mode: 'decorative' }}` when the Canvas adds no information.

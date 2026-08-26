@@ -21,6 +21,7 @@ interface FakeHarness {
   renderErrors: Set<(error: import('../core/errors').Live2DError) => void>
   models: ModelHandle[]
   stages: StageHandle[]
+  stageOptions: StageOptions[]
 }
 
 function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness {
@@ -29,6 +30,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
   const renderErrors = new Set<(error: import('../core/errors').Live2DError) => void>()
   const models: ModelHandle[] = []
   const stages: StageHandle[] = []
+  const stageOptions: StageOptions[] = []
 
   const makeModel = (): ModelHandle => {
     let disposed = false
@@ -66,6 +68,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
 
   const backend: Live2DBackend = {
     createStage(_element: HTMLElement, options: StageOptions) {
+      stageOptions.push(options)
       events.push('stage:create')
       let disposed = false
       let resolution = options.resolution ?? 1
@@ -108,7 +111,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
     },
   }
 
-  return { backend, events, frameCallbacks, models, renderErrors, stages }
+  return { backend, events, frameCallbacks, models, renderErrors, stageOptions, stages }
 }
 
 function ParameterDriver() {
@@ -177,6 +180,46 @@ describe('live2DCanvas lifecycle', () => {
     delete window.Live2DCubismCore
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+  })
+
+  it('keeps equal inline accessibility objects from recreating the stage', async () => {
+    const harness = createFakeHarness()
+    const view = render(
+      <Live2DCanvas
+        accessibility={{ label: 'Animated avatar' }}
+        backend={harness.backend}
+      >
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(harness.stages).toHaveLength(1))
+    expect(harness.stageOptions[0].accessibility).toEqual({
+      describedBy: undefined,
+      fallbackText: undefined,
+      label: 'Animated avatar',
+      mode: 'image',
+    })
+
+    view.rerender(
+      <Live2DCanvas
+        accessibility={{ label: 'Animated avatar' }}
+        backend={harness.backend}
+      >
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DCanvas>,
+    )
+    await act(async () => {})
+    expect(harness.stages).toHaveLength(1)
+
+    view.rerender(
+      <Live2DCanvas
+        accessibility={{ label: 'Talking avatar' }}
+        backend={harness.backend}
+      >
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DCanvas>,
+    )
+    await waitFor(() => expect(harness.stages).toHaveLength(2))
   })
 
   it('is StrictMode-safe and enforces feature → model → stage cleanup', async () => {

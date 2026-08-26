@@ -364,8 +364,9 @@ AudioContext suspend 복구와 장치 변경을 확인한다.
   snapshot 검토)보다 넓게 나갔으며 그 경위와 근거는 docs/README.md의
   2026-08-26 결정에 있다. URL·자산·카메라·얼굴 데이터와 기본 telemetry는
   포함하지 않는다
-- Canvas가 장식인지 상호작용 대상인지 앱이 설명할 수 있는 접근성 전달 경로,
-  fallback과 `prefers-reduced-motion` 대응을 실제 소비자 요구와 함께 검토한다
+- Canvas를 장식 또는 설명 가능한 이미지로 표시하는 접근성 전달 경로와
+  fallback을 제공한다. 키보드 대체 조작과 `prefers-reduced-motion` 대응은
+  일반 DOM controls를 사용하는 가이드와 예제로 고정한다
 - 릴리스 체크리스트(`docs/release-checklist.md`, 2026-08-25 신설): 자동
   게이트 밖에서 사람이 확인하는 것을 고정한다
 - 기여 가이드, 이슈 템플릿, "좋은 첫 이슈" 라벨

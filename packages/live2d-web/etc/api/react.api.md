@@ -24,6 +24,7 @@ export interface AutoQualityPolicy {
 
 // @public (undocumented)
 interface BaseCreateLive2DOptions {
+    accessibility?: Live2DCanvasAccessibility;
     backend?: Live2DBackend;
     container: HTMLElement;
     coreUrl?: string;
@@ -41,6 +42,7 @@ interface BaseCreateLive2DOptions {
 
 // @public (undocumented)
 interface BaseLive2DCanvasProps {
+    accessibility?: Live2DCanvasAccessibility;
     backend?: Live2DBackend;
     // (undocumented)
     children?: ReactNode;
@@ -172,6 +174,16 @@ export interface Live2DBackend {
 
 // @public (undocumented)
 export function Live2DCanvas(props: Live2DCanvasProps): JSX.Element;
+
+// @public
+export type Live2DCanvasAccessibility = {
+    mode: 'decorative';
+} | {
+    mode?: 'image';
+    label: string;
+    describedBy?: string;
+    fallbackText?: string;
+};
 
 // @public (undocumented)
 export type Live2DCanvasProps = BaseLive2DCanvasProps & Live2DCanvasQualityProps;
@@ -586,6 +598,8 @@ export interface StageHandle {
 
 // @public (undocumented)
 export interface StageOptions extends Size {
+    // (undocumented)
+    accessibility?: Live2DCanvasAccessibility;
     // (undocumented)
     maxFps?: number;
     resolution?: number;

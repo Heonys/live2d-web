@@ -1,4 +1,4 @@
-import type { Live2DBackend } from '../core/contract'
+import type { Live2DBackend, Live2DCanvasAccessibility } from '../core/contract'
 import type { LifecycleScope } from '../core/lifecycle'
 import type { AutoQualityPolicy } from '../core/quality'
 import type { ModelStore, StageStore } from './store'
@@ -7,6 +7,7 @@ import { createContext } from 'react'
 export const StageContext = createContext<StageStore | null>(null)
 
 export interface RuntimeHostContextValue {
+  accessibility?: Live2DCanvasAccessibility
   backend?: Live2DBackend
   container: HTMLElement | null
   coreUrl?: string

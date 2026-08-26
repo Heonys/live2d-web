@@ -16,3 +16,23 @@ await character.motion('TapBody', 0)
 // When the host view is removed:
 character.dispose()
 ```
+
+## Canvas accessibility
+
+Choose semantics only when the Canvas should be exposed to assistive
+technologies. Omit the option to preserve the default markup.
+
+```ts
+const character = await createLive2D({
+  accessibility: {
+    label: 'Animated support character',
+    fallbackText: 'Support character illustration',
+  },
+  container: document.querySelector('#avatar'),
+  src: '/models/model.model3.json',
+})
+```
+
+Use `{ mode: 'decorative' }` when the model conveys no information. Keep tap
+and motion actions available through normal keyboard-accessible DOM controls;
+the runtime never adds `tabIndex` or `role="application"` to the Canvas.

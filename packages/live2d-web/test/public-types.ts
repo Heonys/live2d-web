@@ -14,6 +14,7 @@ import type {
   Live2DAssetResolver,
   Live2DAssetType,
   Live2DBackend,
+  Live2DCanvasAccessibility,
   Live2DErrorCode,
   Live2DInstance,
   Live2DRuntimeState,
@@ -49,6 +50,7 @@ import type {
   IdleMotionOptions as ReactIdleMotionOptions,
   LipSyncDriver as ReactLipSyncDriver,
   LipSyncProfileInput as ReactLipSyncProfileInput,
+  Live2DCanvasAccessibility as ReactLive2DCanvasAccessibility,
   Live2DInstance as ReactLive2DInstance,
   Live2DRuntimeState as ReactLive2DRuntimeState,
   ModelInfo as ReactModelInfo,
@@ -63,6 +65,7 @@ import type {
 } from '../src/react'
 
 export interface RootSurface {
+  accessibility: Live2DCanvasAccessibility
   assetResolver: Live2DAssetResolver
   backend: Live2DBackend
   createOptions: CreateLive2DOptions
@@ -106,6 +109,7 @@ export const motionFadeFixture = {
 
 // Everything the /react signatures mention has to be nameable from /react too.
 export interface ReactSurface {
+  accessibility: ReactLive2DCanvasAccessibility
   canvasProps: Live2DCanvasProps
   canvasState: Live2DCanvasState
   controller: Live2DModelController

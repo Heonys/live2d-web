@@ -16,3 +16,23 @@ await character.motion('TapBody', 0)
 // When the host view is removed:
 character.dispose()
 ```
+
+## Canvas のアクセシビリティ
+
+Canvas を支援技術に公開する必要がある場合だけ意味を指定します。オプションを
+省略すると、従来のマークアップを維持します。
+
+```ts
+const character = await createLive2D({
+  accessibility: {
+    label: '動く案内キャラクター',
+    fallbackText: '案内キャラクターのイラスト',
+  },
+  container: document.querySelector('#avatar'),
+  src: '/models/model.model3.json',
+})
+```
+
+情報を伝えないモデルには `{ mode: 'decorative' }` を使います。タップや
+モーションはキーボード操作できる通常の DOM controls でも提供してください。
+ランタイムは Canvas に `tabIndex` や `role="application"` を自動追加しません。

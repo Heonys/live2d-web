@@ -4,6 +4,7 @@ import type {
   IdleMotion,
   Live2DAssetResolver,
   Live2DBackend,
+  Live2DCanvasAccessibility,
   ModelHandle,
   ModelInfo,
   MotionOptions,
@@ -56,6 +57,8 @@ export type RuntimeQualityOptions
     | { quality?: never, resolution: number }
 
 interface BaseCreateLive2DOptions {
+  /** Optional accessibility semantics for the backend canvas. */
+  accessibility?: Live2DCanvasAccessibility
   /** Element that receives the canvas. Must have a CSS size. */
   container: HTMLElement
   /**
@@ -219,6 +222,40 @@ function assertOptions(options: CreateLive2DOptions) {
       'invalid-props',
       'container must be an HTMLElement.',
     )
+  }
+  if (options.accessibility !== undefined) {
+    const accessibility = options.accessibility
+    if (!accessibility || typeof accessibility !== 'object') {
+      throw new Live2DError(
+        'invalid-props',
+        'accessibility must be a decorative or image accessibility object.',
+      )
+    }
+    if (accessibility.mode !== 'decorative' && accessibility.mode !== 'image' && accessibility.mode !== undefined) {
+      throw new Live2DError(
+        'invalid-props',
+        'accessibility.mode must be "decorative" or "image".',
+      )
+    }
+    if (accessibility.mode !== 'decorative') {
+      if (typeof accessibility.label !== 'string' || accessibility.label.trim() === '') {
+        throw new Live2DError(
+          'invalid-props',
+          'image accessibility requires a non-empty label.',
+        )
+      }
+      for (const [name, value] of [
+        ['describedBy', accessibility.describedBy],
+        ['fallbackText', accessibility.fallbackText],
+      ] as const) {
+        if (value !== undefined && typeof value !== 'string') {
+          throw new Live2DError(
+            'invalid-props',
+            `accessibility.${name} must be a string when provided.`,
+          )
+        }
+      }
+    }
   }
   if (typeof options.src !== 'string' || options.src.trim() === '') {
     throw new Live2DError(
@@ -462,6 +499,7 @@ export class Live2DRuntime implements Live2DInstance {
             width,
           }, policy)
       const stage = backend.createStage(this.options.container, {
+        accessibility: this.options.accessibility,
         height,
         maxFps: this.options.maxFps,
         resolution,

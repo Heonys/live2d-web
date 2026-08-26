@@ -6,6 +6,7 @@ export type {
   IdleMotionOptions,
   Live2DAssetResolver,
   Live2DBackend,
+  Live2DCanvasAccessibility,
   LoadModelOptions,
   ModelHandle,
   ModelInfo,

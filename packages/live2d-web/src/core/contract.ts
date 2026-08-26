@@ -16,7 +16,18 @@ export interface ModelTransform extends Point {
   scale: number
 }
 
+/** Optional semantics for the canvas exposed to assistive technologies. */
+export type Live2DCanvasAccessibility
+  = | { mode: 'decorative' }
+    | {
+      mode?: 'image'
+      label: string
+      describedBy?: string
+      fallbackText?: string
+    }
+
 export interface StageOptions extends Size {
+  accessibility?: Live2DCanvasAccessibility
   /** Concrete backing-buffer multiplier selected by the React host. */
   resolution?: number
   maxFps?: number
