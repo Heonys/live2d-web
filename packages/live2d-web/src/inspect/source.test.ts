@@ -170,6 +170,68 @@ describe('model source inspection', () => {
     expect(total.findings.some(finding => finding.code === 'total-assets-too-large')).toBe(true)
   })
 
+  // A model3.json is untrusted input, and this entry runs in Node where no
+  // CORS wall exists: a declared data:, file: or blob: reference must never
+  // reach fetch().
+  it('refuses non-HTTP(S) references in URL mode without fetching them', async () => {
+    const fetchMock = vi.fn(async (input: string) => {
+      if (input === 'https://models.example/avatar.model3.json') {
+        return {
+          arrayBuffer: async () => buffer(model3({
+            FileReferences: {
+              Moc: 'data:application/octet-stream;base64,AAAA',
+              Physics: 'file:///etc/passwd',
+              Textures: ['textures/texture.png'],
+            },
+          })),
+          body: null,
+          headers: new Headers(),
+          ok: true,
+          status: 200,
+        } as Response
+      }
+      return {
+        arrayBuffer: async () => buffer(4),
+        body: null,
+        headers: new Headers(),
+        ok: true,
+        status: 200,
+      } as Response
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const report = await inspectModelSource({
+      src: 'https://models.example/avatar.model3.json',
+    })
+
+    const external = report.findings.filter(finding => finding.code === 'external-asset')
+    expect(external).toHaveLength(2)
+    expect(fetchMock.mock.calls.map(([input]) => input)).toEqual([
+      'https://models.example/avatar.model3.json',
+      'https://models.example/textures/texture.png',
+    ])
+  })
+
+  // A resolver returning the wrong type is a caller bug, not a model defect:
+  // it must reject rather than surface as an unreadable-asset finding.
+  it('rejects a resolver that returns the wrong type', async () => {
+    await expect(inspectModelSource({
+      resolveAsset: (() => 'not-bytes') as unknown as Live2DAssetResolver,
+      src: 'model.model3.json',
+    })).rejects.toMatchObject({
+      code: 'invalid-props',
+      message: expect.stringContaining('resolveAsset'),
+    })
+
+    await expect(inspectModelSource({
+      resolveAsset: () => buffer(model3()),
+      src: 'model\0.model3.json',
+    })).rejects.toMatchObject({
+      code: 'invalid-props',
+      message: expect.stringContaining('NUL'),
+    })
+  })
+
   it('rejects invalid options and an aborted inspection', async () => {
     await expect(inspectModelSource({ src: '' })).rejects.toMatchObject({
       code: 'invalid-props',

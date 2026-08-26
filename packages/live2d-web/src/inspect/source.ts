@@ -161,7 +161,7 @@ async function resolverBytes(
       throw new AssetTooLargeError(value.byteLength)
     return value
   }
-  throw new TypeError('resolveAsset must return a Blob, ArrayBuffer or undefined.')
+  throw invalidProps('resolveAsset must return a Blob, ArrayBuffer or undefined.')
 }
 
 function readName(value: unknown) {
@@ -324,16 +324,21 @@ export async function inspectModelSource(
   const limits = resolveLimits(options.limits)
   const local = options.resolveAsset !== undefined
   let source: string
-  try {
-    source = local
-      ? normalizeLocalPath(options.src)
-      : new URL(
+  if (local) {
+    if (options.src.includes('\0'))
+      throw invalidProps('inspectModelSource src cannot contain NUL characters.')
+    source = normalizeLocalPath(options.src)
+  }
+  else {
+    try {
+      source = new URL(
         options.src,
         typeof document === 'undefined' ? undefined : document.baseURI,
       ).href
-  }
-  catch {
-    throw invalidProps('inspectModelSource src must be a valid HTTP(S) URL.')
+    }
+    catch {
+      throw invalidProps('inspectModelSource src must be a valid HTTP(S) URL.')
+    }
   }
   if (!source)
     throw invalidProps('inspectModelSource src must resolve to a model3.json path.')
@@ -402,6 +407,11 @@ export async function inspectModelSource(
     catch (error) {
       if (options.signal?.aborted)
         throw options.signal.reason
+      // A resolver returning the wrong type is a bug in the caller, not a
+      // defect in the model being inspected; it rejects instead of appearing
+      // in the report as an unreadable asset.
+      if (error instanceof Live2DError && error.code === 'invalid-props')
+        throw error
       if (error instanceof AssetTooLargeError) {
         assets.push({
           assetType,
@@ -476,6 +486,26 @@ export async function inspectModelSource(
           assetType: reference.assetType,
           code: 'unreadable-asset',
           message: `Could not resolve ${reference.path}: ${error instanceof Error ? error.message : String(error)}`,
+          path: reference.path,
+          severity: 'error',
+        })
+        continue
+      }
+      // A model3.json is untrusted input: in URL mode a declared data:, file:
+      // or blob: reference would otherwise reach fetch(), and in Node, where
+      // this entry is advertised as safe to run, no CORS wall stands in the
+      // way. Only the model's own scheme family is followed.
+      if (!local && !/^https?:$/.test(new URL(resolved).protocol)) {
+        assets.push({
+          assetType: reference.assetType,
+          external: true,
+          path: reference.path,
+          status: 'external',
+        })
+        findings.push({
+          assetType: reference.assetType,
+          code: 'external-asset',
+          message: `The model references a non-HTTP(S) URL and it was not fetched: ${reference.path}`,
           path: reference.path,
           severity: 'error',
         })

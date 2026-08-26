@@ -686,9 +686,20 @@ function inspectModelCapabilities(info: ModelInfo): ModelCapabilityReport
 
 Content defects are aggregated in `findings` with stable codes and produce a
 `compatible`, `warning` or `incompatible` report. Only invalid API arguments
-and abort reject. URL inspection accepts HTTP(S) and follows CORS; resolver
-inspection never fetches an external URL declared by a local model. Default
-limits are 64 MiB per asset, 256 MiB total and 2,048 references.
+and abort reject (a resolver returning something other than a Blob,
+ArrayBuffer or undefined is an argument error, not a finding). URL inspection
+accepts HTTP(S) and follows CORS; a reference the model declares with any
+other scheme (`data:`, `file:`, `blob:`) is reported as `external-asset` and
+never fetched. Resolver inspection never fetches an external URL declared by
+a local model. Default limits are 64 MiB per asset, 256 MiB total and 2,048
+references.
+
+Running URL inspection on a server is a server-side request forgery surface:
+the model3.json decides which HTTP(S) URLs get fetched, and Node has no CORS
+or private-network wall. A server inspecting URLs from outside its trust
+boundary must put its own allow-list or network policy in front; the library
+does not guess at private-IP ranges. Revisit if a server-side consumer adopts
+this entry.
 
 `ModelInfo.model3Version` and `mocVersion` are optional so existing custom
 backends remain compatible. Standard tracking support is reported per channel.
