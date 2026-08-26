@@ -1,6 +1,6 @@
 ## メインスレッド追跡
 
-> Workerエントリを含むトラッキングは**1.0まで experimental**です。APIは変わる可能性があり、Perfect Sync実モデルの実カメラ挙動はまだリポジトリ外で検証されていません。
+> Workerエントリを含むトラッキングは、モバイルと外部利用者の検証が完了するまで **experimental** です。minor変更にはmigrationを記録し、patchではbreaking changeを行いません。
 
 MediaPipe は任意 peer で、この subpath からだけ読み込まれます。WASM・Face Landmarker model・video frame・schedule はアプリが渡します。tracker は正規化値だけを保持します。
 

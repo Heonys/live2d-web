@@ -216,8 +216,10 @@ Registered features survive `retry()` and attach to the new model generation.
 The optional package boundary is `live2d-web/tracking/mediapipe`. Importing it
 is SSR-evaluation safe; creating a tracker is browser-only and dynamically
 loads the optional `@mediapipe/tasks-vision` peer. **Experimental**: the shape
-below may change before 1.0 without a deprecation window, because real-camera
-and real Perfect Sync model verification are still consumer-side.
+may change in a minor release with an explicit CHANGELOG entry and migration
+note while mobile, real-camera and consumer verification remain incomplete.
+Patch releases do not make breaking changes, and the stable root/React entries
+are unaffected by this subpath policy.
 
 ```ts
 function createMediaPipeFaceTracker(

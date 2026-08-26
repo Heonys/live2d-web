@@ -18,9 +18,9 @@
 - Framework 5-r.5 WebGL2 アダプターによる Cubism 4・5 モデル読み込み
 - React を含まない root API と任意の React binding
 - motion・sequence・fade・weighted Idle・表情・pointer interaction
-- 音量/wLipSync と任意の MediaPipe main/Worker 顔トラッキング（1.0まで experimental）
+- 音量/wLipSync と任意の MediaPipe main/Worker 顔トラッキング（モバイル・利用者検証まで experimental）
 - 明確な resource cleanup、安定した error code、tarball・browser 検証
-- 任意の `live2d-web/inspect` モデル検査と `live2d-web/devtools` 操作パネル（1.0まで experimental）
+- 任意の `live2d-web/inspect` モデル検査と `live2d-web/devtools` 操作パネル（利用者・互換性検証まで experimental）
 
 ## クイックスタート
 

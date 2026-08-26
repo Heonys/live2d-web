@@ -1,6 +1,6 @@
 ## 메인 스레드 추적
 
-> Worker 엔트리를 포함한 트래킹은 **1.0 전까지 experimental**입니다. API가 바뀔 수 있고, Perfect Sync 실모델의 실카메라 체감은 아직 저장소 밖에서 검증되지 않았습니다.
+> Worker 엔트리를 포함한 트래킹은 모바일·외부 소비자 검증을 마칠 때까지 **experimental**입니다. minor 변경에는 migration을 기록하고 patch에서는 breaking change를 만들지 않습니다.
 
 MediaPipe는 선택 peer이며 해당 subpath에서만 로드됩니다. WASM·Face Landmarker 모델·video frame·스케줄링은 앱이 제공합니다. 트래커는 정규화 값만 보관하고 frame·landmark는 저장하지 않습니다.
 

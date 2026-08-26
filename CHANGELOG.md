@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-The tracking Worker entry, `inspect` and `devtools` are experimental until
-1.0, like the tracking subpath they extend.
+The tracking Worker entry, `inspect` and `devtools` remain experimental. Their
+exit criteria are mobile/consumer validation for tracking and consumer/API
+compatibility validation for inspect/devtools; see `docs/roadmap.md`.
 
 ### Added
 
@@ -45,7 +46,8 @@ The tracking Worker entry, `inspect` and `devtools` are experimental until
 ## 0.5.0 - 2026-08-25
 
 Ships both roadmap scopes in one release; see the 2026-08-25 decision in
-docs/README.md. The tracking subpath is experimental until 1.0.
+docs/README.md. The tracking subpath was released as experimental; current
+stability criteria are documented in `docs/roadmap.md`.
 
 ### Added (0.5 scope, experimental)
 
