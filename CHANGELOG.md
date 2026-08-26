@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-08-26
 
 The tracking Worker entry, `inspect` and `devtools` remain experimental. Their
 exit criteria are mobile/consumer validation for tracking and consumer/API
