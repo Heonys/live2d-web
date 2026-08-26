@@ -1,17 +1,22 @@
 <p align="center">
-  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="" width="96" height="96">
+  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="live2d-web" width="64" height="64">
 </p>
-<h1 align="center">live2d-web</h1>
 
-**English** | [한국어](README.ko.md) | [日本語](README.ja.md)
+<p align="center">
+  An unofficial Live2D Cubism runtime for vanilla JavaScript and React.<br>
+  Direct WebGL2 rendering without PixiJS.
+</p>
 
-> An unofficial Live2D Cubism runtime for vanilla JavaScript and React. It
-> renders through WebGL2 without PixiJS.
+<p align="center">
+  <strong><a href="https://live2d-web-demo.netlify.app/docs/en">Documentation</a></strong> ·
+  <a href="https://live2d-web-demo.netlify.app/playground">Playground</a> ·
+  <a href="https://live2d-web-demo.netlify.app/inspect">Model inspector</a> ·
+  <a href="examples">Examples</a>
+</p>
 
-**[Documentation](https://live2d-web-demo.netlify.app/docs/en)** ·
-[Playground](https://live2d-web-demo.netlify.app/playground) ·
-[Model inspector](https://live2d-web-demo.netlify.app/inspect) ·
-[Examples](examples)
+<p align="center">
+  <strong>English</strong> · <a href="README.ko.md">한국어</a> · <a href="README.ja.md">日本語</a>
+</p>
 
 ## Why live2d-web
 

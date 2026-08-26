@@ -1,17 +1,22 @@
 <p align="center">
-  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="" width="96" height="96">
+  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="live2d-web" width="64" height="64">
 </p>
-<h1 align="center">live2d-web</h1>
 
-[English](README.md) | **한국어** | [日本語](README.ja.md)
+<p align="center">
+  바닐라 JavaScript와 React를 위한 비공식 Live2D Cubism 런타임입니다.<br>
+  PixiJS 없이 WebGL2로 직접 렌더링합니다.
+</p>
 
-> 바닐라 JavaScript와 React를 위한 비공식 Live2D Cubism 런타임입니다.
-> PixiJS 없이 WebGL2로 직접 렌더링합니다.
+<p align="center">
+  <strong><a href="https://live2d-web-demo.netlify.app/docs/ko">한국어 문서</a></strong> ·
+  <a href="https://live2d-web-demo.netlify.app/playground">Playground</a> ·
+  <a href="https://live2d-web-demo.netlify.app/inspect">모델 검사기</a> ·
+  <a href="examples">예제</a>
+</p>
 
-**[한국어 문서](https://live2d-web-demo.netlify.app/docs/ko)** ·
-[Playground](https://live2d-web-demo.netlify.app/playground) ·
-[모델 검사기](https://live2d-web-demo.netlify.app/inspect) ·
-[예제](examples)
+<p align="center">
+  <a href="README.md">English</a> · <strong>한국어</strong> · <a href="README.ja.md">日本語</a>
+</p>
 
 ## 주요 기능
 

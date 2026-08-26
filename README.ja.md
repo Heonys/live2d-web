@@ -1,17 +1,22 @@
 <p align="center">
-  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="" width="96" height="96">
+  <img src="apps/playground/public/brand/live2d-web-avatar.png" alt="live2d-web" width="64" height="64">
 </p>
-<h1 align="center">live2d-web</h1>
 
-[English](README.md) | [한국어](README.ko.md) | **日本語**
+<p align="center">
+  Vanilla JavaScript と React 向けの非公式 Live2D Cubism ランタイムです。<br>
+  PixiJS を使わず WebGL2 で直接描画します。
+</p>
 
-> Vanilla JavaScript と React 向けの非公式 Live2D Cubism ランタイムです。
-> PixiJS を使わず WebGL2 で直接描画します。
+<p align="center">
+  <strong><a href="https://live2d-web-demo.netlify.app/docs/ja">日本語ドキュメント</a></strong> ·
+  <a href="https://live2d-web-demo.netlify.app/playground">Playground</a> ·
+  <a href="https://live2d-web-demo.netlify.app/inspect">モデル検査</a> ·
+  <a href="examples">サンプル</a>
+</p>
 
-**[日本語ドキュメント](https://live2d-web-demo.netlify.app/docs/ja)** ·
-[Playground](https://live2d-web-demo.netlify.app/playground) ·
-[モデル検査](https://live2d-web-demo.netlify.app/inspect) ·
-[サンプル](examples)
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a> · <strong>日本語</strong>
+</p>
 
 ## 主な機能
 
