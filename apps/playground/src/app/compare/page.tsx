@@ -131,6 +131,7 @@ function BackendComparisonContent() {
           {manifest
             ? (
                 <Live2DCanvas
+                  accessibility={{ label: `${backendName} model preview` }}
                   key={backendName}
                   backend={backend}
                   coreUrl={backendName === 'cubism-webgl'

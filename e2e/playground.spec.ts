@@ -1,6 +1,7 @@
 import type { Buffer } from 'node:buffer'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
 const playgroundRequire = createRequire(
@@ -87,6 +88,19 @@ function actionableWebGLErrors(browserName: string, errors: string[]) {
     || !WEBKIT_CONTEXT_CHURN_MESSAGES.some(fragment => message.includes(fragment)),
   )
 }
+
+test('has no automatically detectable accessibility violations on primary routes', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The v0.7 accessibility smoke gate runs once in Chromium.')
+
+  for (const route of ['/', '/docs/en', '/playground', '/inspect']) {
+    await page.goto(route)
+    const results = await new AxeBuilder({ page }).analyze()
+    expect(
+      results.violations,
+      `${route}: ${results.violations.map(violation => `${violation.id} (${violation.nodes.length})`).join(', ')}`,
+    ).toEqual([])
+  }
+})
 
 test('preloads Cubism Core from the server-rendered HTML', async ({ page }) => {
   // The runtime injects the Core script after hydration, so without this link
@@ -178,6 +192,24 @@ test('keeps the landing page focused and links to the full playground', async ({
   await page.setViewportSize({ height: 844, width: 390 })
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true)
+})
+
+test('links model load failures to actionable troubleshooting', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The error guidance smoke check runs once in Chromium.')
+
+  await page.route('**/hiyori_free_t08.model3.json', route => route.fulfill({
+    body: 'not found',
+    status: 404,
+  }))
+  await page.goto('/playground')
+
+  const alert = page.locator('.stage-overlay.error-panel[role="alert"]')
+  await expect(alert).toContainText('model-load-failed')
+  await expect(alert).toContainText('404')
+  await expect(alert.getByRole('link', { name: 'Troubleshooting' })).toHaveAttribute(
+    'href',
+    '/docs/en/troubleshooting#model-load-failed',
+  )
 })
 
 test('loads Hiyori and survives repeated mount/unmount', async ({ browserName, page }) => {
@@ -485,7 +517,7 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await expect(japaneseLanguageTrigger).toBeFocused()
 
   await page.goto('/docs/en/vanilla')
-  await page.getByRole('button', { name: 'Copy' }).click()
+  await page.getByRole('button', { name: 'Copy' }).first().click()
   await expect.poll(() => page.evaluate(
     () => (window as typeof window & { __docsClipboard?: string }).__docsClipboard,
   )).toContain('import { createLive2D }')
@@ -819,6 +851,9 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
   await expect(page.getByTestId('face-tracking-status')).toContainText('lost', {
     timeout: 30_000,
   })
+  await expect(page.getByTestId('face-startup-timing')).toContainText('camera')
+  await expect(page.getByTestId('face-startup-timing')).toContainText('tracker')
+  await expect(page.getByTestId('face-startup-timing')).toContainText('first inference')
   expect(await metrics()).toMatchObject({ activeTracks: 1, calls: 1 })
 
   // The pose readout and tuning controls are how the 0.5.0 real-camera fixes

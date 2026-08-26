@@ -1,11 +1,12 @@
 # live2d-web 문서 지도
 
-상태 기준일: **2026-08-25**. 바닐라 우선 headless runtime, React binding,
+상태 기준일: **2026-08-26**. 바닐라 우선 headless runtime, React binding,
 상호작용 API(hitTest/followPointer/모션 완료 대기), source/driver 립싱크,
 선택형 MediaPipe 얼굴 추적과 pixi-v6 비교 어댑터가 구현돼 있다. 공식
-Framework 5-r.5 WebGL2 어댑터가 기본 backend다. `develop`에는 선택형
+Framework 5-r.5 WebGL2 어댑터가 기본 backend다. 발행된 `0.6.0`에는 선택형
 MediaPipe Worker, 모델 검사 API·URL/zip 도구, 세 언어 문서 사이트와 빌드
-가능한 예제 4종이 추가됐다.
+가능한 예제 4종이 포함된다. `develop`은 공개 API 기준선·Canvas 접근성·오류
+안내·독립 소비자 검증을 다루는 0.7 안정화 작업 중이다.
 
 1. [로드맵](roadmap.md) — 성장 목표·상시 품질 기준·고도화 축·버전 순서
 2. [호환성](compatibility.md) — 지원·검증·미검증 범위와 알려진 제한
@@ -19,31 +20,33 @@ MediaPipe Worker, 모델 검사 API·URL/zip 도구, 세 언어 문서 사이트
    일본어 가이드, TypeDoc API, 검색과 예제 갤러리
 10. [모델 검사기](https://live2d-web-demo.netlify.app/inspect) — URL·로컬 zip
     자산/버전/트래킹 호환성 검사
-11. [0.6 MediaPipe Worker 추적 측정](benchmarks/2026-08-25-0.6-worker-tracking.md)
+11. [v0.7 안정화 검증](benchmarks/2026-08-26-v0.7-stabilization.md)
+   — API 기준선·React 18/19·독립 소비자·접근성·MediaPipe warm 생성 측정
+12. [0.6 MediaPipe Worker 추적 측정](benchmarks/2026-08-25-0.6-worker-tracking.md)
    — Hiyori 동시 렌더 main/Worker 3회 비교와 0.6 번들 예산
-12. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
+13. [0.5.0 발행 후보 측정](benchmarks/2026-08-25-0.5.0-candidate.md)
    — 리뷰 반영 뒤 크기·적응형 추론 상한·e2e 결과
-13. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
+14. [v0.3.1 안정화 기준선](benchmarks/2026-08-24-v0.3.1-baseline.md)
    — 공개 패키지·소비자·브라우저·smoke 회귀 기준
-14. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
+15. [볼륨 립싱크 드라이버 패키지 변화](benchmarks/2026-08-24-volume-lipsync.md)
    — root/runtime chunk·tarball의 v0.3.1 기준선 대비 변화
-15. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
+16. [모션 페이드 옵션 패키지 변화](benchmarks/2026-08-24-motion-fade.md)
    — root/runtime/cubism/model chunk·tarball의 v0.3.1 기준선 대비 변화
-16. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
+17. [0.4 모션·표정 후보 패키지 변화](benchmarks/2026-08-24-motion-expression-candidate.md)
    — 상세 상태·시퀀스·가중 Idle·표정 페이드 뒤 chunk·tarball 변화
-17. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
+18. [0.5 MediaPipe 후보 측정](benchmarks/2026-08-24-mediapipe-candidate.md)
    — 선택형 tracking entry·자산 크기·브라우저 추론과 프레임 영향
-18. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
+19. [시작 비용 최적화 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-18-cubism-webgl-vs-pixi-v6.md)
    — 최신 backend A/B 판정
-19. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
+20. [시작 비용 단축 검증](benchmarks/2026-08-18-hardware-matrix.md)
    — 실제 GPU에서의 셰이더·ready 비용
-20. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
-21. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
-22. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
-23. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
-24. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
-25. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
-26. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
+21. [diagnostics 통합 뒤 WebGL/Pixi 재측정](benchmarks/2026-08-15-cubism-webgl-vs-pixi-v6.md)
+22. [cubism-webgl과 pixi-v6 성능 비교](benchmarks/2026-08-14-cubism-webgl-vs-pixi-v6.md)
+23. [WebGL vs Pixi JS heap 비교](benchmarks/2026-08-15-backend-memory.md)
+24. [다중 모델 집중 matrix 결과](benchmarks/2026-08-14-multi-model-matrix.md)
+25. [다중 모델 startup 결과](benchmarks/2026-08-14-multi-model-startup.md)
+26. [다중 모델 memory 결과](benchmarks/2026-08-14-multi-model-memory.md)
+27. [하드웨어 스모크](benchmarks/2026-08-15-hardware-smoke.md)
 
 ## 확정된 결정
 
@@ -299,3 +302,23 @@ MediaPipe Worker, 모델 검사 API·URL/zip 도구, 세 언어 문서 사이트
 - **재검토 조건**: 실제 소비자가 다중 모델·MotionSync·RN을 요구하거나 모바일
   측정이 현재 구조의 한계를 보이면 후보 우선순위를 다시 정하고, 그 근거를 새
   날짜 결정으로 남긴다.
+
+### 2026-08-26 0.7 안정화 기준선과 남은 실기기 게이트
+
+- **결정문**: 실제 배포 entry 7개의 API Extractor 보고서, 선택형 Canvas
+  접근성, 전체 오류 code의 세 언어 해결 안내, React 18/19와 모노레포 밖
+  Vanilla/Next 소비자 검증을 0.7 기준선으로 둔다. MediaPipe는 cold 시작 단계를
+  Playground에서 분리 표시하고 warm tracker 생성 중앙값 5초를 회귀 기준으로
+  관리한다.
+- **근거**: 이번 데스크톱 3회 측정에서 warm 생성은 main/Worker 모두
+  270~383ms였다. 따라서 30초 체감 지연을 추론 초기화 하나로 단정하거나 코드를
+  추측으로 바꾸지 않고, 카메라·다운로드·tracker·첫 inference·보정을 각각
+  관찰할 수 있게 한다. 임시 외부 Vite/Next에서는 실제 Hiyori 로드·모션·정리가
+  성공해 패키지 설치 경계도 확인했다.
+- **남은 조건**: 실제 iPhone Safari에서 Main/Worker 각 5분과 회전·백그라운드·
+  정리를 확인하기 전에는 0.7 안정화를 완료로 표시하지 않는다. Android Chrome은
+  미검증을 공개하는 비차단 항목이며, 임시 소비자 검증은 외부 채택 수로 세지
+  않는다.
+- **재검토 조건**: iOS Worker가 정상 동작하지 않으면 시작 단계에서 명시적
+  `tracking-error`와 Main 전환 방법을 제공한다. warm 생성 중앙값이 5초를 넘는
+  환경이 재현될 때만 측정된 병목을 최적화한다.

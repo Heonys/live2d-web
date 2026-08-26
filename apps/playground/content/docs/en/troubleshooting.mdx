@@ -1,8 +1,79 @@
 ## Start with the error code
 
-Live2DError carries a stable code and, for asset failures, the URL, asset type and HTTP status. Include those fields plus browser and model export version in an issue, but do not attach licensed assets.
+`Live2DError` carries a stable code and, for asset failures, the URL, asset
+type and HTTP status. Include those fields plus the browser and model export
+version in an issue, but do not attach licensed assets.
 
-- model-load-failed: inspect the URL, HTTP status and CORS.
-- core-load-failed: check Core URL and Core/Framework pairing.
-- invalid-props: fix the caller value; retrying does not help.
-- tracking-error: verify optional peer, WASM/model paths and Worker CSP.
+### browser-only
+
+**Cause:** a browser API was called during SSR, in Node, or in a Worker that
+does not provide the required DOM. **Check:** inspect the stack for the first
+`createLive2D()` or DOM-dependent call. **Fix:** call it after client mount;
+in Next.js import `/react` from a Client Component. **Retry:** no, not until the
+call is moved to a browser context.
+
+### core-missing
+
+**Cause:** Cubism Core was not loaded from `coreUrl` and no compatible Core
+global exists. **Check:** the script request, CSP, CORS and Core 5.3 URL.
+**Fix:** self-host the official Core and pass its reachable URL. **Retry:** yes,
+after the script path or policy is corrected.
+
+### webgl-unsupported
+
+**Cause:** the browser could not create a WebGL2 context. **Check:** WebGL2
+support, hardware acceleration and active-context limits. **Fix:** enable a
+supported browser/GPU or release other canvases. **Retry:** only after the
+environment changes.
+
+### invalid-props
+
+**Cause:** an API argument or option is outside its documented shape or range.
+**Check:** the error message names the rejected field. **Fix:** correct the
+caller value. **Retry:** no with the same value.
+
+### invalid-tree
+
+**Cause:** a React component is outside its required provider, or more than one
+model owns a Canvas. **Check:** the component hierarchy around
+`Live2DCanvas`/`Live2DModel`. **Fix:** keep one model below one Canvas and hooks
+inside the matching provider. **Retry:** no until the tree changes.
+
+### lipsync-error
+
+**Cause:** optional lip-sync setup or processing failed. **Check:** secure
+context, microphone permission, AudioContext state and the optional wLipSync
+profile. **Fix:** resume audio from a user gesture or use the volume driver.
+**Retry:** yes after audio setup is corrected; the model itself can keep running.
+
+### tracking-error
+
+**Cause:** MediaPipe initialization, inference, Worker protocol or cleanup
+failed. **Check:** optional peer installation, WASM/task paths, CORS, CSP
+`worker-src`, timeout details and browser support. **Fix:** correct the asset or
+Worker setup; switch to main execution when Worker is unsupported. **Retry:**
+create a new tracker after fixing the cause.
+
+### model-load-failed
+
+**Cause:** model3 or one of its referenced assets returned an HTTP error, was
+blocked by CORS, is missing, or could not be parsed. **Check:**
+`details.url`, `assetType`, `httpStatus` and the browser Network panel. A 404
+means the URL/path is wrong; a fetch without status usually means CORS/network;
+a parse message usually means a corrupt or incompatible export. **Fix:** serve
+every referenced file with correct case and MIME/CORS headers, or re-export the
+model. **Retry:** yes for transient network failures or after assets are fixed.
+
+### render-error
+
+**Cause:** rendering stopped after setup, commonly because the WebGL context
+was lost. **Check:** the first console/driver error and GPU context count.
+**Fix:** reduce GPU pressure and call the provided Canvas retry action.
+**Retry:** yes; retry recreates the stage and preserves its options.
+
+### adapter-error
+
+**Cause:** a backend rejected an unsupported capability or received a handle
+from another backend. **Check:** the backend name and whether the option is
+listed as supported. **Fix:** use the default backend, remove the unsupported
+option, or update the custom adapter. **Retry:** no until configuration changes.

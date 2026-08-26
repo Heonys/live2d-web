@@ -7,6 +7,19 @@
 - Optional Canvas accessibility semantics let vanilla and React consumers mark
   a model as decorative or expose it as a labelled image with fallback text,
   without making the Canvas keyboard-focusable or changing existing defaults.
+- API Extractor reports now establish the public contract for the root, React,
+  inspect, devtools, MediaPipe main/Worker and cubism-webgl entries; `api:check`
+  blocks unrecorded export and type changes in CI.
+- The Playground reports MediaPipe camera, tracker, first-inference,
+  calibration and tracked timings separately, alongside matching JS, WASM and
+  task Resource Timing entries.
+
+### Changed
+
+- Packed consumer verification builds the React entry with both React 18.2 and
+  React 19. Troubleshooting in all three documentation languages now covers
+  every public error code, and Playground model errors link to the matching
+  cause, check, fix and retry guidance.
 
 ## 0.6.0 - 2026-08-26
 

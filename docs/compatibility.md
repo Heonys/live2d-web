@@ -35,17 +35,15 @@
 
 | 대상 | 지원 범위 | 현재 실제 검증 |
 | --- | --- | --- |
-| React | `>=18.2 <20` optional peer | React/React DOM `19.2.8` |
+| React | `>=18.2 <20` optional peer | packed tarball로 React/React DOM `18.2.0`, `19.2.8` 각각 typecheck·production build |
 | Vanilla Vite | ESM root API | Vite `8.1.5`, 실제 npm tarball 설치·typecheck·production build |
-| React Vite | `live2d-web/react` | Vite `8.1.5` + React `19.2.8`, 실제 npm tarball build |
+| React Vite | `live2d-web/react` | Vite `8.1.5` + React `18.2.0`/`19.2.8`, 실제 npm tarball build |
 | Next.js SSR | client component에서 `/react` 사용 | Next `16.2.12` + React `19.2.8`, 실제 npm tarball production build |
 | Vue Vite | 별도 binding 없이 ESM root API | Vue `3.5.21` + Vite `8.1.5`, workspace 예제 typecheck·production build |
 | OBS Browser Source | 투명 Vite overlay, query 기반 model/fit | workspace 예제 typecheck·production build. OBS 자체 실기 구동은 미검증 |
 | 모델 검사 | `live2d-web/inspect`, URL·resolver | 실제 tarball Vite import·Node SSR 평가, URL/zip은 세 브라우저 Playwright 검증 |
 
-React 18.2는 공개 peer 범위에 포함되지만 현재 자동 소비자 fixture는 React
-19.2.8만 설치한다. React 18.2를 포함한 이중 버전 matrix를 추가하기 전까지
-"지원"과 "현재 자동 검증 버전"을 같은 의미로 쓰지 않는다. Vue, Svelte,
+React 18.2와 19는 같은 packed consumer 검증을 통과한다. Vue, Svelte,
 Webpack, Rollup 직접 구성 중 Vue만 위의 root API 예제로 검증했으며 Svelte와
 Webpack/Rollup 직접 구성은 현재 미검증이다.
 
@@ -62,6 +60,13 @@ Playground에서만 동적 로드되며 npm `inspect` entry에는 포함되지 �
 TypeDoc API와 내부 링크 응답을 검증한다. 문서 내용의 사람이 느끼는 명확성과
 "10분 안에 모델 표시"는 자동 테스트가 아니라 외부 사용자 확인 항목이다.
 
+2026-08-26에는 모노레포 밖의 임시 프로젝트에서 npm `0.6.0`을 설치한 Vite
+Vanilla와 현재 v0.7 packed tarball을 설치한 Next React를 각각 검증했다. 문서의
+Core·모델 공급 절차만 사용해 실제 Hiyori 로드, Tap 모션 완료, `dispose()` 뒤
+Canvas 0개와 console error 0개를 확인했다. 이 실행은 설치 경계 검증이지 외부
+사용자나 의존 프로젝트로 집계하지 않는다. 처음 보는 사용자의 10분 온보딩은
+계속 별도의 방향 지표다.
+
 `live2d-web/devtools`는 Chromium·WebKit·Firefox의 open Shadow DOM에서
 SSR evaluation, parameter driver 격리·정리, motion/sequence/expression 호출,
 target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소비자가 제공한다.
@@ -77,9 +82,11 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
 | GPU delegate | 미검증 | API로 선택 가능하지만 Live2D WebGL과의 GPU 경합을 측정하지 않아 CPU가 기본이다. |
 | 추론 성능 | 데스크톱 검증 | Hiyori 동시 렌더 3회 중앙값에서 Worker frame p95는 Chromium 10ms, WebKit 18ms, Firefox 9.8ms이고 33ms 초과는 모두 0%. Firefox main의 191.6ms/100% 초과를 렌더 스레드에서 분리. 08-26에 worker 모드의 적응형 상한 하향을 제거한 재측정에서도 33ms 초과 0%가 유지되고(skip: Chromium 75%, WebKit 52.5%, Firefox 95.7%. Firefox는 추론 ~193ms의 본질적 배압), 상세는 벤치 문서의 08-26 절. [상세 측정](benchmarks/2026-08-25-0.6-worker-tracking.md) |
+| warm tracker 생성 | 데스크톱 검증 | 로컬 자산과 warm HTTP cache에서 모드별 3회 중앙값이 Chromium main/Worker 339/373ms, WebKit 367/383ms, Firefox 270/340ms로 모두 5초 기준 이내다. Playground는 카메라·tracker·첫 inference·보정·tracked와 JS/WASM/task Resource Timing을 분리해 cold 지연 위치를 표시한다. |
 | Worker 안정성 | 데스크톱 검증 | Chromium 15분 soak에서 두 차례 재생성, pending 요청 정착, 최종 dispose, console/page error와 heap 증가 한계를 통과(2026-08-25) |
 | 물리 카메라 | **부분 검증** | 2026-08-25 실측에서 세 결함을 찾아 고쳤다. 얼굴을 너무 일찍 놓침(임계값 기본 0.5), 놓치면 0.55초 만에 정면 복귀, 경계 프레임의 자세 튐. 여기에 물리보다 뒤에 적용되어 머리카락이 따라오지 않던 문제까지 넷이다. |
-| 모바일 실기 | **미검증·0.7 안정화 후보** | iOS Safari·Android Chrome 실기기 각 5분과 실제 전면 카메라 지표가 필요하다. 자동화·데스크톱 수치로 대체하지 않으며, 0.6.0에는 이 제한을 명시해 발행한다. |
+| iOS Safari 실기 | **미검증·0.7 차단 항목** | 실제 iPhone에서 Main/Worker 각 5분, 회전·백그라운드 복귀·정리와 실제 전면 카메라 지표가 필요하다. 데스크톱 WebKit이나 자동화로 대체하지 않는다. |
+| Android Chrome 실기 | **미검증·비차단** | 실제 Android 기기 결과가 아직 없다. 이 상태를 공개한 채 0.7을 발행할 수 있지만 지원 근거로 사용하지 않는다. |
 | 감도 기본값 | 1대 측정 | `sensitivity.pose` 기본은 **3**이다. 2026-08-25에 눈높이보다 낮은 노트북 카메라 한 대에서 자연스럽게 느껴진 값이며, 표본이 하나다. 카메라 위치에 좌우되므로 소비자는 사용자에게 노출하는 편이 낫다. |
 
 트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을

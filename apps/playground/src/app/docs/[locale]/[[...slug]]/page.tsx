@@ -103,7 +103,7 @@ export default async function DocumentationPage({ params }: {
       <ReadingProgress />
       <SiteHeader docSlug={page.slug} locale={locale} />
       <div className="docs-layout" lang={locale}>
-        <aside className="docs-sidebar">
+        <aside aria-label="Documentation navigation" className="docs-sidebar">
           <Link className="docs-sidebar-brand" href={docHref(locale, '')}>Documentation</Link>
           <DocSearch entries={searchEntries} locale={locale} />
           <nav aria-label="Documentation">

@@ -38,3 +38,16 @@ const tracker = await createMediaPipeFaceTracker({
   ),
 })
 ```
+
+## 起動段階とモバイルの状態
+
+Playground は、camera 準備、tracker 作成、最初の inference、1秒の calibration、
+最終的な tracked 遷移を別々に表示します。同じ区間の MediaPipe JavaScript、
+WASM、task の Resource Timing も表示するため、長い cold start をすぐに推論
+時間だと判断せず、遅い段階を確認できます。
+
+warm なローカル tracker 作成は、3つの desktop engine で中央値5秒の基準を
+十分下回っています。iPhone Safari は実機検証が必要で、Android Chrome は
+明示的に未検証です。Worker 作成が失敗または timeout した場合は
+`tracking-error` を表示し、利用者が main mode で tracker を作り直せるように
+してください。無期限に待ったり暗黙に fallback したりしません。

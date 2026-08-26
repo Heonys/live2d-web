@@ -13,6 +13,7 @@ interface TrackingBenchmarkResult {
   inferenceP95: number
   roundTripP95: number
   skippedRatio: number
+  trackerCreateMs: number
 }
 
 const mainInferenceBaselines: Record<string, number> = {
@@ -60,6 +61,7 @@ test('compares main and Worker tracking while Hiyori renders', async ({ browserN
       frameP95: median(runs.main.map(run => run.frameP95)),
       inferenceP50: median(runs.main.map(run => run.inferenceP50)),
       inferenceP95: median(runs.main.map(run => run.inferenceP95)),
+      trackerCreateMs: median(runs.main.map(run => run.trackerCreateMs)),
     },
     worker: {
       effectiveFps: median(runs.worker.map(run => run.effectiveFps)),
@@ -69,6 +71,7 @@ test('compares main and Worker tracking while Hiyori renders', async ({ browserN
       inferenceP95: median(runs.worker.map(run => run.inferenceP95)),
       roundTripP95: median(runs.worker.map(run => run.roundTripP95)),
       skippedRatio: median(runs.worker.map(run => run.skippedRatio)),
+      trackerCreateMs: median(runs.worker.map(run => run.trackerCreateMs)),
     },
   }
   const output = path.resolve('benchmark-results', `tracking.${browserName}.json`)
@@ -80,6 +83,8 @@ test('compares main and Worker tracking while Hiyori renders', async ({ browserN
   )
   expect(summary.worker.frameP95).toBeLessThanOrEqual(33)
   expect(summary.worker.frameOver33Ratio).toBeLessThanOrEqual(0.05)
+  expect(summary.main.trackerCreateMs).toBeLessThanOrEqual(5_000)
+  expect(summary.worker.trackerCreateMs).toBeLessThanOrEqual(5_000)
   // Anchored to the recorded baseline, not this run's own main measurement: a
   // budget derived from the same run widens in step with a joint regression
   // and can never fail.

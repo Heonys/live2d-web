@@ -3,6 +3,7 @@
 import type {
   ExpressionOptions,
   IdleMotion,
+  Live2DError,
   ModelFit,
   ModelInfo,
   MotionOptions,
@@ -50,6 +51,15 @@ interface MotionOption {
   index: number
 }
 
+interface FaceStartupTiming {
+  calibrationMs?: number
+  cameraMs: number
+  firstInferenceMs?: number
+  resources: string[]
+  totalTrackedMs?: number
+  trackerMs?: number
+}
+
 type MotionFadePreset = '500' | 'instant' | 'model'
 type IdlePreset = 'first' | 'uniform'
 type FaceTracker = MediaPipeFaceTracker | MediaPipeWorkerFaceTracker
@@ -70,6 +80,30 @@ function expressionOptionsForFadePreset(
     return undefined
   const milliseconds = preset === 'instant' ? 0 : 500
   return { fadeInMs: milliseconds, fadeOutMs: milliseconds }
+}
+
+function trackingResourceTimings(startedAt: number) {
+  return performance.getEntriesByType('resource')
+    .filter((entry): entry is PerformanceResourceTiming => (
+      entry instanceof PerformanceResourceTiming
+      && entry.startTime >= startedAt
+      && /mediapipe|face[_-]landmarker|\.wasm(?:$|\?)|\.task(?:$|\?)/i.test(entry.name)
+    ))
+    .map((entry) => {
+      const pathname = new URL(entry.name, window.location.href).pathname
+      const filename = pathname.split('/').pop() || pathname
+      return `${filename} ${entry.duration.toFixed(0)}ms`
+    })
+}
+
+function formatFaceStartupTiming(timing: FaceStartupTiming) {
+  return [
+    `camera ${timing.cameraMs.toFixed(0)}ms`,
+    `tracker ${timing.trackerMs?.toFixed(0) ?? '…'}ms`,
+    `first inference ${timing.firstInferenceMs?.toFixed(0) ?? '…'}ms`,
+    `calibration ${timing.calibrationMs?.toFixed(0) ?? '…'}ms`,
+    `tracked ${timing.totalTrackedMs?.toFixed(0) ?? '…'}ms`,
+  ].join(' · ')
 }
 
 function RuntimeDevtools({ target }: { target: Live2DModelController | null }) {
@@ -209,19 +243,32 @@ function StageHint() {
   return <p className="stage-hint">Click the character. She follows your pointer.</p>
 }
 
-function StageError({
-  code,
-  message,
-  retry,
-}: {
-  code: string
-  message: string
+function stageErrorHint(error: Live2DError) {
+  if (error.code === 'core-missing')
+    return 'Cubism Core could not load. Check the Core URL, CSP and network request.'
+  if (error.code !== 'model-load-failed')
+    return 'Open the troubleshooting guide for checks and retry guidance.'
+  if (error.details?.httpStatus === 404 || /\b404\b/.test(error.message))
+    return 'A model file returned 404. Check the model URL, referenced paths and filename case.'
+  if (/cors|failed to fetch|networkerror/i.test(error.message))
+    return 'The browser could not read a model file. Check CORS and the Network panel.'
+  if (/parse|json|moc|invalid|corrupt/i.test(error.message))
+    return 'A model file was fetched but could not be parsed. Check the export and Cubism version.'
+  return 'A model asset could not load. Check the URL, HTTP status and asset type.'
+}
+
+function StageError({ error, retry }: {
+  error: Live2DError
   retry: () => void
 }) {
   return (
     <div className="stage-overlay error-panel" role="alert">
-      <strong>{code}</strong>
-      <p>{message}</p>
+      <strong>{error.code}</strong>
+      <p>{error.message}</p>
+      <p>{stageErrorHint(error)}</p>
+      <a href={`/docs/en/troubleshooting#${error.code}`}>
+        Troubleshooting
+      </a>
       <button type="button" onClick={retry}>Retry canvas</button>
     </div>
   )
@@ -263,6 +310,7 @@ export default function PlaygroundPage() {
   const [faceRoundTripMs, setFaceRoundTripMs] = useState(0)
   const [faceEffectiveFps, setFaceEffectiveFps] = useState(0)
   const [faceSkippedRatio, setFaceSkippedRatio] = useState(0)
+  const [faceStartupTiming, setFaceStartupTiming] = useState<FaceStartupTiming | null>(null)
   const [faceExecution, setFaceExecution] = useState<FaceTrackingExecution>('worker')
   const [faceMapping, setFaceMapping] = useState<MediaPipeMappingMode>('auto')
   const [facePoseSensitivity, setFacePoseSensitivity] = useState(3)
@@ -361,7 +409,9 @@ export default function PlaygroundPage() {
     stopFaceTracking()
     setFaceTrackingError('')
     setFaceTrackingStatus('initializing')
+    setFaceStartupTiming(null)
     resetFacePeak()
+    const startupStartedAt = performance.now()
     const generation = ++faceGenerationRef.current
     let stream: MediaStream | undefined
     let tracker: FaceTracker | undefined
@@ -391,11 +441,16 @@ export default function PlaygroundPage() {
       }
       video.srcObject = stream
       await video.play()
+      const cameraReadyAt = performance.now()
       if (generation !== faceGenerationRef.current) {
         for (const track of stream.getTracks())
           track.stop()
         return
       }
+      setFaceStartupTiming({
+        cameraMs: cameraReadyAt - startupStartedAt,
+        resources: [],
+      })
       const sharedOptions = {
         modelAssetPath: '/assets/mediapipe/face_landmarker.task',
         onFaceLost: faceLostMode,
@@ -411,6 +466,7 @@ export default function PlaygroundPage() {
             ),
           })
         : await createMediaPipeFaceTracker(sharedOptions)
+      const trackerReadyAt = performance.now()
       tracker = createdTracker
       if (generation !== faceGenerationRef.current) {
         createdTracker.dispose()
@@ -418,6 +474,11 @@ export default function PlaygroundPage() {
           track.stop()
         return
       }
+      setFaceStartupTiming({
+        cameraMs: cameraReadyAt - startupStartedAt,
+        resources: trackingResourceTimings(startupStartedAt),
+        trackerMs: trackerReadyAt - cameraReadyAt,
+      })
       const attachOptions: MediaPipeAttachOptions = {
         channels: faceChannels,
         mapping: faceMapping,
@@ -432,6 +493,8 @@ export default function PlaygroundPage() {
       faceTrackingRef.current = tracking
       let attemptedFrames = 0
       let skippedFrames = 0
+      let firstInferenceAt: number | undefined
+      let trackedAt: number | undefined
       const startedAt = performance.now()
       const sample = async (timestamp: number) => {
         if (faceTrackingRef.current !== tracking)
@@ -442,8 +505,30 @@ export default function PlaygroundPage() {
             attemptedFrames++
             const roundTripStartedAt = performance.now()
             const update = await createdTracker.update(video, timestamp)
+            if (faceTrackingRef.current !== tracking)
+              return
             const roundTripMs = Math.max(0, performance.now() - roundTripStartedAt)
             if (update.status !== 'skipped') {
+              const updatedAt = performance.now()
+              const recordingFirstInference = firstInferenceAt === undefined
+              const recordingTracked = update.status === 'tracked' && trackedAt === undefined
+              firstInferenceAt ??= updatedAt
+              if (update.status === 'tracked')
+                trackedAt ??= updatedAt
+              if (recordingFirstInference || recordingTracked) {
+                setFaceStartupTiming({
+                  calibrationMs: trackedAt === undefined
+                    ? undefined
+                    : trackedAt - firstInferenceAt,
+                  cameraMs: cameraReadyAt - startupStartedAt,
+                  firstInferenceMs: firstInferenceAt - trackerReadyAt,
+                  resources: trackingResourceTimings(startupStartedAt),
+                  totalTrackedMs: trackedAt === undefined
+                    ? undefined
+                    : trackedAt - startupStartedAt,
+                  trackerMs: trackerReadyAt - cameraReadyAt,
+                })
+              }
               setFaceTrackingStatus(update.status)
               setFaceInferenceMs(update.inferenceMs)
               setFaceRoundTripMs(roundTripMs)
@@ -823,11 +908,15 @@ export default function PlaygroundPage() {
   const stage = manifest && mounted
     ? (
         <Live2DCanvas
+          accessibility={{
+            describedBy: 'playground-stage-description',
+            label: 'Interactive Live2D model preview',
+          }}
           coreUrl={CUBISM_CORE_URL}
           {...(fixedQuality ? { resolution: 1 } : { quality: 'auto' as const })}
           fallback={() => <StageLoading />}
           errorFallback={(error, retry) => (
-            <StageError code={error.code} message={error.message} retry={retry} />
+            <StageError error={error} retry={retry} />
           )}
         >
           <Live2DModel
@@ -878,7 +967,9 @@ export default function PlaygroundPage() {
             <p className="eyebrow">Interactive lab</p>
             <h1>Playground</h1>
           </div>
-          <p>Test model controls, audio and face tracking without losing sight of the canvas.</p>
+          <p id="playground-stage-description">
+            Test model controls, audio and face tracking without losing sight of the canvas.
+          </p>
         </div>
 
         <section className="playground-workspace">
@@ -1158,6 +1249,14 @@ export default function PlaygroundPage() {
                   {faceTrackingStatus}
                   {faceTrackingActive && ` · inference ${faceInferenceMs.toFixed(1)} ms · round trip ${faceRoundTripMs.toFixed(1)} ms · ${faceEffectiveFps.toFixed(0)} fps · ${(faceSkippedRatio * 100).toFixed(0)}% skipped`}
                 </output>
+                {faceStartupTiming && (
+                  <output className="note" data-testid="face-startup-timing">
+                    {formatFaceStartupTiming(faceStartupTiming)}
+                    {faceStartupTiming.resources.length > 0 && (
+                      ` · ${faceStartupTiming.resources.join(', ')}`
+                    )}
+                  </output>
+                )}
                 {faceTrackingActive && (
                   <table className="pose-readout" data-testid="face-pose-readout">
                     <thead>

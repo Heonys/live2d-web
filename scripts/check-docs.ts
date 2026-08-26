@@ -10,6 +10,18 @@ import {
 const failures: string[] = []
 const slugs = new Set<string>()
 const contentRoot = 'apps/playground/content/docs'
+const errorCodes = [
+  'adapter-error',
+  'browser-only',
+  'core-missing',
+  'invalid-props',
+  'invalid-tree',
+  'lipsync-error',
+  'model-load-failed',
+  'render-error',
+  'tracking-error',
+  'webgl-unsupported',
+] as const
 
 for (const page of DOC_PAGES) {
   if (slugs.has(page.slug))
@@ -29,6 +41,12 @@ for (const page of DOC_PAGES) {
     const source = readFileSync(sourcePath, 'utf8')
     if (!source.trim())
       failures.push(`empty localized MDX: ${locale}/${filename}`)
+    if (page.slug === 'troubleshooting') {
+      for (const code of errorCodes) {
+        if (!new RegExp(`^#{2,6}\\s+${code}\\s*$`, 'm').test(source))
+          failures.push(`${locale}/${filename} is missing #${code}`)
+      }
+    }
     for (const match of source.matchAll(/\]\(([^)]+)\)/g)) {
       const href = match[1]!
       if (/^https:\/\//.test(href) || href.startsWith('#') || href.startsWith('/'))

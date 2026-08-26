@@ -136,9 +136,9 @@ export function DocsToc({ locale }: { locale: DocLocale }) {
     }
   }, [])
   if (!headings.length)
-    return <aside className="docs-toc" />
+    return <aside aria-label="On this page" className="docs-toc" />
   return (
-    <aside className="docs-toc">
+    <aside aria-label="On this page" className="docs-toc">
       <strong>{mobileLabels[locale].onPage}</strong>
       <nav>
         {headings.map(heading => (

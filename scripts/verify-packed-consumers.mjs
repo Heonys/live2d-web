@@ -101,38 +101,55 @@ try {
     ['node', ['-e', 'if (require("fs").existsSync("node_modules/@mediapipe")) { console.error("optional peer @mediapipe/tasks-vision was installed into a vanilla consumer"); process.exit(1) }']],
   ])
 
-  installAndRun('react-vite', {
-    name: 'packed-react-consumer',
-    private: true,
-    type: 'module',
-    scripts: { build: 'tsc --noEmit && vite build' },
-    dependencies: {
-      'live2d-web': tarball,
-      'react': versions.react,
-      'react-dom': versions.reactDom,
+  for (const reactVersion of [
+    {
+      label: '18',
+      react: '18.2.0',
+      reactDom: '18.2.0',
+      typesReact: '^18.2.0',
+      typesReactDom: '^18.2.0',
     },
-    devDependencies: {
-      '@types/react': versions.typesReact,
-      '@types/react-dom': versions.typesReactDom,
-      'typescript': versions.typescript,
-      'vite': versions.vite,
+    {
+      label: '19',
+      react: versions.react,
+      reactDom: versions.reactDom,
+      typesReact: versions.typesReact,
+      typesReactDom: versions.typesReactDom,
     },
-  }, {
-    'index.html': '<div id="root"></div><script type="module" src="/src.tsx"></script>',
-    'src.tsx': `import { createRoot } from 'react-dom/client'\nimport { Live2DCanvas } from 'live2d-web/react'\n\ncreateRoot(document.querySelector('#root')!).render(<Live2DCanvas coreUrl="/core.js" />)\n`,
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: {
-        jsx: 'react-jsx',
-        lib: ['ES2022', 'DOM'],
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        noEmit: true,
-        strict: true,
-        target: 'ES2022',
+  ]) {
+    installAndRun(`react-${reactVersion.label}-vite`, {
+      name: `packed-react-${reactVersion.label}-consumer`,
+      private: true,
+      type: 'module',
+      scripts: { build: 'tsc --noEmit && vite build' },
+      dependencies: {
+        'live2d-web': tarball,
+        'react': reactVersion.react,
+        'react-dom': reactVersion.reactDom,
       },
-      include: ['src.tsx'],
-    }),
-  }, [['npm', ['run', 'build']]])
+      devDependencies: {
+        '@types/react': reactVersion.typesReact,
+        '@types/react-dom': reactVersion.typesReactDom,
+        'typescript': versions.typescript,
+        'vite': versions.vite,
+      },
+    }, {
+      'index.html': '<div id="root"></div><script type="module" src="/src.tsx"></script>',
+      'src.tsx': `import { createRoot } from 'react-dom/client'\nimport { Live2DCanvas } from 'live2d-web/react'\n\ncreateRoot(document.querySelector('#root')!).render(<Live2DCanvas accessibility={{ label: "Avatar" }} coreUrl="/core.js" />)\n`,
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: {
+          jsx: 'react-jsx',
+          lib: ['ES2022', 'DOM'],
+          module: 'ESNext',
+          moduleResolution: 'Bundler',
+          noEmit: true,
+          strict: true,
+          target: 'ES2022',
+        },
+        include: ['src.tsx'],
+      }),
+    }, [['npm', ['run', 'build']]])
+  }
 
   installAndRun('tracking-vite', {
     name: 'packed-tracking-consumer',
@@ -208,7 +225,7 @@ try {
     }),
   }, [['npm', ['run', 'build']]])
 
-  console.log('[packed-consumers] vanilla, React, tracking module Workers in Vite/Next and Next SSR verified')
+  console.log('[packed-consumers] vanilla, React 18/19, tracking module Workers in Vite/Next and Next SSR verified')
 }
 finally {
   rmSync(temporaryRoot, { force: true, recursive: true })

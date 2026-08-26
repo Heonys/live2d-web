@@ -471,6 +471,7 @@ export function InspectorApp() {
           {candidate
             ? (
                 <Live2DCanvas
+                  accessibility={{ label: `${candidate.label} model preview` }}
                   key={sourceKey}
                   coreUrl={CUBISM_CORE_URL}
                   {...canvasQuality}

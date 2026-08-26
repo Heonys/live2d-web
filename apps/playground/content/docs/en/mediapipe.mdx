@@ -38,3 +38,17 @@ const tracker = await createMediaPipeFaceTracker({
   ),
 })
 ```
+
+## Startup and mobile status
+
+The Playground separates camera readiness, tracker creation, first inference,
+one-second calibration and the final tracked transition. It also lists matching
+MediaPipe JavaScript, WASM and task Resource Timing entries. Use those phases
+before treating a long cold start as inference work.
+
+Warm local tracker creation is gated at a five-second median and is currently
+well below that budget on the three desktop test engines. iPhone Safari still
+requires physical-device validation, and Android Chrome is explicitly
+unverified. If Worker creation fails or times out, surface the `tracking-error`
+and let the user recreate the tracker in main mode; do not wait indefinitely or
+silently fall back.

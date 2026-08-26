@@ -55,6 +55,7 @@ export default function TrackingBenchmarkPage() {
         src: MODEL_URL,
       })
       const execution = new URLSearchParams(window.location.search).get('execution')
+      const trackerCreateStartedAt = performance.now()
       tracker = execution === 'worker'
         ? await createMediaPipeFaceTracker({
             execution: 'worker',
@@ -69,6 +70,7 @@ export default function TrackingBenchmarkPage() {
             modelAssetPath: TRACKING_MODEL_PATH,
             wasmPath: WASM_PATH,
           })
+      const trackerCreateMs = performance.now() - trackerCreateStartedAt
       detach = tracker.attach(character)
       const frameDeltas: number[] = []
       const inference: number[] = []
@@ -120,6 +122,7 @@ export default function TrackingBenchmarkPage() {
               inferenceP95: percentile(inference, 0.95),
               roundTripP95: percentile(roundTrips, 0.95),
               skippedRatio: skipped / Math.max(1, attempted),
+              trackerCreateMs,
             }
             setResult(JSON.stringify(measured))
             setStatus('ready')

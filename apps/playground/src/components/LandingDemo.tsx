@@ -149,6 +149,10 @@ export function LandingDemo() {
         {manifest
           ? (
               <Live2DCanvas
+                accessibility={{
+                  describedBy: 'landing-lip-sync-description',
+                  label: 'Interactive Hiyori Live2D character',
+                }}
                 coreUrl={CUBISM_CORE_URL}
                 quality="auto"
                 fallback={() => <StageLoading />}
