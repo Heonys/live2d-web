@@ -106,7 +106,9 @@ Cubism Core·Hiyori를 받아 브라우저 3종 e2e를 돌린다. 기준선은
   자산을 받을 수 없는 외부 PR에는 강제하지 않고, 병합 뒤 main 결과로
   확인한다. MediaPipe tracking e2e도 세 엔진 모두 차단이다. Firefox는 두 잡
   모두 Xvfb 위 headed로 돈다(헤드리스에 WebGL2가 없다, `docs/compatibility.md`)
-- 릴리스는 태그의 정확한 커밋에 같은 게이트를 다시 적용한다
+- 릴리스는 태그의 정확한 커밋에 같은 게이트를 다시 적용한다. 단일 Linux
+  러너로 재현할 수 없는 WebKit 트래킹만 예외이며, 같은 커밋의 macOS CI 잡이
+  그 게이트다(`docs/compatibility.md`)
 - 120분 soak와 실제 하드웨어·모바일 측정은 비용이 큰 주기 작업으로 분리한다.
   tracking soak는 릴리스 5분·주간 15분·수동 5/15/120분으로 단계화했다
 - 번들 크기는 문서에 적는 것으로 끝내지 않고 `verify-package`가 root·React·

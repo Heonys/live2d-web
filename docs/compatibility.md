@@ -87,7 +87,10 @@ SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으�
 Chromium·Firefox는 Linux, WebKit은 macOS 러너에서 실행한다. Linux의 Playwright
 WebKitGTK는 Next 16 Turbopack이 만든 classic Worker 안에서 MediaPipe WASM
 초기화가 끝나지 않는 조합이라 Safari 호환성의 대리 게이트로 사용하지 않는다.
-세 엔진 모두 차단 게이트이고, 릴리스 잡도 태그 커밋에 같은 스위트를 다시 돌린다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
+세 엔진 모두 차단 게이트다. 릴리스 잡은 Linux 러너 하나뿐이라 태그 커밋에서
+Chromium·Firefox만 다시 돌리고, WebKit 트래킹은 같은 커밋의 macOS CI 잡이
+유일한 게이트다. 그래서 릴리스 체크리스트가 태그 전에 main CI 초록 확인을
+요구한다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
 10fps로 내려가 통과한다(2026-08-25 러너 실측). Live2D Core와
 Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독립적이다.
 

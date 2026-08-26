@@ -6,12 +6,15 @@
 ## 1. 자동 게이트가 초록인지
 
 `release.yml`이 태그 커밋에 다시 적용하지만, 태그를 올리기 전에 develop·main의
-마지막 push 결과를 본다.
+마지막 push 결과를 본다. **WebKit 트래킹은 릴리스 잡이 재현할 수 없으므로 이
+확인이 유일한 게이트다.** 릴리스 잡은 Linux 하나라 Chromium·Firefox만 다시
+돌린다.
 
 - lint · typecheck · unit
 - `verify:package` (경계·크기·`.task`/`.wasm` 부재) · `verify:packed-consumers` (tarball 소비자 4종)
 - `browser-e2e` 3엔진 (Cubism Core·Hiyori, push에서만)
-- `tracking-e2e` 3엔진 (Firefox는 Xvfb headed, 적응형 상한으로 10fps)
+- `tracking-e2e` 3엔진 (Chromium·Firefox는 Linux, **WebKit은 macOS**. Firefox는
+  Xvfb headed, 적응형 상한으로 10fps)
 - `tracking:soak` Chromium main+Worker 총 5분, 모드당 2.5분 (릴리스 workflow 전용)
 
 ## 2. 사람이 확인하는 것
@@ -39,6 +42,8 @@
 2. `packages/live2d-web/package.json`의 `version`을 같은 값으로. 태그와 다르면
    워크플로가 실패한다.
 3. develop → main 병합. main의 `browser-e2e`·`tracking-e2e`가 초록인지 본다.
+   특히 `tracking-e2e (webkit, macos-latest)`는 릴리스 잡이 다시 돌리지 않으니
+   여기서 반드시 확인한다.
 4. **Netlify 배포가 main을 따라잡은 것을 확인한 뒤에만 태그를 올린다.**
    README 3종·npm README·docs/README.md가 `/docs/*`·`/playground` 같은 배포
    경로를 링크하는데, npm 발행이 배포보다 앞서면 패키지 페이지의 링크가

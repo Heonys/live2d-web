@@ -60,7 +60,11 @@ jobs:
       - run: sudo apt-get install -y xvfb
       - run: pnpm -F @live2d-web/playground build
       - run: xvfb-run -a pnpm test:e2e
-      - run: xvfb-run -a pnpm test:tracking:e2e
+      # WebKit tracking is gated on the macOS CI job for this exact commit, not
+      # here: Linux WebKitGTK cannot finish MediaPipe WASM initialization inside
+      # the classic worker Turbopack emits (docs/compatibility.md). Confirm main
+      # CI is green before tagging; the release checklist requires it.
+      - run: xvfb-run -a pnpm test:tracking:e2e --project=chromium --project=firefox
       - run: xvfb-run -a pnpm test:tracking:soak
         env:
           LIVE2D_TRACKING_SOAK_MINUTES: '5'
