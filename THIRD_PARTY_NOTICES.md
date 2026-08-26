@@ -24,6 +24,9 @@ is excluded from the root static bundle.
 - [Pretendard](https://github.com/orioncactus/pretendard), copyright Kil
   Hyung-jin and contributors, SIL Open Font License 1.1. Self-hosted by the
   documentation site for Korean text.
+- [Noto Sans JP](https://fonts.google.com/noto/specimen/Noto+Sans+JP),
+  copyright Google Inc., SIL Open Font License 1.1. Self-hosted through
+  Fontsource by the documentation site for Japanese text.
 - [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), copyright
   JetBrains s.r.o., SIL Open Font License 1.1. Self-hosted by the documentation
   site for code and technical labels.

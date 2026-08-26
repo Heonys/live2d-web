@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "catalog:",
+    "@fontsource-variable/noto-sans-jp": "catalog:",
     "@mdx-js/react": "catalog:",
     "@mediapipe/tasks-vision": "catalog:",
     "@pixi/app": "catalog:",

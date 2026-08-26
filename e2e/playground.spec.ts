@@ -390,6 +390,10 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await page.getByRole('button', { name: 'Documentation language' }).click()
   await page.getByRole('menuitem', { exact: true, name: '日本語' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 顔トラッキング')
+  await expect.poll(() => page.evaluate(async () => {
+    await document.fonts.load('16px "Noto Sans JP Variable"', '日本語')
+    return document.fonts.check('16px "Noto Sans JP Variable"', '日本語')
+  })).toBe(true)
 
   const japaneseLanguageTrigger = page.getByRole('button', { name: 'Documentation language' })
   await japaneseLanguageTrigger.click()
