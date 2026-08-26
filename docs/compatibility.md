@@ -71,7 +71,7 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | 대상 | 상태 | 현재 실제 검증 |
 | --- | --- | --- |
 | `@mediapipe/tasks-vision` | `^1.0.1` optional peer | `1.0.1`, CPU delegate와 VIDEO mode |
-| Chromium·WebKit | main·Worker 기능 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성. 2026-08-25 module Worker 경로도 통과 |
+| Chromium·WebKit | main·Worker 기능 검증 | 공식 portrait로 실제 WASM·Face Landmarker 초기화, 52개 blendshape·변환 행렬, loss·dispose·재생성. WebKit 자동 게이트는 실제 Safari 계열에 가까운 macOS Playwright 러너를 사용한다. |
 | Firefox | main 성능 미충족 · Worker 기능 검증 | main 추론은 ~190ms라 실사용 비권장. 같은 portrait를 Worker에서 추론하는 기능·생명주기는 2026-08-25 통과했으며 성능 수치는 별도 benchmark로 관리 |
 | 일반 Cubism 표준 파라미터 | 지원·자동 검증 | 합성 결과와 손으로 적은 파라미터 메타데이터로 pose·eye·brow·mouth·cheek 매핑 검증. Perfect Sync는 ARKit 이름 픽스처(50개, `ParamTongueOut` 포함)로 판정·바인딩 검증 |
 | Perfect Sync 52 파라미터 | 구현·부분 검증 | 52개 ID와 값 전달은 합성 fixture로 검증. 실제 Perfect Sync 모델의 체감은 미검증 |
@@ -83,8 +83,11 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | 감도 기본값 | 1대 측정 | `sensitivity.pose` 기본은 **3**이다. 2026-08-25에 눈높이보다 낮은 노트북 카메라 한 대에서 자연스럽게 느껴진 값이며, 표본이 하나다. 카메라 위치에 좌우되므로 소비자는 사용자에게 노출하는 편이 낫다. |
 
 트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을
-SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다. 세
-엔진 모두 차단 게이트이고, 릴리스 잡도 태그 커밋에 같은 스위트를 다시 돌린다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
+SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다.
+Chromium·Firefox는 Linux, WebKit은 macOS 러너에서 실행한다. Linux의 Playwright
+WebKitGTK는 Next 16 Turbopack이 만든 classic Worker 안에서 MediaPipe WASM
+초기화가 끝나지 않는 조합이라 Safari 호환성의 대리 게이트로 사용하지 않는다.
+세 엔진 모두 차단 게이트이고, 릴리스 잡도 태그 커밋에 같은 스위트를 다시 돌린다. Firefox는 Xvfb 위에서 headed로 돌고 적응형 상한이
 10fps로 내려가 통과한다(2026-08-25 러너 실측). Live2D Core와
 Hiyori를 요구하지 않으므로 일반 runtime e2e의 자산 제한과 독립적이다.
 

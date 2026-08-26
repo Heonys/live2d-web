@@ -15,10 +15,7 @@ async function expectTracked(page: Page, status: Locator, timeout: number) {
 
 for (const execution of ['main', 'worker'] as const) {
   test(`runs the real Face Landmarker in ${execution} mode and releases it cleanly`, async ({ browserName, page }) => {
-    // Linux WebKit can serialize a worker's WASM compilation with its content
-    // process. This is a functional gate, not a CI performance budget, so give
-    // WebKit the same initialization room as the slower Firefox runner.
-    const startup = browserName === 'chromium' ? 60_000 : 150_000
+    const startup = browserName === 'firefox' ? 150_000 : 60_000
     const pageErrors: string[] = []
     page.on('pageerror', error => pageErrors.push(error.message))
     await page.goto(`/tracking-e2e?execution=${execution}`)

@@ -7,10 +7,7 @@ export default defineConfig({
   preserveOutput: 'always',
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // Linux WebKit can block the content process while a worker compiles the
-    // MediaPipe WASM module. Keep the assertion strict but allow initialization
-    // and the restart check to complete on a constrained hosted runner.
-    { name: 'webkit', timeout: 240_000, use: { ...devices['Desktop Safari'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     // Firefox infers an order of magnitude slower; give WASM startup room.
     { name: 'firefox', timeout: 240_000, use: { ...devices['Desktop Firefox'], headless: !process.env.CI } },
   ],
