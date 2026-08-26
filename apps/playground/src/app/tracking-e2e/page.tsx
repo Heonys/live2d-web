@@ -84,9 +84,10 @@ export default function TrackingE2EPage() {
       canvas.width = image.naturalWidth
       canvas.height = image.naturalHeight
       canvas.getContext('2d')?.drawImage(image, 0, 0)
-      const baselineFrames = await collectFrameDeltas(60)
-      if (generation !== generationRef.current)
-        return
+      // A throttled CI renderer must not delay tracker initialization. Keep
+      // collecting the render baseline, but only await it when metrics are
+      // ready to be published.
+      const baselineFramesPromise = collectFrameDeltas(60)
       const execution = new URLSearchParams(window.location.search).get('execution')
       const tracker: FaceTracker = execution === 'worker'
         ? await createMediaPipeFaceTracker({
@@ -135,6 +136,9 @@ export default function TrackingE2EPage() {
         }
         if (inferenceSamples.length >= 60 && !metricsRecorded) {
           metricsRecorded = true
+          const baselineFrames = await baselineFramesPromise
+          if (generation !== generationRef.current)
+            return
           const measured = {
             baselineFrameP95: percentile(baselineFrames, 0.95),
             effectiveFps,
