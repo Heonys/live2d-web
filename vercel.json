@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm fetch-assets && pnpm --filter @live2d-web/playground build",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "apps/playground/.next"
+}
