@@ -208,13 +208,12 @@ export function LandingDemo() {
   return (
     <div className="landing-demo" data-load-phase={controller ? 'ready' : error ? 'error' : loadPhase}>
       <div className="landing-stage" data-model-visible={Boolean(controller)}>
-        <output className="landing-stage-status" aria-live="polite">
-          <span data-state={error ? 'error' : controller ? 'ready' : 'loading'}>
-            {error ? messages.error : controller ? messages.ready : messages.loading}
-          </span>
-          <span>WebGL2</span>
-          <span>Cubism 4/5</span>
-        </output>
+        {!controller && (
+          <output className="landing-stage-status" aria-live="polite">
+            <i aria-hidden="true" data-state={error ? 'error' : 'loading'} />
+            <span>{error ? messages.error : messages.loading}</span>
+          </output>
+        )}
         {manifest
           ? (
               <Live2DCanvas

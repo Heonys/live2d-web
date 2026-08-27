@@ -127,7 +127,15 @@ function RuntimeDevtools({ target }: { target: Live2DModelController | null }) {
 
   return (
     <div className="runtime-devtools-host" ref={containerRef}>
-      {!target && <p className="note">{messages.modelControlsPending}</p>}
+      {!target && (
+        <div className="runtime-devtools-pending" role="status">
+          <div className="runtime-devtools-pending-heading">
+            <span aria-hidden="true" className="runtime-devtools-pending-dot" />
+            <strong>Live2D Devtools</strong>
+          </div>
+          <p>{messages.modelControlsPending}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -1034,7 +1042,6 @@ export default function PlaygroundPage() {
                 id="playground-panel-model"
                 role="tabpanel"
               >
-                <RuntimeDevtools target={controller} />
                 <div className="playground-fieldset">
                   <strong>{messages.playground.demoPresets}</strong>
                   <label>
@@ -1191,6 +1198,7 @@ export default function PlaygroundPage() {
                       : messages.playground.canvasMounted}
                   </button>
                 </div>
+                <RuntimeDevtools target={controller} />
               </section>
 
               <section

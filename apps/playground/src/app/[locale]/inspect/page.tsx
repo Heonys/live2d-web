@@ -17,5 +17,5 @@ export default async function LocalizedInspectorPage({ params }: {
   const { locale } = await params
   if (!isPrefixedSiteLocale(locale))
     notFound()
-  return <InspectorPageContent locale={locale} />
+  return <InspectorPageContent />
 }

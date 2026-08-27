@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
   title: 'live2d-web',
   description:
-    'A Live2D runtime for the web. Load a Cubism model, react to taps, follow the pointer and lip sync. No PixiJS, no globals, React optional.',
+    'A WebGL2 runtime for Cubism models with optional React, lip sync, face tracking and developer tools.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

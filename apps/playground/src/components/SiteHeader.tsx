@@ -5,10 +5,8 @@ import type { SiteLocale } from '../i18n/site'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { DocsSearchTrigger } from '../docs/DocSearch'
 import { DocsIntentLink } from '../docs/DocsNavigation'
 import { useDocsNavigation } from '../docs/docsNavigationContext'
-import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref } from '../docs/manifest'
 import { warmLocaleFonts } from '../docs/searchClient'
 import {
   languageNames,
@@ -68,6 +66,7 @@ export function SiteHeader() {
       restoreOpenState()
       if (!details.open)
         return
+      window.dispatchEvent(new CustomEvent('live2d-web:mobile-menu-open', { detail: 'site' }))
       const previousOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -102,10 +101,16 @@ export function SiteHeader() {
         restoreOpenState = () => {}
       }
     }
+    const closeForOtherMenu = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== 'site')
+        details.open = false
+    }
     details.addEventListener('toggle', handleToggle)
+    window.addEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
     return () => {
       restoreOpenState()
       details.removeEventListener('toggle', handleToggle)
+      window.removeEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
     }
   }, [])
 
@@ -218,28 +223,6 @@ export function SiteHeader() {
             <span />
           </summary>
           <div className="site-mobile-panel">
-            {docsMatch && (
-              <div className="site-mobile-docs">
-                <DocsSearchTrigger />
-                <nav aria-label={messages.docs.label}>
-                  {DOC_GROUPS.map(group => (
-                    <section key={group}>
-                      <h2>{DOC_GROUP_NAMES[currentLocale][group]}</h2>
-                      {DOC_PAGES.filter(page => page.group === group).map(page => (
-                        <DocsIntentLink
-                          key={page.slug}
-                          aria-current={page.slug === currentDocSlug ? 'page' : undefined}
-                          href={docHref(currentLocale, page.slug)}
-                          onClick={closeNavigation}
-                        >
-                          {page.title[currentLocale]}
-                        </DocsIntentLink>
-                      ))}
-                    </section>
-                  ))}
-                </nav>
-              </div>
-            )}
             <nav aria-label={messages.header.navigation} className="site-mobile-global-links">
               <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
               <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>

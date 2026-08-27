@@ -133,7 +133,8 @@ test('describes the rendered model canvas for assistive technologies', async ({ 
 test('renders the landing shell without preloading Cubism Core', async ({ page }) => {
   const html = await (await page.request.get('/')).text()
 
-  expect(html).toContain('Live2D in the browser. No PixiJS required.')
+  expect(html).toContain('A Live2D runtime')
+  expect(html).toContain('for the web.')
   expect(html).not.toContain('href="/assets/js/cubism/5.3/live2dcubismcore.min.js"')
 })
 
@@ -167,14 +168,18 @@ test('keeps the landing page focused and links to the full playground', async ({
   })
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Live2D in the browser. No PixiJS required.',
+    'A Live2D runtime for the web.',
   )
+  await expect(page.locator('.landing-copy h1 > span')).toHaveText([
+    'A Live2D runtime',
+    'for the web.',
+  ])
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /icon/)
   await expect(page.locator('.site-wordmark img')).toHaveAttribute(
     'src',
     '/brand/live2d-web-avatar.png',
   )
-  await expect(page.getByRole('link', { name: 'Read the docs' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Get started' })).toHaveAttribute(
     'href',
     '/docs/en',
   )
@@ -209,8 +214,19 @@ test('keeps the landing page focused and links to the full playground', async ({
   await expect(speechButton).toHaveAttribute('aria-pressed', 'false')
   await page.mouse.up()
 
-  const codeHeader = page.locator('.landing-code-section .docs-code-header')
-  await expect(codeHeader.locator('> span')).toHaveText('Avatar.tsx')
+  const javaScriptTab = page.getByRole('tab', { name: 'JavaScript' })
+  const reactTab = page.getByRole('tab', { name: 'React' })
+  await expect(javaScriptTab).toHaveAttribute('aria-selected', 'true')
+  await javaScriptTab.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(reactTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tabpanel', { name: 'React' })).toBeVisible()
+  await page.keyboard.press('Home')
+  await expect(javaScriptTab).toHaveAttribute('aria-selected', 'true')
+
+  const javaScriptPanel = page.getByRole('tabpanel', { name: 'JavaScript' })
+  const codeHeader = javaScriptPanel.locator('.docs-code-header')
+  await expect(codeHeader.locator('> span')).toHaveText('avatar.ts')
   const copyButton = codeHeader.locator('.docs-code-copy')
   await expect(copyButton).toHaveAccessibleName('Copy')
   const [headerBox, copyBox] = await Promise.all([
@@ -222,6 +238,14 @@ test('keeps the landing page focused and links to the full playground', async ({
   expect(copyBox!.x + copyBox!.width).toBeLessThanOrEqual(headerBox!.x + headerBox!.width - 6)
   await copyButton.click()
   await expect(copyButton).toContainText('Copied')
+  await expect.poll(() => page.evaluate(() => (window as typeof window & {
+    __landingClipboard?: string
+  }).__landingClipboard)).toContain('from \'live2d-web\'')
+
+  await reactTab.click()
+  const reactPanel = page.getByRole('tabpanel', { name: 'React' })
+  await expect(reactPanel.locator('.docs-code-header > span')).toHaveText('Avatar.tsx')
+  await reactPanel.locator('.docs-code-copy').click()
   await expect.poll(() => page.evaluate(() => (window as typeof window & {
     __landingClipboard?: string
   }).__landingClipboard)).toContain('from \'live2d-web/react\'')
@@ -243,7 +267,7 @@ test('keeps the landing page focused and links to the full playground', async ({
         Object.assign(window, { __sawNavigationProgress: true })
     }).observe(progress, { attributeFilter: ['class'], attributes: true })
   })
-  await page.getByRole('link', { name: 'Read the docs' }).click()
+  await page.getByRole('link', { name: 'Get started' }).click()
   await expect(page).toHaveURL(/\/docs\/en$/)
   await expect(page.locator('.site-header')).toHaveAttribute('data-persist-test', 'true')
   await expect.poll(() => page.evaluate(() => (window as typeof window & {
@@ -486,6 +510,60 @@ test('keeps playground tools contained and mounts the public devtools', async ({
   expect(await page.evaluate(() => scrollY)).toBe(0)
 })
 
+test('keeps playground controls in place while the public devtools mount', async ({ page }) => {
+  await page.route('**/assets/live2d/hiyori/manifest.json', async (route) => {
+    await new Promise(resolve => setTimeout(resolve, 1_500))
+    await route.continue()
+  })
+
+  await page.goto('/playground')
+  const devtoolsHost = page.locator('.runtime-devtools-host')
+  await expect(devtoolsHost.getByText('The model controls appear when loading finishes.')).toBeVisible()
+  const before = await page.evaluate(() => {
+    const host = document.querySelector('.runtime-devtools-host')?.getBoundingClientRect()
+    const fieldset = document.querySelector('.playground-fieldset')?.getBoundingClientRect()
+    return { fieldsetY: fieldset?.y, hostHeight: host?.height, hostY: host?.y }
+  })
+
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await expect(devtoolsHost.locator('[data-live2d-devtools]')).toBeVisible()
+  const after = await page.evaluate(() => {
+    const host = document.querySelector('.runtime-devtools-host')?.getBoundingClientRect()
+    const fieldset = document.querySelector('.playground-fieldset')?.getBoundingClientRect()
+    return { fieldsetY: fieldset?.y, hostHeight: host?.height }
+  })
+
+  expect(before.hostHeight).toBeDefined()
+  expect(before.fieldsetY).toBeDefined()
+  expect(before.hostY).toBeDefined()
+  expect(before.fieldsetY ?? 0).toBeLessThan(before.hostY ?? 0)
+  expect(Math.abs((after.hostHeight ?? 0) - (before.hostHeight ?? 0))).toBeLessThanOrEqual(1)
+  expect(Math.abs((after.fieldsetY ?? 0) - (before.fieldsetY ?? 0))).toBeLessThanOrEqual(1)
+})
+
+test('server-renders the inspector shell and keeps its workspace in place', async ({ page }) => {
+  const html = await (await page.request.get('/inspect')).text()
+  expect(html).toContain('Validate and test your Live2D model')
+  expect(html).not.toContain('BAILOUT_TO_CLIENT_SIDE_RENDERING')
+
+  await page.route('**/assets/live2d/hiyori/manifest.json', async (route) => {
+    await new Promise(resolve => setTimeout(resolve, 1_500))
+    await route.continue()
+  })
+  await page.goto('/inspect')
+  await expect(page.getByTestId('inspector-stage').locator('.stage-loading')).toHaveAttribute('data-visible', 'true')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Validate and test your Live2D model')
+  await expect(page.getByTestId('inspection-report')).toHaveCount(0)
+  const before = await page.locator('.workspace').boundingBox()
+
+  await expect(page.getByTestId('inspection-report')).toContainText('compatible')
+  const after = await page.locator('.workspace').boundingBox()
+
+  expect(before).not.toBeNull()
+  expect(after).not.toBeNull()
+  expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThanOrEqual(1)
+})
+
 test('runs the vanilla API and disposes every canvas', async ({ browserName, page }) => {
   const unexpectedErrors: string[] = []
   page.on('console', (message) => {
@@ -684,7 +762,7 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
 
 test('localizes public routes and preserves the logical page and query', async ({ page }) => {
   const routes = [
-    ['/ko', '브라우저에서 바로 쓰는 Live2D. PixiJS는 필요 없습니다.'],
+    ['/ko', 'A Live2D runtime for the web.'],
     ['/ko/playground', 'Playground'],
     ['/ja/inspect', 'Live2D モデルを読み込む前にチェック'],
     ['/ja/vanilla', 'React なしで Live2D を使う'],
@@ -703,7 +781,7 @@ test('localizes public routes and preserves the logical page and query', async (
 
   await page.goto('/ko')
   await expect(page.getByText('작은 React 경계.')).toHaveCount(0)
-  await expect(page.getByText('React는 필요한 곳에만.')).toBeVisible()
+  await expect(page.getByText('JavaScript 또는 React.')).toBeVisible()
   await expect(page.getByRole('link', { exact: true, name: 'Documentation' })).toBeVisible()
   await expect(page.getByRole('link', { exact: true, name: 'Playground' })).toBeVisible()
   await expect(page.getByRole('link', { exact: true, name: 'Inspector' })).toBeVisible()
@@ -721,7 +799,7 @@ test('localizes public routes and preserves the logical page and query', async (
 
   await page.goto('/ja')
   await expect(page.getByText('小さな React boundary。')).toHaveCount(0)
-  await expect(page.getByText('React は必要な部分だけ。')).toBeVisible()
+  await expect(page.getByText('JavaScript または React。')).toBeVisible()
 
   await page.goto('/ko/compare?backend=cubism-webgl')
   await page.getByRole('button', { name: '사이트 언어' }).click()
@@ -901,34 +979,39 @@ test('keeps the mobile documentation menu and search inside supported viewports'
     await page.setViewportSize(viewport)
     await page.goto('/docs/en')
     if (viewport.width <= 900) {
-      const details = page.locator('details.site-mobile-menu')
-      const summary = details.locator('summary.site-menu-button')
-      await summary.click()
-      await expect(details).toHaveAttribute('open', '')
-      await expect(page.locator('.docs-mobile-nav, .docs-mobile-drawer')).toHaveCount(0)
+      const siteMenu = page.locator('details.site-mobile-menu')
+      const siteSummary = siteMenu.locator('summary.site-menu-button')
+      await siteSummary.click()
+      await expect(siteMenu).toHaveAttribute('open', '')
+      await expect(siteMenu.locator('.site-mobile-docs')).toHaveCount(0)
       const [header, panel] = await Promise.all([
         page.locator('.site-header').boundingBox(),
-        details.locator('.site-mobile-panel').boundingBox(),
+        siteMenu.locator('.site-mobile-panel').boundingBox(),
       ])
       expect(header).not.toBeNull()
       expect(panel).not.toBeNull()
       expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0)))).toBeLessThanOrEqual(1)
-      expect(Math.abs((panel?.height ?? 0) - (viewport.height - (header?.height ?? 0)))).toBeLessThanOrEqual(1)
+      expect(panel?.height ?? 0).toBeLessThan(viewport.height - (header?.height ?? 0))
       await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
 
-      await summary.press('Shift+Tab')
-      await expect(details.locator('.site-mobile-languages a').last()).toBeFocused()
+      await siteSummary.press('Shift+Tab')
+      await expect(siteMenu.locator('.site-mobile-languages a').last()).toBeFocused()
       await page.keyboard.press('Escape')
-      await expect(details).not.toHaveAttribute('open', '')
-      await expect(summary).toBeFocused()
+      await expect(siteMenu).not.toHaveAttribute('open', '')
+      await expect(siteSummary).toBeFocused()
       await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden')
 
-      await summary.click()
-      await details.locator('a[href="/docs/en/react"]').click()
+      const docsMenu = page.locator('details.docs-mobile-navigation')
+      const docsSummary = docsMenu.locator('summary.docs-mobile-summary')
+      await docsSummary.click()
+      await expect(docsMenu).toHaveAttribute('open', '')
+      await expect(siteMenu).not.toHaveAttribute('open', '')
+      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
+      await docsMenu.locator('a[href="/docs/en/react"]').click()
       await expect(page).toHaveURL(/\/docs\/en\/react$/)
-      await expect(details).not.toHaveAttribute('open', '')
+      await expect(docsMenu).not.toHaveAttribute('open', '')
       await page.goto('/docs/en')
-      await page.locator('summary.site-menu-button').click()
+      await page.locator('summary.docs-mobile-summary').click()
     }
     await page.getByRole('button', { name: 'Search documentation' }).filter({ visible: true }).click()
     const search = page.getByRole('dialog', { name: 'Search documentation' })
@@ -950,14 +1033,38 @@ test('keeps the native mobile documentation menu usable without JavaScript', asy
   })
   const page = await context.newPage()
   await page.goto('/docs/en')
-  const details = page.locator('details.site-mobile-menu')
-  await details.locator('summary.site-menu-button').click()
+  const details = page.locator('details.docs-mobile-navigation')
+  await details.locator('summary.docs-mobile-summary').click()
   await expect(details).toHaveAttribute('open', '')
   await expect(details.locator('a[href="/docs/en/react"]')).toBeVisible()
   await details.locator('a[href="/docs/en/react"]').click()
   await expect(page).toHaveURL(/\/docs\/en\/react$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('React')
   await context.close()
+})
+
+test('keeps mobile documentation code sizing consistent', async ({ page }) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/docs/en/examples')
+  const sizes = await page.locator('figure[data-rehype-pretty-code-figure] pre, .docs-code pre')
+    .evaluateAll(elements => elements
+      .filter(element => element.getBoundingClientRect().height > 0)
+      .map(element => ({
+        fontSize: getComputedStyle(element).fontSize,
+        lineHeight: getComputedStyle(element).lineHeight,
+      })))
+  expect(sizes.length).toBeGreaterThan(1)
+  expect(new Set(sizes.map(size => size.fontSize))).toEqual(new Set(['13px']))
+  expect(new Set(sizes.map(size => size.lineHeight)).size).toBe(1)
+  expect(Number.parseFloat(sizes[0]!.lineHeight)).toBeCloseTo(22.36, 1)
+})
+
+test('allows vertical page scrolling over the landing Live2D stage on touch screens', async ({ page }) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/')
+  const canvas = page.locator('.landing-stage canvas')
+  await expect(canvas).toBeVisible()
+  await expect.poll(() => canvas.evaluate(element => getComputedStyle(element).touchAction)).toBe('pan-y')
 })
 
 test('responds immediately to a documentation click on a constrained connection', async ({ browserName, page }, testInfo) => {
@@ -981,8 +1088,8 @@ test('responds immediately to a documentation click on a constrained connection'
       requested.set(url.pathname, (requested.get(url.pathname) ?? 0) + 1)
   })
 
-  await page.locator('summary.site-menu-button').click()
-  const target = page.locator('.site-mobile-docs a[href="/docs/en/react"]')
+  await page.locator('summary.docs-mobile-summary').click()
+  const target = page.locator('.docs-mobile-panel a[href="/docs/en/react"]')
   await target.dispatchEvent('click')
   await expect(page.locator('.docs-navigation-progress')).toHaveClass(/is-active/, { timeout: 100 })
   await expect(page.locator('.docs-main')).toHaveAttribute('aria-busy', 'true', { timeout: 100 })

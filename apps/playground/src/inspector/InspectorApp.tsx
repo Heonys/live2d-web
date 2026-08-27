@@ -13,8 +13,7 @@ import type { AssetManifest } from '../lib/assetManifest'
 import type { LocalModelArchive } from './archiveSource'
 import { inspectModelCapabilities, inspectModelSource } from 'live2d-web/inspect'
 import { Live2DCanvas, Live2DModel, useLive2DCanvas } from 'live2d-web/react'
-import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { StageLoading } from '../components/StageLoading'
 import { useSiteLocale, useSiteMessages } from '../i18n/SiteLocale'
 import { CUBISM_CORE_URL } from '../lib/assetManifest'
@@ -30,6 +29,10 @@ interface ModelCandidate {
   resolveAsset?: Live2DAssetResolver
   src: string
 }
+
+const subscribeToLocation = () => () => {}
+const getLocationQuery = () => new URLSearchParams(window.location.search).get('src')
+const getServerQuery = () => undefined
 
 function ErrorDetails({ details }: { details?: Readonly<Live2DErrorDetails> }) {
   const messages = useSiteMessages().inspector
@@ -223,18 +226,17 @@ function InspectionReport({ capabilities, onCopy, report }: {
 export function InspectorApp() {
   const locale = useSiteLocale()
   const messages = useSiteMessages()
-  const searchParams = useSearchParams()
-  const initialQuery = searchParams.get('src')
   const inspectionAbortRef = useRef<AbortController>(undefined)
+  const initialQuery = useSyncExternalStore(subscribeToLocation, getLocationQuery, getServerQuery)
   const [inputMode, setInputMode] = useState<InputMode>('url')
-  const [draftSource, setDraftSource] = useState(initialQuery ?? '')
+  const [draftSource, setDraftSource] = useState<string>()
   const [archive, setArchive] = useState<LocalModelArchive>()
   const [archiveCandidate, setArchiveCandidate] = useState('')
   const [candidate, setCandidate] = useState<ModelCandidate>()
   const [pendingWarning, setPendingWarning] = useState<ModelCandidate>()
   const [report, setReport] = useState<ModelInspectionReport>()
   const [capabilities, setCapabilities] = useState<ModelCapabilityReport>()
-  const [inspecting, setInspecting] = useState(false)
+  const [inspecting, setInspecting] = useState(true)
   const [generation, setGeneration] = useState(0)
   const [runtimeError, setRuntimeError] = useState<Live2DError>()
   const [operationError, setOperationError] = useState('')
@@ -297,6 +299,8 @@ export function InspectorApp() {
   useEffect(() => () => inspectionAbortRef.current?.abort(), [])
 
   useEffect(() => {
+    if (initialQuery === undefined)
+      return
     if (initialQuery) {
       void (async () => {
         try {
@@ -322,8 +326,10 @@ export function InspectorApp() {
         return inspectCandidate({ label: 'Hiyori', src: resolved })
       })
       .catch((error: unknown) => {
-        if (!abortController.signal.aborted)
+        if (!abortController.signal.aborted) {
           setOperationError(error instanceof Error ? error.message : String(error))
+          setInspecting(false)
+        }
       })
     return () => abortController.abort()
   }, [initialQuery, inspectCandidate, messages.inspector.assetsMissing])
@@ -331,7 +337,7 @@ export function InspectorApp() {
   const submitSource = (event: FormEvent) => {
     event.preventDefault()
     try {
-      const resolved = resolveInspectorModelUrl(draftSource, window.location.href)
+      const resolved = resolveInspectorModelUrl(draftSource ?? initialQuery ?? '', window.location.href)
       const nextUrl = new URL(window.location.href)
       nextUrl.searchParams.set('src', resolved)
       window.history.replaceState(null, '', nextUrl)
@@ -438,7 +444,7 @@ export function InspectorApp() {
             <form className="source-form" onSubmit={submitSource}>
               <label>
                 {messages.inspector.urlLabel}
-                <input aria-label={messages.inspector.urlLabel} inputMode="url" placeholder="https://example.com/model/model.model3.json" type="text" value={draftSource} onChange={event => setDraftSource(event.target.value)} />
+                <input aria-label={messages.inspector.urlLabel} inputMode="url" placeholder="https://example.com/model/model.model3.json" type="text" value={draftSource ?? initialQuery ?? ''} onChange={event => setDraftSource(event.target.value)} />
               </label>
               <button disabled={inspecting} type="submit">{inspecting ? messages.inspector.inspecting : messages.inspector.inspectUrl}</button>
             </form>
@@ -461,21 +467,6 @@ export function InspectorApp() {
             </section>
           )}
 
-      {report && <InspectionReport capabilities={capabilities} report={report} onCopy={copy} />}
-      {pendingWarning && (
-        <button
-          className="warning-load"
-          type="button"
-          onClick={() => {
-            setCandidate(pendingWarning)
-            setPendingWarning(undefined)
-          }}
-        >
-          {messages.inspector.renderDespite}
-        </button>
-      )}
-      {operationError && <p className="inline-error" role="alert">{operationError}</p>}
-
       <section className="workspace">
         <div className="stage-shell" data-testid="inspector-stage" onPointerMove={moveFocus}>
           {candidate
@@ -485,7 +476,7 @@ export function InspectorApp() {
                   key={sourceKey}
                   coreUrl={CUBISM_CORE_URL}
                   {...canvasQuality}
-                  fallback={() => <StageLoading />}
+                  fallback={() => <StageLoading delayMs={150} />}
                   onError={setRuntimeError}
                   errorFallback={(error, retry) => (
                     <div className="stage-overlay error-panel" role="alert">
@@ -522,7 +513,9 @@ export function InspectorApp() {
                   <Diagnostics />
                 </Live2DCanvas>
               )
-            : <div className="empty-stage">{inspecting ? messages.inspector.inspectingFiles : messages.inspector.chooseCompatible}</div>}
+            : inspecting
+              ? <StageLoading delayMs={150} />
+              : <div className="empty-stage">{messages.inspector.chooseCompatible}</div>}
         </div>
 
         <aside className="inspector-controls">
@@ -624,6 +617,25 @@ export function InspectorApp() {
           )}
         </aside>
       </section>
+
+      {(report || pendingWarning || operationError) && (
+        <section className="inspection-feedback" aria-label={messages.inspector.inspectionResults}>
+          {pendingWarning && (
+            <button
+              className="warning-load"
+              type="button"
+              onClick={() => {
+                setCandidate(pendingWarning)
+                setPendingWarning(undefined)
+              }}
+            >
+              {messages.inspector.renderDespite}
+            </button>
+          )}
+          {operationError && <p className="inline-error" role="alert">{operationError}</p>}
+          {report && <InspectionReport capabilities={capabilities} report={report} onCopy={copy} />}
+        </section>
+      )}
     </main>
   )
 }

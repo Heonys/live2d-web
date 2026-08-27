@@ -2,6 +2,8 @@
   color: #f5f5f6;
   background: #0b0c0f;
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * {
@@ -260,6 +262,18 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
 .warning-load {
   margin: 0 0 18px;
   border-color: #9c7d3e;
+}
+
+.inspection-feedback {
+  display: grid;
+  margin-top: 18px;
+  gap: 12px;
+}
+
+.inspection-feedback .inspection-report,
+.inspection-feedback .warning-load,
+.inspection-feedback .inline-error {
+  margin: 0;
 }
 
 .stage-shell {
