@@ -165,6 +165,13 @@ URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/quer
     호출하고 factory를 넘긴다. main이 기본이며 조용한 fallback은 없다. Vite는
     module WASM loader를 쓰지만 Next/Turbopack은 요청을 classic bootstrap으로
     변환할 수 있어 Worker runner가 실제 환경을 감지해 loader를 고른다.
+30. **배포 빌드 환경은 `apps/playground/vercel.json`에 적는다.** buildCommand의
+    첫 명령이 `fetch-assets`인데, 이 스크립트는 자산이 없고
+    `LIVE2D_ACCEPT_TERMS=1`이 없으면 throw한다. 새 빌드 컨테이너에는 자산이
+    없으므로 이 변수가 없으면 빌드가 첫 줄에서 죽는다. TypeDoc 6회와 Shiki
+    토큰화 때문에 `NODE_OPTIONS=--max-old-space-size=4096`도 함께 둔다. 둘 다
+    대시보드가 아니라 파일에 있어야 빌드가 숨은 상태에 의존하지 않는다. Node
+    버전은 `apps/playground/package.json`의 `engines.node`가 정한다.
 
 ## 규칙
 

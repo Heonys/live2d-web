@@ -44,7 +44,12 @@
 3. develop → main 병합. main의 `browser-e2e`·`tracking-e2e`가 초록인지 본다.
    특히 `tracking-e2e (webkit, macos-latest)`는 릴리스 잡이 다시 돌리지 않으니
    여기서 반드시 확인한다.
-4. **Netlify 배포가 main을 따라잡은 것을 확인한 뒤에만 태그를 올린다.**
+4. **공개 사이트 배포가 main을 따라잡은 것을 확인한 뒤에만 태그를 올린다.**
+   (2026-08-27부터 Vercel이 `apps/playground`를
+   <https://live2d-web-playground.vercel.app>에 배포한다. 이 URL이 저장소에
+   적힌 유일한 자리이므로, 도메인이 바뀌면 여기와 README 3종·npm README·
+   `docs/README.md`·`docs/roadmap.md`를 함께 고친다. Netlify에서 옮길 때
+   실제로 링크 넷이 npm 페이지에 404로 남았다.)
    README 3종·npm README·docs/README.md가 `/docs/*`·`/playground` 같은 배포
    경로를 링크하는데, npm 발행이 배포보다 앞서면 패키지 페이지의 링크가
    404인 채 공개된다. `content/docs/*/examples.mdx`의 `tree/main/examples`

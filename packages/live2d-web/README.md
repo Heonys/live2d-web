@@ -3,9 +3,9 @@
 An unofficial Live2D Cubism runtime for JavaScript and React. It uses a
 WebGL2 renderer without PixiJS.
 
-**[Documentation](https://live2d-web-demo.netlify.app/docs/en)** ·
-[Playground](https://live2d-web-demo.netlify.app/playground) ·
-[Model inspector](https://live2d-web-demo.netlify.app/inspect) ·
+**[Documentation](https://live2d-web-playground.vercel.app/docs/en)** ·
+[Playground](https://live2d-web-playground.vercel.app/playground) ·
+[Model inspector](https://live2d-web-playground.vercel.app/inspect) ·
 [GitHub](https://github.com/Heonys/live2d-web)
 
 ```sh
@@ -63,7 +63,7 @@ is removed; React components clean up on unmount.
 See the guides for motions and expressions, lip sync, MediaPipe setup, Next
 SSR, mobile, errors, security and licenses. API signatures are generated from
 the public TypeScript source at
-[the API reference](https://live2d-web-demo.netlify.app/docs/en/api).
+[the API reference](https://live2d-web-playground.vercel.app/docs/en/api).
 
 live2d-web is not affiliated with or endorsed by Live2D Inc. The library,
 Cubism Framework, Cubism Core, models and MediaPipe have separate terms. Review

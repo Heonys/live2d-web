@@ -8,9 +8,9 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://live2d-web-demo.netlify.app/docs/en">Documentation</a></strong> ·
-  <a href="https://live2d-web-demo.netlify.app/playground">Playground</a> ·
-  <a href="https://live2d-web-demo.netlify.app/inspect">Model inspector</a> ·
+  <strong><a href="https://live2d-web-playground.vercel.app/docs/en">Documentation</a></strong> ·
+  <a href="https://live2d-web-playground.vercel.app/playground">Playground</a> ·
+  <a href="https://live2d-web-playground.vercel.app/inspect">Model inspector</a> ·
   <a href="examples">Examples</a>
 </p>
 
@@ -73,10 +73,10 @@ The localized guides cover Core/model preparation, JavaScript, React,
 motion/expression, lip sync, MediaPipe main/Worker, Next SSR, mobile,
 troubleshooting, security and licenses:
 
-- [English documentation](https://live2d-web-demo.netlify.app/docs/en)
-- [한국어 문서](https://live2d-web-demo.netlify.app/docs/ko)
-- [日本語ドキュメント](https://live2d-web-demo.netlify.app/docs/ja)
-- [Generated API reference](https://live2d-web-demo.netlify.app/docs/en/api)
+- [English documentation](https://live2d-web-playground.vercel.app/docs/en)
+- [한국어 문서](https://live2d-web-playground.vercel.app/docs/ko)
+- [日本語ドキュメント](https://live2d-web-playground.vercel.app/docs/ja)
+- [Generated API reference](https://live2d-web-playground.vercel.app/docs/en/api)
 
 The repository includes production-built Vite JavaScript, Next React, Vue Vite
 and transparent OBS overlay examples. Run them after providing

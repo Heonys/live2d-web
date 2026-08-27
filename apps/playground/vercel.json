@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "build": {
+    "env": {
+      "LIVE2D_ACCEPT_TERMS": "1",
+      "NODE_OPTIONS": "--max-old-space-size=4096"
+    }
+  },
   "buildCommand": "pnpm -w fetch-assets && pnpm build",
   "framework": "nextjs",
   "installCommand": "pnpm install --frozen-lockfile",

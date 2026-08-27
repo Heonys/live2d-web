@@ -352,7 +352,7 @@ AudioContext suspend 복구와 장치 변경을 확인한다.
 **무엇.**
 
 - 문서 사이트: 타입에서 자동 생성한 레퍼런스 + 가이드 + 라이브 예제. 데모
-  사이트(`live2d-web-demo.netlify.app`)를 흡수한다
+  사이트(`live2d-web-playground.vercel.app`)를 흡수한다
 - 예제 갤러리: Vite 바닐라, Next, Vue(바인딩 없이 루트 API로), OBS
   오버레이(Livesona 축약판)
 - **모델 호환성 검사기**: Playground의 `/inspect`를 독립 도구로. zip을 넣으면
