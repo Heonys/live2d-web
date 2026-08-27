@@ -165,6 +165,12 @@ export interface Live2DInstance {
   clearParameter: (id: string) => void
   /** Changes the layout preset without reloading the model. */
   setFit: (fit: ModelFit) => void
+  /**
+   * Re-describes the canvas for assistive technologies without reloading the
+   * model. Backends that cannot re-describe their canvas keep the value given
+   * at creation.
+   */
+  setAccessibility: (accessibility: Live2DCanvasAccessibility | undefined) => void
   /** Writes a value after each SDK update. Returns an idempotent cleanup. */
   addParameterDriver: (id: string, driver: ParameterDriver) => () => void
   /** Attaches lip sync. Returns an idempotent cleanup. */
@@ -206,6 +212,42 @@ function asLive2DError(
   )
 }
 
+function assertAccessibility(accessibility: Live2DCanvasAccessibility | undefined) {
+  if (accessibility === undefined)
+    return
+  if (!accessibility || typeof accessibility !== 'object') {
+    throw new Live2DError(
+      'invalid-props',
+      'accessibility must be a decorative or image accessibility object.',
+    )
+  }
+  if (accessibility.mode !== 'decorative' && accessibility.mode !== 'image' && accessibility.mode !== undefined) {
+    throw new Live2DError(
+      'invalid-props',
+      'accessibility.mode must be "decorative" or "image".',
+    )
+  }
+  if (accessibility.mode === 'decorative')
+    return
+  if (typeof accessibility.label !== 'string' || accessibility.label.trim() === '') {
+    throw new Live2DError(
+      'invalid-props',
+      'image accessibility requires a non-empty label.',
+    )
+  }
+  for (const [name, value] of [
+    ['describedBy', accessibility.describedBy],
+    ['fallbackText', accessibility.fallbackText],
+  ] as const) {
+    if (value !== undefined && typeof value !== 'string') {
+      throw new Live2DError(
+        'invalid-props',
+        `accessibility.${name} must be a string when provided.`,
+      )
+    }
+  }
+}
+
 function assertOptions(options: CreateLive2DOptions) {
   if (
     typeof window === 'undefined'
@@ -223,40 +265,7 @@ function assertOptions(options: CreateLive2DOptions) {
       'container must be an HTMLElement.',
     )
   }
-  if (options.accessibility !== undefined) {
-    const accessibility = options.accessibility
-    if (!accessibility || typeof accessibility !== 'object') {
-      throw new Live2DError(
-        'invalid-props',
-        'accessibility must be a decorative or image accessibility object.',
-      )
-    }
-    if (accessibility.mode !== 'decorative' && accessibility.mode !== 'image' && accessibility.mode !== undefined) {
-      throw new Live2DError(
-        'invalid-props',
-        'accessibility.mode must be "decorative" or "image".',
-      )
-    }
-    if (accessibility.mode !== 'decorative') {
-      if (typeof accessibility.label !== 'string' || accessibility.label.trim() === '') {
-        throw new Live2DError(
-          'invalid-props',
-          'image accessibility requires a non-empty label.',
-        )
-      }
-      for (const [name, value] of [
-        ['describedBy', accessibility.describedBy],
-        ['fallbackText', accessibility.fallbackText],
-      ] as const) {
-        if (value !== undefined && typeof value !== 'string') {
-          throw new Live2DError(
-            'invalid-props',
-            `accessibility.${name} must be a string when provided.`,
-          )
-        }
-      }
-    }
-  }
+  assertAccessibility(options.accessibility)
   if (typeof options.src !== 'string' || options.src.trim() === '') {
     throw new Live2DError(
       'invalid-props',
@@ -344,6 +353,7 @@ export class Live2DRuntime implements Live2DInstance {
   private abortController: AbortController | undefined
   private disposed = false
   private features: RuntimeFeature[] = []
+  private accessibility: Live2DCanvasAccessibility | undefined
   private fit: ModelFit
   private intersectionObserver: IntersectionObserver | undefined
   private listeners = new Set<Listener>()
@@ -361,6 +371,7 @@ export class Live2DRuntime implements Live2DInstance {
 
   constructor(private readonly options: CreateLive2DOptions) {
     this.fit = options.fit ?? 'upper-body'
+    this.accessibility = options.accessibility
   }
 
   readonly getState = () => this.state
@@ -499,7 +510,7 @@ export class Live2DRuntime implements Live2DInstance {
             width,
           }, policy)
       const stage = backend.createStage(this.options.container, {
-        accessibility: this.options.accessibility,
+        accessibility: this.accessibility,
         height,
         maxFps: this.options.maxFps,
         resolution,
@@ -810,6 +821,14 @@ export class Live2DRuntime implements Live2DInstance {
   setFit(fit: ModelFit) {
     this.fit = fit
     this.applyFit()
+  }
+
+  setAccessibility(accessibility: Live2DCanvasAccessibility | undefined) {
+    assertAccessibility(accessibility)
+    this.accessibility = accessibility
+    // A backend without the setter keeps whatever it was given at creation;
+    // the value is still stored so retry() rebuilds the stage with it.
+    this.stage?.setAccessibility?.(accessibility)
   }
 
   private addFeature(feature: RuntimeFeature) {

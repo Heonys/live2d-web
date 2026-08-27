@@ -7,12 +7,22 @@
 - Optional Canvas accessibility semantics let vanilla and React consumers mark
   a model as decorative or expose it as a labelled image with fallback text,
   without making the Canvas keyboard-focusable or changing existing defaults.
+  Changing the description re-describes the live canvas through
+  `setAccessibility()` instead of rebuilding the stage, so a label that follows
+  speaking state does not drop the WebGL context or reload the model.
 - API Extractor reports now establish the public contract for the root, React,
   inspect, devtools, MediaPipe main/Worker and cubism-webgl entries; `api:check`
   blocks unrecorded export and type changes in CI.
 - The Playground reports MediaPipe camera, tracker, first-inference,
   calibration and tracked timings separately, alongside matching JS, WASM and
   task Resource Timing entries.
+
+### Fixed
+
+- The `devtools` panel no longer injects `<h3>` card titles into the host
+  page's heading outline. A mounted overlay cannot know the document's heading
+  levels, so any host whose last heading was not an `<h2>` failed axe's
+  `heading-order`; the cards are now labelled groups instead of headings.
 
 ### Changed
 

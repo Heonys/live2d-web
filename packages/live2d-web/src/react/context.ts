@@ -7,7 +7,12 @@ import { createContext } from 'react'
 export const StageContext = createContext<StageStore | null>(null)
 
 export interface RuntimeHostContextValue {
-  accessibility?: Live2DCanvasAccessibility
+  /**
+   * A ref, not a value: changing the canvas description must not change this
+   * object's identity, because the runtime-creation effect depends on it and
+   * would otherwise rebuild the stage and reload the model.
+   */
+  accessibilityRef: { readonly current: Live2DCanvasAccessibility | undefined }
   backend?: Live2DBackend
   container: HTMLElement | null
   coreUrl?: string

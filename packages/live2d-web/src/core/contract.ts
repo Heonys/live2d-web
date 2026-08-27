@@ -38,6 +38,12 @@ export interface StageHandle {
   getSize: () => Size
   getResolution: () => number
   setResolution: (resolution: number) => void
+  /**
+   * Re-describes the canvas for assistive technologies. Optional so backends
+   * that do not own their canvas element keep the create-time value; a caller
+   * that changes the semantics should not have to recreate the stage.
+   */
+  setAccessibility?: (accessibility: Live2DCanvasAccessibility | undefined) => void
   /** Client coordinates to the backend's stage coordinate system. */
   toWorld: (clientX: number, clientY: number) => Point
   pause: () => void

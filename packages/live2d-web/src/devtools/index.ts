@@ -198,14 +198,14 @@ export function mountLive2DDevtools(
   const overviewPanel = (info: ModelInfo) => {
     const state = target.getState?.()
     return `<div class="stack">
-      <section class="card">
-        <h3>Runtime</h3>
+      <section aria-label="Runtime" class="card" role="group">
+        <p class="card-title">Runtime</p>
         <div class="row"><span class="muted">Status</span><span class="value">${escape(state?.status ?? 'model controller')}</span></div>
         <div class="row"><span class="muted">Motion</span><span class="value">${target.isMotionPlaying() ? 'playing' : 'idle'}</span></div>
         ${state?.render ? `<div class="row"><span class="muted">Buffer</span><span class="value">${state.render.width}×${state.render.height} @ ${state.render.resolution.toFixed(2)}</span></div>` : ''}
       </section>
-      <section class="card">
-        <h3>Model</h3>
+      <section aria-label="Model" class="card" role="group">
+        <p class="card-title">Model</p>
         <div class="row"><span class="muted">model3 / moc</span><span class="value">${escape(info.model3Version ?? 'unknown')} / ${escape(info.mocVersion ?? 'unknown')}</span></div>
         <div class="row"><span class="muted">Parameters</span><span class="value">${info.parameters?.length ?? 0}</span></div>
         <div class="row"><span class="muted">Motion groups</span><span class="value">${Object.keys(info.motions).length}</span></div>
@@ -247,7 +247,7 @@ export function mountLive2DDevtools(
       <label class="field"><span>Fade in (ms, blank = model)</span><input data-motion-fade-in type="number" min="0" placeholder="model default"></label>
       <label class="field"><span>Fade out (ms, blank = model)</span><input data-motion-fade-out type="number" min="0" placeholder="model default"></label>
       <div class="actions"><button data-action="play-motion" type="button">Play</button><button data-action="queue-motion" type="button">Queue step</button></div>
-      <section class="card"><h3>Sequence queue</h3>${sequence.length ? `<ol class="queue">${sequence.map(step => `<li>${escape(step.group)}[${step.index ?? 0}]</li>`).join('')}</ol>` : '<p class="muted">No queued steps.</p>'}<div class="actions"><button data-action="play-sequence" ${sequence.length ? '' : 'disabled'} type="button">Play queue</button><button data-action="clear-sequence" ${sequence.length ? '' : 'disabled'} type="button">Clear</button></div></section>
+      <section aria-label="Sequence queue" class="card" role="group"><p class="card-title">Sequence queue</p>${sequence.length ? `<ol class="queue">${sequence.map(step => `<li>${escape(step.group)}[${step.index ?? 0}]</li>`).join('')}</ol>` : '<p class="muted">No queued steps.</p>'}<div class="actions"><button data-action="play-sequence" ${sequence.length ? '' : 'disabled'} type="button">Play queue</button><button data-action="clear-sequence" ${sequence.length ? '' : 'disabled'} type="button">Clear</button></div></section>
     </div>`
   }
 

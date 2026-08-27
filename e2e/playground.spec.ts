@@ -89,17 +89,45 @@ function actionableWebGLErrors(browserName: string, errors: string[]) {
   )
 }
 
+// Routes that mount a model are scanned only once the canvas is on the page.
+// Scanning straight after goto() measured the shell, not the labelled canvas
+// the accessibility option exists to describe.
+const AXE_ROUTES = [
+  { ready: '.landing-stage-status', route: '/' },
+  { route: '/docs/en' },
+  { ready: '[data-testid="stage-status"]', route: '/playground' },
+  { route: '/inspect' },
+] as const
+
 test('has no automatically detectable accessibility violations on primary routes', async ({ browserName, page }) => {
   test.skip(browserName !== 'chromium', 'The v0.7 accessibility smoke gate runs once in Chromium.')
 
-  for (const route of ['/', '/docs/en', '/playground', '/inspect']) {
+  for (const { ready, route } of AXE_ROUTES) {
     await page.goto(route)
+    if (ready)
+      await expect(page.locator(ready)).toContainText('ready')
     const results = await new AxeBuilder({ page }).analyze()
     expect(
       results.violations,
       `${route}: ${results.violations.map(violation => `${violation.id} (${violation.nodes.length})`).join(', ')}`,
     ).toEqual([])
   }
+})
+
+// The only place the library's own emitted semantics are checked in a real
+// browser; the unit tests assert the attributes, not that they survive to the
+// rendered page.
+test('describes the rendered model canvas for assistive technologies', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'One engine is enough for emitted canvas semantics.')
+
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  const canvas = page.locator('[data-live2d-canvas] canvas')
+  await expect(canvas).toHaveAttribute('role', 'img')
+  await expect(canvas).toHaveAttribute('aria-label', 'Interactive Live2D model preview')
+  await expect(canvas).toHaveAttribute('aria-describedby', 'playground-stage-description')
+  await expect(page.locator('#playground-stage-description')).toHaveCount(1)
+  await expect(canvas).not.toHaveAttribute('tabindex', /.*/)
 })
 
 test('renders the landing shell without preloading Cubism Core', async ({ page }) => {

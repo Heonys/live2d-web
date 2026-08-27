@@ -49,7 +49,7 @@ input[type='range'] { width: 100%; accent-color: var(--devtools-accent); }
 .panel::-webkit-scrollbar-thumb:hover { background: #505762; background-clip: padding-box; }
 .stack { display: grid; gap: 10px; }
 .card { padding: 11px; border: 1px solid #292d34; border-radius: 7px; background: #171a20; }
-.card h3 { margin: 0 0 8px; font-size: 12px; }
+.card-title { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .row + .row { margin-top: 7px; }
 .muted { color: #868c96; }

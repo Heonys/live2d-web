@@ -122,6 +122,8 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
   } = props
   const quality = 'quality' in props ? props.quality : undefined
   const stableAccessibility = useStableAccessibility(accessibility)
+  const accessibilityRef = useRef(stableAccessibility)
+  accessibilityRef.current = stableAccessibility
   const stableQuality = useStableQuality(quality)
   const resolution = 'resolution' in props ? props.resolution : undefined
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
@@ -136,7 +138,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
   const lastReportedErrorRef = useRef<Live2DError | undefined>(undefined)
   useUnstableBackendWarning(backend, coreUrl)
   const runtimeHost = useMemo(() => ({
-    accessibility: stableAccessibility,
+    accessibilityRef,
     backend,
     container,
     coreUrl,
@@ -145,7 +147,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     quality: stableQuality,
     resolution,
     retryVersion,
-  }), [backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableAccessibility, stableQuality])
+  }), [accessibilityRef, backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableQuality])
 
   useEffect(() => {
     if (!snapshot.error || snapshot.error === lastReportedErrorRef.current)

@@ -22,6 +22,7 @@ const character = await createLive2D({
 type CreateLive2DOptions = {
   container: HTMLElement
   src: string
+  accessibility?: Live2DCanvasAccessibility
   backend?: Live2DBackend
   coreUrl?: string
   fit?: ModelFit
@@ -58,6 +59,7 @@ interface Live2DInstance {
   setParameter(id: string, value: number): void
   clearParameter(id: string): void
   setFit(fit: ModelFit): void
+  setAccessibility(accessibility: Live2DCanvasAccessibility | undefined): void
   addParameterDriver(id: string, driver: ParameterDriver): () => void
   addLipSync(options: RuntimeLipSyncOptions): () => void
   pause(): void
@@ -464,6 +466,15 @@ the pre-0.7 Canvas markup. The runtime deliberately does not add `tabIndex` or
 `role="application"`: applications should expose keyboard alternatives for
 tap and motion actions as ordinary DOM controls and honor
 `prefers-reduced-motion` in those controls.
+
+Changing the description is a running-state change, not a reconstruction:
+`setAccessibility()` on the instance (and the React `accessibility` prop)
+re-describes the live canvas, so a label that tracks speaking state does not
+drop the WebGL context or reload the model. Each call fully replaces the
+semantics, so switching between decorative, image and absent leaves no
+attribute from the previous value. `StageHandle.setAccessibility` is optional;
+a backend that does not own its canvas element keeps whatever it was given at
+creation, and the repository-only `pixi-v6` adapter is such a backend.
 
 `Live2DModelProps` provides `src`, `fit`, `followPointer`, `idleMotion`,
 `paused`, `retries`, `onLoad`, `onError`, `onTap` and children. Only one model

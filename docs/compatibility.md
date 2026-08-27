@@ -31,6 +31,19 @@
 계열을 지원 표에 추가하려면 재배포 가능한 fixture 또는 합법적으로 공급되는
 로컬 자산으로 로드·모션·표정·정리까지 반복 검증해야 한다.
 
+## Canvas 접근성
+
+| 대상 | 상태 | 현재 기준과 제한 |
+| --- | --- | --- |
+| `cubism-webgl` (기본) | 지원·검증 | `accessibility`가 생성 시와 `setAccessibility()` 양쪽에서 canvas의 `role`·`aria-label`·`aria-describedby`·대체 텍스트를 완전히 다시 쓴다. 매 호출이 이전 값을 남기지 않는 것을 단위 테스트로, 실제 렌더된 canvas의 속성을 e2e axe 스모크로 고정한다. |
+| `pixi-v6` (저장소 전용) | 미지원·의도된 no-op | `createStage`가 `accessibility`를 읽지 않고 `setAccessibility`도 노출하지 않는다. `StageHandle.setAccessibility`가 선택 멤버인 이유이며, 이 no-op을 테스트로 고정했다. 0.2.0부터 발행하지 않는 backend다. |
+| 서드파티 backend | 미지원이 기본 | 선택 멤버라 구현하지 않아도 계약을 깨지 않는다. 구현하지 않으면 `setAccessibility()` 호출이 조용히 무시되고, `retry()`가 스테이지를 다시 만들 때 마지막 값이 생성 옵션으로 전달된다. |
+| 키보드 포커스 | 비지원 | canvas를 focusable로 만들지 않는다. `tabindex`를 붙이지 않는 것이 e2e 단언에 포함된다. |
+| `prefers-reduced-motion` | 라이브러리 미구현 | 애니메이션 감속·정지를 라이브러리가 처리하지 않는다. 소비자가 모션 재생 여부를 직접 결정한다. 배경은 2026-08-27 결정. |
+
+접근성 의미는 **소비자가 명시할 때만** 붙는다. 옵션을 주지 않으면 canvas에
+아무 속성도 넣지 않으며, 이는 기존 동작을 바꾸지 않기 위한 기본값이다.
+
 ## React와 소비자 빌드
 
 | 대상 | 지원 범위 | 현재 실제 검증 |

@@ -83,6 +83,9 @@ export function Live2DModel({
   const currentStageStore = stageStore
   const currentRuntimeHost = runtimeHost
 
+  // Read during render so the setter effect below has a real dependency; the
+  // memoized value keeps a stable identity while the description is unchanged.
+  const accessibility = currentRuntimeHost.accessibilityRef.current
   const owner = useMemo(() => Symbol('Live2DModel'), [])
   const modelStore = useMemo(() => new ModelStore(), [])
   const lifecycle = useMemo(() => new LifecycleScope(), [])
@@ -162,7 +165,7 @@ export function Live2DModel({
     let resource: { dispose: () => void, handle: ModelHandle } | undefined
     let invalidateController: (() => void) | undefined
     const runtime = new Live2DRuntime({
-      accessibility: currentRuntimeHost.accessibility,
+      accessibility: currentRuntimeHost.accessibilityRef.current,
       backend: currentRuntimeHost.backend,
       container,
       coreUrl: currentRuntimeHost.coreUrl,
@@ -254,6 +257,12 @@ export function Live2DModel({
   useEffect(() => {
     runtimeRef.current?.setFit(fit)
   }, [fit])
+
+  // Re-describing the canvas is a running-state change, like fit: the stage
+  // stays, so a label that tracks speaking state does not reload the model.
+  useEffect(() => {
+    runtimeRef.current?.setAccessibility(accessibility)
+  }, [accessibility])
 
   useEffect(() => {
     const runtime = runtimeRef.current

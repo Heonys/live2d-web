@@ -22,6 +22,7 @@ interface FakeHarness {
   models: ModelHandle[]
   stages: StageHandle[]
   stageOptions: StageOptions[]
+  accessibilityUpdates: Array<StageOptions['accessibility']>
 }
 
 function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness {
@@ -31,6 +32,7 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
   const models: ModelHandle[] = []
   const stages: StageHandle[] = []
   const stageOptions: StageOptions[] = []
+  const accessibilityUpdates: Array<StageOptions['accessibility']> = []
 
   const makeModel = (): ModelHandle => {
     let disposed = false
@@ -96,6 +98,10 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
           events.push('stage:resize')
         },
         resume: () => events.push('stage:resume'),
+        setAccessibility(value) {
+          accessibilityUpdates.push(value)
+          events.push(`accessibility:${value && 'label' in value ? value.label : String(value?.mode)}`)
+        },
         setResolution(value) {
           resolution = value
           events.push(`resolution:${value}`)
@@ -111,7 +117,16 @@ function createFakeHarness(loadModel?: () => Promise<ModelHandle>): FakeHarness 
     },
   }
 
-  return { backend, events, frameCallbacks, models, renderErrors, stageOptions, stages }
+  return {
+    accessibilityUpdates,
+    backend,
+    events,
+    frameCallbacks,
+    models,
+    renderErrors,
+    stageOptions,
+    stages,
+  }
 }
 
 function ParameterDriver() {
@@ -182,7 +197,10 @@ describe('live2DCanvas lifecycle', () => {
     vi.unstubAllGlobals()
   })
 
-  it('keeps equal inline accessibility objects from recreating the stage', async () => {
+  // Describing the canvas is running state, not construction input. A label
+  // that follows speaking state is the ordinary pattern, and recreating the
+  // stage for it would drop the WebGL context and reload the model.
+  it('re-describes the canvas without recreating the stage', async () => {
     const harness = createFakeHarness()
     const view = render(
       <Live2DCanvas
@@ -219,7 +237,23 @@ describe('live2DCanvas lifecycle', () => {
         <Live2DModel src="/hiyori.model3.json" />
       </Live2DCanvas>,
     )
-    await waitFor(() => expect(harness.stages).toHaveLength(2))
+    await act(async () => {})
+    expect(harness.stages).toHaveLength(1)
+    expect(harness.accessibilityUpdates.at(-1)).toEqual({
+      describedBy: undefined,
+      fallbackText: undefined,
+      label: 'Talking avatar',
+      mode: 'image',
+    })
+
+    view.rerender(
+      <Live2DCanvas backend={harness.backend}>
+        <Live2DModel src="/hiyori.model3.json" />
+      </Live2DCanvas>,
+    )
+    await act(async () => {})
+    expect(harness.stages).toHaveLength(1)
+    expect(harness.accessibilityUpdates.at(-1)).toBeUndefined()
   })
 
   it('is StrictMode-safe and enforces feature → model → stage cleanup', async () => {

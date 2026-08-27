@@ -66,6 +66,33 @@ describe('cubism-webgl Stage', () => {
     stage.dispose()
   })
 
+  // Each call fully re-describes the canvas, so a mode switch cannot leave the
+  // previous value's attributes behind.
+  it('replaces canvas semantics on setAccessibility without leaving stale attributes', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(createGl())
+    const stage = createWebGLStage(document.body, {
+      accessibility: { describedBy: 'help', label: 'Idle avatar' },
+      height: 100,
+      width: 100,
+    })
+    const canvas = document.querySelector('canvas')!
+
+    stage.setAccessibility?.({ label: 'Talking avatar' })
+    expect(canvas.getAttribute('aria-label')).toBe('Talking avatar')
+    expect(canvas.hasAttribute('aria-describedby')).toBe(false)
+    expect(canvas.textContent).toBe('Talking avatar')
+
+    stage.setAccessibility?.({ mode: 'decorative' })
+    expect(canvas.getAttribute('role')).toBe('presentation')
+    expect(canvas.hasAttribute('aria-label')).toBe(false)
+    expect(canvas.textContent).toBe('')
+
+    stage.setAccessibility?.(undefined)
+    expect(canvas.hasAttribute('role')).toBe(false)
+    expect(canvas.hasAttribute('aria-hidden')).toBe(false)
+    stage.dispose()
+  })
+
   it('applies image semantics and fallback text', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(createGl())
     const stage = createWebGLStage(document.body, {

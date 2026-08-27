@@ -1,4 +1,5 @@
 import type {
+  Live2DCanvasAccessibility,
   StageHandle,
   StageOptions,
 } from '../../core/contract'
@@ -17,6 +18,29 @@ interface StageInternals {
 }
 
 const internalsByStage = new WeakMap<StageHandle, StageInternals>()
+
+// Every call fully re-describes the canvas, so switching between decorative,
+// image and absent leaves no attribute behind from the previous value.
+function applyAccessibility(
+  canvas: HTMLCanvasElement,
+  accessibility: Live2DCanvasAccessibility | undefined,
+) {
+  for (const name of ['aria-describedby', 'aria-hidden', 'aria-label', 'role'])
+    canvas.removeAttribute(name)
+  canvas.textContent = ''
+  if (!accessibility)
+    return
+  if (accessibility.mode === 'decorative') {
+    canvas.setAttribute('aria-hidden', 'true')
+    canvas.setAttribute('role', 'presentation')
+    return
+  }
+  canvas.setAttribute('aria-label', accessibility.label)
+  canvas.setAttribute('role', 'img')
+  if (accessibility.describedBy)
+    canvas.setAttribute('aria-describedby', accessibility.describedBy)
+  canvas.textContent = accessibility.fallbackText ?? accessibility.label
+}
 
 function once(cleanup: () => void) {
   let active = true
@@ -59,17 +83,7 @@ export function createWebGLStage(
     throw new Live2DError('browser-only', 'cubism-webgl can only run in a browser.')
 
   const canvas = document.createElement('canvas')
-  if (options.accessibility?.mode === 'decorative') {
-    canvas.setAttribute('aria-hidden', 'true')
-    canvas.setAttribute('role', 'presentation')
-  }
-  else if (options.accessibility) {
-    canvas.setAttribute('aria-label', options.accessibility.label)
-    canvas.setAttribute('role', 'img')
-    if (options.accessibility.describedBy)
-      canvas.setAttribute('aria-describedby', options.accessibility.describedBy)
-    canvas.textContent = options.accessibility.fallbackText ?? options.accessibility.label
-  }
+  applyAccessibility(canvas, options.accessibility)
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     antialias: true,
@@ -278,6 +292,9 @@ export function createWebGLStage(
         return
       running = true
       animationFrame = requestAnimationFrame(frame)
+    },
+    setAccessibility(accessibility) {
+      applyAccessibility(canvas, accessibility)
     },
     setResolution(nextResolution) {
       if (!Number.isFinite(nextResolution) || nextResolution < 1) {

@@ -224,6 +224,7 @@ interface StageHandle {
     resize: (width: number, height: number) => void;
     // (undocumented)
     resume: () => void;
+    setAccessibility?: (accessibility: Live2DCanvasAccessibility | undefined) => void;
     // (undocumented)
     setResolution: (resolution: number) => void;
     toWorld: (clientX: number, clientY: number) => Point;

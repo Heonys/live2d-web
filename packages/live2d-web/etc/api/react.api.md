@@ -285,6 +285,7 @@ export interface Live2DInstance {
     resume: () => void;
     retry: () => Promise<void>;
     sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>;
+    setAccessibility: (accessibility: Live2DCanvasAccessibility | undefined) => void;
     setFit: (fit: ModelFit) => void;
     setParameter: (id: string, value: number) => void;
     readonly subscribe: (listener: () => void) => () => void;
@@ -591,6 +592,7 @@ export interface StageHandle {
     resize: (width: number, height: number) => void;
     // (undocumented)
     resume: () => void;
+    setAccessibility?: (accessibility: Live2DCanvasAccessibility | undefined) => void;
     // (undocumented)
     setResolution: (resolution: number) => void;
     toWorld: (clientX: number, clientY: number) => Point;

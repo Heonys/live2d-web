@@ -291,4 +291,22 @@ describe('pixi-v6 contract conformance', () => {
     mounted.model.dispose()
     mounted.stage.dispose()
   })
+
+  it('leaves canvas accessibility unimplemented so the optional contract holds', () => {
+    const stage = pixiV6.createStage(document.body, {
+      accessibility: { label: 'Avatar', mode: 'image' },
+      height: 600,
+      width: 800,
+    })
+
+    // Pinned deliberately: this backend does not describe its canvas, and the
+    // runtime must tolerate that rather than assume every stage can.
+    expect(stage.setAccessibility).toBeUndefined()
+    const canvas = document.body.querySelector('canvas')
+    expect(canvas).not.toBeNull()
+    expect(canvas!.getAttribute('aria-label')).toBeNull()
+    expect(canvas!.getAttribute('role')).toBeNull()
+
+    stage.dispose()
+  })
 })
