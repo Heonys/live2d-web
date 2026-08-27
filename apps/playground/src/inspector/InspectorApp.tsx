@@ -16,6 +16,7 @@ import { Live2DCanvas, Live2DModel, useLive2DCanvas } from 'live2d-web/react'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StageLoading } from '../components/StageLoading'
+import { useSiteLocale, useSiteMessages } from '../i18n/SiteLocale'
 import { CUBISM_CORE_URL } from '../lib/assetManifest'
 import { readModelArchive } from './archive'
 import { createArchiveResolver } from './archiveSource'
@@ -31,19 +32,20 @@ interface ModelCandidate {
 }
 
 function ErrorDetails({ details }: { details?: Readonly<Live2DErrorDetails> }) {
+  const messages = useSiteMessages().inspector
   if (!details)
     return null
   return (
     <dl className="error-details">
       {details.backend && (
         <>
-          <dt>Backend</dt>
+          <dt>{messages.backend}</dt>
           <dd>{details.backend}</dd>
         </>
       )}
       {details.assetType && (
         <>
-          <dt>Asset</dt>
+          <dt>{messages.asset}</dt>
           <dd>{details.assetType}</dd>
         </>
       )}
@@ -112,6 +114,7 @@ function InspectionReport({ capabilities, onCopy, report }: {
   onCopy: (value: string) => void
   report: ModelInspectionReport
 }) {
+  const messages = useSiteMessages().inspector
   const available = report.assets.filter(asset => asset.status === 'available').length
   return (
     <section className="inspection-report" data-testid="inspection-report">
@@ -122,7 +125,7 @@ function InspectionReport({ capabilities, onCopy, report }: {
           /
           {report.assets.length}
           {' '}
-          assets
+          {messages.assets}
         </span>
         <span>
           model3
@@ -147,27 +150,31 @@ function InspectionReport({ capabilities, onCopy, report }: {
       )}
       <div className="inspection-grid">
         <div>
-          <h2>Model contents</h2>
+          <h2>{messages.modelContents}</h2>
           <p>
-            Motions:
-            {Object.entries(report.motions).map(([group, count]) => `${group} (${count})`).join(', ') || 'none'}
+            {messages.motions}
+            {': '}
+            {Object.entries(report.motions).map(([group, count]) => `${group} (${count})`).join(', ') || messages.none}
           </p>
           <p>
-            Expressions:
-            {report.expressions.join(', ') || 'none'}
+            {messages.expressions}
+            {': '}
+            {report.expressions.join(', ') || messages.none}
           </p>
           <p>
-            Hit areas:
-            {report.hitAreas.join(', ') || 'none'}
+            {messages.hitAreas}
+            {': '}
+            {report.hitAreas.join(', ') || messages.none}
           </p>
         </div>
         <div>
-          <h2>Face tracking</h2>
+          <h2>{messages.faceTracking}</h2>
           {capabilities
             ? (
                 <>
                   <p>
-                    Recommended:
+                    {messages.recommended}
+                    {': '}
                     <strong>{capabilities.recommendedMapping}</strong>
                   </p>
                   <p>
@@ -181,16 +188,17 @@ function InspectionReport({ capabilities, onCopy, report }: {
                     )
                   </p>
                   <p>
-                    Standard:
+                    {messages.standard}
+                    {': '}
                     {Object.entries(capabilities.standardChannels).map(([channel, support]) => `${channel} ${support}`).join(', ')}
                   </p>
                 </>
               )
-            : <p>Render a compatible model to inspect its parameter capabilities.</p>}
+            : <p>{messages.chooseCompatible}</p>}
         </div>
       </div>
       <details>
-        <summary>Asset details</summary>
+        <summary>{messages.assetDetails}</summary>
         <ul className="asset-list">
           {report.assets.map(asset => (
             <li key={`${asset.assetType}:${asset.path}`}>
@@ -205,14 +213,16 @@ function InspectionReport({ capabilities, onCopy, report }: {
         </ul>
       </details>
       <div className="report-actions">
-        <button type="button" onClick={() => onCopy(JSON.stringify({ ...report, capabilities }, null, 2))}>Copy JSON</button>
-        <button type="button" onClick={() => onCopy(reportText(report, capabilities))}>Copy text</button>
+        <button type="button" onClick={() => onCopy(JSON.stringify({ ...report, capabilities }, null, 2))}>{messages.copyJson}</button>
+        <button type="button" onClick={() => onCopy(reportText(report, capabilities))}>{messages.copyText}</button>
       </div>
     </section>
   )
 }
 
 export function InspectorApp() {
+  const locale = useSiteLocale()
+  const messages = useSiteMessages()
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('src')
   const inspectionAbortRef = useRef<AbortController>(undefined)
@@ -303,7 +313,7 @@ export function InspectorApp() {
     fetch('/assets/live2d/hiyori/manifest.json', { signal: abortController.signal })
       .then(async (response) => {
         if (!response.ok)
-          throw new Error('Run `LIVE2D_ACCEPT_TERMS=1 pnpm fetch-assets` before using the inspector.')
+          throw new Error(messages.inspector.assetsMissing)
         return response.json() as Promise<AssetManifest>
       })
       .then((manifest) => {
@@ -316,7 +326,7 @@ export function InspectorApp() {
           setOperationError(error instanceof Error ? error.message : String(error))
       })
     return () => abortController.abort()
-  }, [initialQuery, inspectCandidate])
+  }, [initialQuery, inspectCandidate, messages.inspector.assetsMissing])
 
   const submitSource = (event: FormEvent) => {
     event.preventDefault()
@@ -410,44 +420,44 @@ export function InspectorApp() {
   )
 
   return (
-    <main>
+    <main lang={locale}>
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Model inspector</p>
-          <h1>Validate and test your Live2D model</h1>
-          <p>Inspect a CORS-enabled URL or a local zip entirely in your browser. Local files are never uploaded.</p>
+          <p className="eyebrow">{messages.inspector.eyebrow}</p>
+          <h1>{messages.inspector.title}</h1>
+          <p>{messages.inspector.description}</p>
         </div>
       </section>
 
-      <div className="input-tabs" role="tablist" aria-label="Model source">
-        <button aria-selected={inputMode === 'url'} role="tab" type="button" onClick={() => setInputMode('url')}>Model URL</button>
-        <button aria-selected={inputMode === 'zip'} role="tab" type="button" onClick={() => setInputMode('zip')}>Local zip</button>
+      <div className="input-tabs" role="tablist" aria-label={messages.inspector.modelSource}>
+        <button aria-selected={inputMode === 'url'} role="tab" type="button" onClick={() => setInputMode('url')}>{messages.inspector.modelUrl}</button>
+        <button aria-selected={inputMode === 'zip'} role="tab" type="button" onClick={() => setInputMode('zip')}>{messages.inspector.localZip}</button>
       </div>
       {inputMode === 'url'
         ? (
             <form className="source-form" onSubmit={submitSource}>
               <label>
-                model3.json URL
-                <input aria-label="model3.json URL" inputMode="url" placeholder="https://example.com/model/model.model3.json" type="text" value={draftSource} onChange={event => setDraftSource(event.target.value)} />
+                {messages.inspector.urlLabel}
+                <input aria-label={messages.inspector.urlLabel} inputMode="url" placeholder="https://example.com/model/model.model3.json" type="text" value={draftSource} onChange={event => setDraftSource(event.target.value)} />
               </label>
-              <button disabled={inspecting} type="submit">{inspecting ? 'Inspecting…' : 'Inspect URL'}</button>
+              <button disabled={inspecting} type="submit">{inspecting ? messages.inspector.inspecting : messages.inspector.inspectUrl}</button>
             </form>
           )
         : (
             <section className="archive-picker">
               <label className="archive-drop">
-                <span>{inspecting ? 'Reading archive…' : 'Choose a model zip'}</span>
+                <span>{inspecting ? messages.inspector.readingArchive : messages.inspector.chooseZip}</span>
                 <input accept=".zip,application/zip" disabled={inspecting} type="file" onChange={event => void openArchive(event)} />
               </label>
               {archive && archive.candidates.length > 1 && (
                 <label>
-                  model3.json in archive
+                  {messages.inspector.zipModel}
                   <select value={archiveCandidate} onChange={event => selectArchiveCandidate(event.target.value)}>
                     {archive.candidates.map(path => <option key={path}>{path}</option>)}
                   </select>
                 </label>
               )}
-              <p className="note">Limits: 256 MiB compressed, 2,048 files, 768 MiB expanded. Nothing leaves this browser tab.</p>
+              <p className="note">{messages.inspector.archiveLimits}</p>
             </section>
           )}
 
@@ -461,7 +471,7 @@ export function InspectorApp() {
             setPendingWarning(undefined)
           }}
         >
-          Render despite warnings
+          {messages.inspector.renderDespite}
         </button>
       )}
       {operationError && <p className="inline-error" role="alert">{operationError}</p>}
@@ -471,7 +481,7 @@ export function InspectorApp() {
           {candidate
             ? (
                 <Live2DCanvas
-                  accessibility={{ label: `${candidate.label} model preview` }}
+                  accessibility={{ label: `${candidate.label} ${messages.inspector.modelPreview}` }}
                   key={sourceKey}
                   coreUrl={CUBISM_CORE_URL}
                   {...canvasQuality}
@@ -489,7 +499,7 @@ export function InspectorApp() {
                           retry()
                         }}
                       >
-                        Retry canvas
+                        {messages.inspector.retry}
                       </button>
                     </div>
                   )}
@@ -512,36 +522,36 @@ export function InspectorApp() {
                   <Diagnostics />
                 </Live2DCanvas>
               )
-            : <div className="empty-stage">{inspecting ? 'Inspecting model files…' : 'Choose a compatible model.'}</div>}
+            : <div className="empty-stage">{inspecting ? messages.inspector.inspectingFiles : messages.inspector.chooseCompatible}</div>}
         </div>
 
         <aside className="inspector-controls">
           <label>
-            Framing
+            {messages.inspector.framing}
             <select value={fit as string} onChange={event => setFit(event.target.value as ModelFit)}>
-              <option value="upper-body">Upper body</option>
-              <option value="full">Full model</option>
+              <option value="upper-body">{messages.common.upperBody}</option>
+              <option value="full">{messages.common.fullModel}</option>
             </select>
           </label>
           <label>
-            Resolution
+            {messages.inspector.resolution}
             <select
-              aria-label="Resolution"
+              aria-label={messages.inspector.resolution}
               value={resolutionMode}
               onChange={(event) => {
                 setController(null)
                 setResolutionMode(event.target.value as ResolutionMode)
               }}
             >
-              <option value="auto">Auto</option>
+              <option value="auto">{messages.common.auto}</option>
               <option value="1">1×</option>
               <option value="2">2×</option>
             </select>
           </label>
           <label>
-            Motion
-            <select aria-label="Motion" disabled={!motionOptions.length} value={motionValue} onChange={event => setMotionValue(event.target.value)}>
-              {!motionOptions.length && <option value="">No motions</option>}
+            {messages.inspector.motions}
+            <select aria-label={messages.inspector.motions} disabled={!motionOptions.length} value={motionValue} onChange={event => setMotionValue(event.target.value)}>
+              {!motionOptions.length && <option value="">{messages.inspector.noMotions}</option>}
               {motionOptions.map(motion => (
                 <option key={`${motion.group}:${motion.index}`} value={`${motion.group}:${motion.index}`}>
                   {motion.group}
@@ -560,18 +570,18 @@ export function InspectorApp() {
               await controller?.motion(motionValue.slice(0, separator), Number(motionValue.slice(separator + 1)))
             })}
           >
-            Play motion
+            {messages.inspector.playMotion}
           </button>
           <label>
-            Expression
-            <select aria-label="Expression" disabled={!report?.expressions.length} value={expression} onChange={event => setExpression(event.target.value)}>
-              {!report?.expressions.length && <option value="">No expressions</option>}
+            {messages.inspector.expression}
+            <select aria-label={messages.inspector.expression} disabled={!report?.expressions.length} value={expression} onChange={event => setExpression(event.target.value)}>
+              {!report?.expressions.length && <option value="">{messages.inspector.noExpressions}</option>}
               {report?.expressions.map(id => <option key={id}>{id}</option>)}
             </select>
           </label>
-          <button disabled={!controller || !expression} type="button" onClick={() => void runOperation(() => controller?.expression(expression))}>Apply expression</button>
+          <button disabled={!controller || !expression} type="button" onClick={() => void runOperation(() => controller?.expression(expression))}>{messages.inspector.applyExpression}</button>
           <label>
-            Parameter ID
+            {messages.inspector.parameterId}
             <input
               type="text"
               value={parameterId}
@@ -579,8 +589,8 @@ export function InspectorApp() {
             />
           </label>
           <label>
-            Parameter value
-            <input aria-label="Parameter value" step="0.01" type="number" value={parameterValue} onChange={event => setParameterValue(Number(event.target.value))} />
+            {messages.inspector.parameterValue}
+            <input aria-label={messages.inspector.parameterValue} step="0.01" type="number" value={parameterValue} onChange={event => setParameterValue(Number(event.target.value))} />
           </label>
           <button
             disabled={!controller || !parameterId.trim() || !Number.isFinite(parameterValue)}
@@ -590,7 +600,7 @@ export function InspectorApp() {
               setParameterReadback(controller?.getParameter(parameterId.trim()))
             })}
           >
-            Set parameter
+            {messages.inspector.setParameter}
           </button>
           {parameterReadback !== undefined && (
             <output data-testid="parameter-readback">
@@ -603,7 +613,7 @@ export function InspectorApp() {
           )}
           <label className="toggle">
             <input checked={pointerFocus} type="checkbox" onChange={event => setPointerFocus(event.target.checked)} />
-            Follow pointer
+            {messages.inspector.followPointer}
           </label>
           {runtimeError && (
             <div className="inline-error" role="alert">

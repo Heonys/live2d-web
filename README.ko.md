@@ -9,8 +9,8 @@
 
 <p align="center">
   <strong><a href="https://live2d-web-playground.vercel.app/docs/ko">한국어 문서</a></strong> ·
-  <a href="https://live2d-web-playground.vercel.app/playground">Playground</a> ·
-  <a href="https://live2d-web-playground.vercel.app/inspect">모델 검사기</a> ·
+  <a href="https://live2d-web-playground.vercel.app/ko/playground">Playground</a> ·
+  <a href="https://live2d-web-playground.vercel.app/ko/inspect">모델 검사기</a> ·
   <a href="examples">예제</a>
 </p>
 

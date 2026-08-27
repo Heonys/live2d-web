@@ -5,6 +5,8 @@ import type { AssetManifest } from '../lib/assetManifest'
 import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { localizedDocPath, localizedPath } from '../i18n/site'
+import { useSiteLocale, useSiteMessages } from '../i18n/SiteLocale'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../lib/assetManifest'
 import { canBackgroundPrefetch, scheduleAfterPaintIdle, scheduleIdle } from './navigationPrefetch'
 import { StageLoading } from './StageLoading'
@@ -25,6 +27,8 @@ function speechEnvelope(elapsedMs: number) {
 
 export function LandingDemo() {
   const router = useRouter()
+  const locale = useSiteLocale()
+  const messages = useSiteMessages().landingDemo
   const [manifest, setManifest] = useState<AssetManifest | null>(null)
   const [controller, setController] = useState<Live2DModelController | null>(null)
   const [mouth, setMouth] = useState(0)
@@ -123,7 +127,7 @@ export function LandingDemo() {
       void fetch('/assets/live2d/hiyori/manifest.json', { signal: request.signal })
         .then((response) => {
           if (!response.ok)
-            throw new Error('Local demo assets are unavailable.')
+            throw new Error(messages.localAssetsUnavailable)
           return response.json() as Promise<AssetManifest>
         })
         .then((loaded) => {
@@ -160,7 +164,7 @@ export function LandingDemo() {
       cancelScheduled()
       request.abort()
     }
-  }, [loadAttempt])
+  }, [loadAttempt, messages.localAssetsUnavailable])
 
   useEffect(() => {
     window.addEventListener('blur', releaseSpeech)
@@ -176,7 +180,12 @@ export function LandingDemo() {
       return
     const timers: number[] = []
     const cancelIdle = scheduleIdle(() => {
-      ['/docs/en', '/playground', '/inspect', '/docs/en/examples'].forEach((href, index) => {
+      [
+        localizedDocPath(locale),
+        localizedPath(locale, '/playground'),
+        localizedPath(locale, '/inspect'),
+        localizedDocPath(locale, 'examples'),
+      ].forEach((href, index) => {
         const timer = window.setTimeout((target: string) => router.prefetch(target), index * 120, href)
         timers.push(timer)
       })
@@ -185,7 +194,7 @@ export function LandingDemo() {
       cancelIdle()
       timers.forEach(timer => window.clearTimeout(timer))
     }
-  }, [controller, error, router])
+  }, [controller, error, locale, router])
 
   const playTap = useCallback(() => {
     if (!controller)
@@ -201,7 +210,7 @@ export function LandingDemo() {
       <div className="landing-stage" data-model-visible={Boolean(controller)}>
         <output className="landing-stage-status" aria-live="polite">
           <span data-state={error ? 'error' : controller ? 'ready' : 'loading'}>
-            {error ? 'error' : controller ? 'ready' : 'loading'}
+            {error ? messages.error : controller ? messages.ready : messages.loading}
           </span>
           <span>WebGL2</span>
           <span>Cubism 4/5</span>
@@ -211,7 +220,7 @@ export function LandingDemo() {
               <Live2DCanvas
                 accessibility={{
                   describedBy: 'landing-lip-sync-description',
-                  label: 'Interactive Hiyori Live2D character',
+                  label: messages.accessibility,
                 }}
                 coreUrl={CUBISM_CORE_URL}
                 quality="auto"
@@ -233,7 +242,7 @@ export function LandingDemo() {
             ? (
                 <div className="landing-demo-error" role="alert">
                   <p>{error}</p>
-                  <button type="button" onClick={retryModel}>Retry model</button>
+                  <button type="button" onClick={retryModel}>{messages.retry}</button>
                 </div>
               )
             : loadPhase === 'waiting'
@@ -242,11 +251,11 @@ export function LandingDemo() {
       </div>
       <div className="landing-demo-controls">
         <div className="landing-demo-action">
-          <span>Motion</span>
-          <button disabled={!controller} type="button" onClick={playTap}>Play motion</button>
+          <span>{messages.motion}</span>
+          <button disabled={!controller} type="button" onClick={playTap}>{messages.playMotion}</button>
         </div>
         <div className="landing-demo-action">
-          <span>Lip sync</span>
+          <span>{messages.lipSync}</span>
           <button
             aria-describedby="landing-lip-sync-description"
             aria-pressed={holdingSpeech}
@@ -287,10 +296,10 @@ export function LandingDemo() {
               <i />
               <i />
             </span>
-            Hold to speak
+            {messages.holdToSpeak}
           </button>
           <span className="landing-visually-hidden" id="landing-lip-sync-description">
-            Simulates mouth movement without using a microphone.
+            {messages.simulation}
           </span>
         </div>
       </div>

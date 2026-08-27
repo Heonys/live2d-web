@@ -1,6 +1,10 @@
+import type { Metadata } from 'next'
+import type { SiteLocale } from '../i18n/site'
 import { LandingDemo } from '../components/LandingDemo'
 import { DocsIntentLink } from '../docs/DocsNavigation'
 import { HighlightedCode } from '../docs/HighlightedCode'
+import { localizedMetadata } from '../i18n/metadata'
+import { getSiteMessages, localizedDocPath, localizedPath } from '../i18n/site'
 
 const QUICK_START = `import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
@@ -12,64 +16,78 @@ export function Avatar() {
   )
 }`
 
-export default function LandingPage() {
+export const metadata: Metadata = localizedMetadata(
+  'en',
+  '/',
+  'landingTitle',
+  'landingDescription',
+)
+
+export function LandingPageContent({ locale }: { locale: SiteLocale }) {
+  const messages = getSiteMessages(locale).landing
   return (
-    <main className="landing-page">
+    <main className="landing-page" lang={locale}>
       <section className="landing-hero">
         <div className="landing-copy">
           <p className="landing-status-line">
             <span aria-hidden="true" />
-            Cubism 4/5 · WebGL2 · JavaScript + React
+            {messages.status}
           </p>
-          <h1>Live2D, directly in the browser.</h1>
+          <h1>{messages.title}</h1>
           <p className="landing-lead">
-            A focused WebGL2 runtime for Cubism models. Add motion, lip sync,
-            face tracking and devtools only when your app needs them.
+            {messages.description}
           </p>
           <div className="landing-actions">
-            <DocsIntentLink className="primary-action" href="/docs/en">Read the docs</DocsIntentLink>
-            <DocsIntentLink href="/playground">Open playground</DocsIntentLink>
+            <DocsIntentLink className="primary-action" href={localizedDocPath(locale)}>{messages.readDocs}</DocsIntentLink>
+            <DocsIntentLink href={localizedPath(locale, '/playground')}>{messages.openPlayground}</DocsIntentLink>
           </div>
           <code className="landing-install">npm install live2d-web</code>
         </div>
         <LandingDemo />
       </section>
 
-      <section className="landing-features" aria-label="Highlights">
+      <section className="landing-features" aria-label={messages.highlights}>
         <article>
           <span>01</span>
-          <h2>Optional by design</h2>
-          <p>React, MediaPipe, inspection and devtools stay in separate entry points.</p>
+          <h2>{messages.featureOneTitle}</h2>
+          <p>{messages.featureOneDescription}</p>
         </article>
         <article>
           <span>02</span>
-          <h2>Playback you control</h2>
-          <p>Sequence motions, fade expressions and connect application-owned lip sync.</p>
+          <h2>{messages.featureTwoTitle}</h2>
+          <p>{messages.featureTwoDescription}</p>
         </article>
         <article>
           <span>03</span>
-          <h2>Tools when needed</h2>
-          <p>Inspect model packages or mount isolated parameter devtools during development.</p>
+          <h2>{messages.featureThreeTitle}</h2>
+          <p>{messages.featureThreeDescription}</p>
         </article>
       </section>
 
       <section className="landing-code-section">
         <div>
-          <p className="eyebrow">Optional entry · live2d-web/react</p>
-          <h2>A small React boundary.</h2>
-          <p>The renderer stays framework-agnostic. Add the React binding only at the client boundary that owns your model.</p>
-          <DocsIntentLink href="/docs/en/react">React guide →</DocsIntentLink>
+          <p className="eyebrow">
+            {messages.optionalEntry}
+            {' · live2d-web/react'}
+          </p>
+          <h2>{messages.reactTitle}</h2>
+          <p>{messages.reactDescription}</p>
+          <DocsIntentLink href={localizedDocPath(locale, 'react')}>{messages.reactGuide}</DocsIntentLink>
         </div>
         <HighlightedCode code={QUICK_START} filename="Avatar.tsx" language="tsx" />
       </section>
 
       <section className="landing-final-cta">
-        <p>Bring your own licensed Cubism Core and model assets.</p>
+        <p>{messages.finalNote}</p>
         <div>
-          <DocsIntentLink href="/inspect">Inspect a model</DocsIntentLink>
-          <DocsIntentLink href="/docs/en/examples">Browse examples</DocsIntentLink>
+          <DocsIntentLink href={localizedPath(locale, '/inspect')}>{messages.inspectModel}</DocsIntentLink>
+          <DocsIntentLink href={localizedDocPath(locale, 'examples')}>{messages.browseExamples}</DocsIntentLink>
         </div>
       </section>
     </main>
   )
+}
+
+export default function LandingPage() {
+  return <LandingPageContent locale="en" />
 }

@@ -10,6 +10,9 @@ backend uses WebGL2 without Pixi. Cubism Core and model files are never bundled.
 - 日本語: /docs/ja
 - API reference: /docs/en/api
 - Model inspector: /inspect
+- 한국어 사이트: /ko
+- 日本語サイト: /ja
+- Playground: /playground
 
 ## Main topics
 

@@ -9,10 +9,10 @@ import { DOC_LOADERS } from '../../../../docs/loaders'
 import { DOC_LOCALES, DOC_PAGES, docHref, getDocPage } from '../../../../docs/manifest'
 import { siteUrl } from '../../../../lib/siteOrigin'
 
-const labels: Record<DocLocale, { apiNote: string, next: string, previous: string }> = {
-  en: { apiNote: 'Signatures are generated from the public TypeScript source.', next: 'Next', previous: 'Previous' },
-  ja: { apiNote: 'signature は公開 TypeScript source から生成されます。', next: '次へ', previous: '前へ' },
-  ko: { apiNote: '시그니처는 공개 TypeScript 소스에서 생성됩니다.', next: '다음', previous: '이전' },
+const labels: Record<DocLocale, { apiNote: string, eyebrow: string, pagination: string, next: string, previous: string }> = {
+  en: { apiNote: 'Signatures are generated from the public TypeScript source.', eyebrow: 'live2d-web documentation', next: 'Next', pagination: 'Pagination', previous: 'Previous' },
+  ja: { apiNote: 'signature は公開 TypeScript source から生成されます。', eyebrow: 'live2d-web ドキュメント', next: '次へ', pagination: 'ページ移動', previous: '前へ' },
+  ko: { apiNote: '시그니처는 공개 TypeScript 소스에서 생성됩니다.', eyebrow: 'live2d-web 문서', next: '다음', pagination: '페이지 이동', previous: '이전' },
 }
 
 interface PageParameters { locale: string, slug?: string[] }
@@ -78,7 +78,7 @@ export default async function DocumentationPage({ params }: {
       <main className="docs-main">
         <DocsMobileNavigation current={page.slug} locale={locale} pages={DOC_PAGES} />
         <article className="docs-article">
-          <p className="eyebrow">live2d-web documentation</p>
+          <p className="eyebrow">{labels[locale].eyebrow}</p>
           <h1>{page.title[locale]}</h1>
           <p className="docs-lead">{page.summary[locale]}</p>
           <Content />
@@ -100,7 +100,7 @@ export default async function DocumentationPage({ params }: {
               ))}
             </section>
           )}
-          <nav aria-label="Pagination" className="docs-pager">
+          <nav aria-label={labels[locale].pagination} className="docs-pager">
             {previous
               ? (
                   <DocsIntentLink href={docHref(locale, previous.slug)}>

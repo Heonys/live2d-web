@@ -7,10 +7,13 @@ import { createLive2D } from 'live2d-web'
 import { useEffect, useRef, useState } from 'react'
 import { preload } from 'react-dom'
 import { StageLoading } from '../../components/StageLoading'
+import { useSiteLocale, useSiteMessages } from '../../i18n/SiteLocale'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
 
 export default function VanillaPlayground() {
   preload(CUBISM_CORE_URL, { as: 'script' })
+  const locale = useSiteLocale()
+  const messages = useSiteMessages()
   const containerRef = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<Live2DInstance | null>(null)
   const [error, setError] = useState('')
@@ -35,7 +38,7 @@ export default function VanillaPlayground() {
           signal: controller.signal,
         })
         if (!response.ok)
-          throw new Error('Run `pnpm fetch-assets` before starting the playground.')
+          throw new Error(messages.vanilla.assetsMissing)
         const manifest = await response.json() as AssetManifest
         warmUpModelAssets(manifest)
         if (!containerRef.current || controller.signal.aborted)
@@ -76,7 +79,7 @@ export default function VanillaPlayground() {
       instanceRef.current?.dispose()
       instanceRef.current = null
     }
-  }, [mounted])
+  }, [messages.vanilla.assetsMissing, mounted])
 
   useEffect(() => {
     instanceRef.current?.setFit(fit)
@@ -87,17 +90,17 @@ export default function VanillaPlayground() {
   }, [mouthOpen])
 
   return (
-    <main>
+    <main lang={locale}>
       <section className="page-hero">
         <div>
-          <p className="eyebrow">JavaScript runtime playground</p>
-          <h1>Live2D without React bindings</h1>
+          <p className="eyebrow">{messages.vanilla.eyebrow}</p>
+          <h1>{messages.vanilla.title}</h1>
           <p>
-            This page mounts one imperative
+            {messages.vanilla.descriptionBefore}
             {' '}
             <code>createLive2D()</code>
             {' '}
-            runtime with the default Framework WebGL backend.
+            {messages.vanilla.descriptionAfter}
           </p>
           <code className="install">npm install live2d-web</code>
         </div>
@@ -112,22 +115,22 @@ export default function VanillaPlayground() {
           {mounted && !error && status === 'loading' && <StageLoading />}
           {error && (
             <div className="stage-overlay error-panel" role="alert">
-              <strong>Runtime error</strong>
+              <strong>{messages.vanilla.runtimeError}</strong>
               <p>{error}</p>
             </div>
           )}
-          {!mounted && <div className="empty-stage">Runtime disposed</div>}
+          {!mounted && <div className="empty-stage">{messages.vanilla.disposed}</div>}
         </div>
 
         <aside>
           <label>
-            Framing
+            {messages.vanilla.framing}
             <select
               value={typeof fit === 'string' ? fit : 'upper-body'}
               onChange={event => setFit(event.target.value as 'upper-body' | 'full')}
             >
-              <option value="upper-body">Upper body</option>
-              <option value="full">Full model</option>
+              <option value="upper-body">{messages.common.upperBody}</option>
+              <option value="full">{messages.common.fullModel}</option>
             </select>
           </label>
 
@@ -145,21 +148,20 @@ export default function VanillaPlayground() {
           </label>
 
           <button type="button" onClick={() => void instanceRef.current?.motion('Tap@Body')}>
-            Play Tap@Body
+            {messages.vanilla.play}
           </button>
           <button type="button" onClick={() => instanceRef.current?.pause()}>
-            Pause
+            {messages.vanilla.pause}
           </button>
           <button type="button" onClick={() => instanceRef.current?.resume()}>
-            Resume
+            {messages.vanilla.resume}
           </button>
           <button type="button" onClick={() => setMounted(value => !value)}>
-            {mounted ? 'Dispose runtime' : 'Create runtime'}
+            {mounted ? messages.vanilla.dispose : messages.vanilla.create}
           </button>
 
           <p className="note">
-            The root import contains no React or Pixi runtime code. Cubism Core
-            remains an application-provided script.
+            {messages.vanilla.note}
           </p>
         </aside>
       </section>

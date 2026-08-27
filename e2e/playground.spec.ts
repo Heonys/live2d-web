@@ -649,12 +649,12 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await expect(page).toHaveURL(/\/docs\/en\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe face tracking')
 
-  const languageTrigger = page.getByRole('button', { name: 'Documentation language' })
+  const languageTrigger = page.getByRole('button', { name: 'Site language' })
   await languageTrigger.click()
   await page.getByRole('menuitem', { exact: true, name: '한국어' }).click()
   await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
-  await page.getByRole('button', { name: 'Documentation language' }).click()
+  await page.getByRole('button', { name: '사이트 언어' }).click()
   await page.getByRole('menuitem', { exact: true, name: '日本語' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 顔トラッキング')
   await expect.poll(() => page.evaluate(async () => {
@@ -662,7 +662,7 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
     return document.fonts.check('16px "Noto Sans JP Variable"', '日本語')
   })).toBe(true)
 
-  const japaneseLanguageTrigger = page.getByRole('button', { name: 'Documentation language' })
+  const japaneseLanguageTrigger = page.getByRole('button', { name: 'サイトの言語' })
   await japaneseLanguageTrigger.click()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
@@ -682,6 +682,46 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
     expect((await page.request.get(href)).ok()).toBe(true)
 })
 
+test('localizes public routes and preserves the logical page and query', async ({ page }) => {
+  const routes = [
+    ['/ko', '브라우저에서 바로 쓰는 Live2D.'],
+    ['/ko/playground', '플레이그라운드'],
+    ['/ja/inspect', 'Live2D モデルの検査とテスト'],
+    ['/ja/vanilla', 'React binding なしで Live2D を使う'],
+    ['/ja/compare', 'Cubism WebGL と Pixi v6 の比較'],
+  ] as const
+
+  for (const [route, heading] of routes) {
+    await page.goto(route)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading)
+    await expect(page.locator('main')).toHaveAttribute('lang', route.startsWith('/ko') ? 'ko' : 'ja')
+    await expect.poll(() => page.evaluate(() => document.documentElement.lang))
+      .toBe(route.startsWith('/ko') ? 'ko' : 'ja')
+  }
+
+  await page.goto('/ko/playground')
+  await page.getByRole('tab', { name: '오디오' }).click()
+  await expect(page.getByRole('heading', { name: '립싱크 입력' })).toBeVisible()
+
+  await page.goto('/ja/inspect')
+  await page.getByRole('tab', { name: 'ローカル zip' }).click()
+  await expect(page.getByText('モデル zip を選択')).toBeVisible()
+
+  await page.goto('/ko/compare?backend=cubism-webgl')
+  await page.getByRole('button', { name: '사이트 언어' }).click()
+  await page.getByRole('menuitem', { exact: true, name: '日本語' }).click()
+  await expect(page).toHaveURL(/\/ja\/compare\?backend=cubism-webgl$/)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/ja\/compare$/)
+  await expect(page.locator('link[hreflang="ko"]')).toHaveAttribute('href', /\/ko\/compare$/)
+  await expect(page.getByRole('link', { name: 'ドキュメント' })).toHaveAttribute('href', '/docs/ja')
+  await expect(page.getByRole('link', { name: 'プレイグラウンド' })).toHaveAttribute('href', '/ja/playground')
+  await expect(page.getByRole('link', { name: 'サンプル' })).toHaveAttribute('href', '/docs/ja/examples')
+
+  const sitemap = await (await page.request.get('/sitemap.xml')).text()
+  for (const route of ['/ko', '/ja', '/ko/playground', '/ja/inspect', '/ko/vanilla', '/ja/compare'])
+    expect(sitemap).toContain(`https://live2d-web-playground.vercel.app${route}`)
+})
+
 test('warms only the selected documentation language', async ({ browserName, page }) => {
   test.skip(browserName !== 'chromium', 'The deterministic language loading regression runs once in Chromium.')
 
@@ -699,7 +739,7 @@ test('warms only the selected documentation language', async ({ browserName, pag
     }
   })
 
-  await page.getByRole('button', { name: 'Documentation language' }).click()
+  await page.getByRole('button', { name: 'Site language' }).click()
   await page.waitForTimeout(300)
   expect(requested).toEqual([])
 

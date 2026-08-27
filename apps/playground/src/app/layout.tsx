@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import { SiteHeader } from '../components/SiteHeader'
 import { DocsNavigationProvider } from '../docs/DocsNavigation'
+import { SiteLocaleProvider } from '../i18n/SiteLocale'
 import { SITE_ORIGIN } from '../lib/siteOrigin'
 import '@fontsource-variable/jetbrains-mono'
 import '@fontsource-variable/noto-sans-jp'
@@ -34,10 +35,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html className={miSans.variable} lang="en">
       <body>
-        <DocsNavigationProvider>
-          <SiteHeader />
-          {children}
-        </DocsNavigationProvider>
+        <SiteLocaleProvider>
+          <DocsNavigationProvider>
+            <SiteHeader />
+            {children}
+          </DocsNavigationProvider>
+        </SiteLocaleProvider>
       </body>
     </html>
   )

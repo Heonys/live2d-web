@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSiteMessages } from '../i18n/SiteLocale'
 
 const DEFAULT_REVEAL_DELAY_MS = 350
 
@@ -13,6 +14,7 @@ interface StageLoadingProps {
  * that the loading character never flashes between the stage and the model.
  */
 export function StageLoading({ delayMs = DEFAULT_REVEAL_DELAY_MS }: StageLoadingProps = {}) {
+  const messages = useSiteMessages().stageLoading
   const [visible, setVisible] = useState(delayMs <= 0)
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function StageLoading({ delayMs = DEFAULT_REVEAL_DELAY_MS }: StageLoading
       <div className="stage-loading-mark" aria-hidden="true">
         <span className="stage-loading-character" />
       </div>
-      <p className="stage-loading-label">Preparing model</p>
+      <p className="stage-loading-label">{messages.preparing}</p>
     </div>
   )
 }

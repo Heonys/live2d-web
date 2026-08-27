@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useSiteMessages } from '../i18n/SiteLocale'
 
 type CopyState = 'idle' | 'copied' | 'error'
 
 export function CodeCopyButton({ readText }: {
   readText: () => string
 }) {
+  const messages = useSiteMessages().docs
   const [state, setState] = useState<CopyState>('idle')
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -15,7 +17,9 @@ export function CodeCopyButton({ readText }: {
       clearTimeout(resetTimerRef.current)
   }, [])
 
-  const label = state === 'copied' ? 'Copied' : state === 'error' ? 'Copy failed' : 'Copy'
+  const label = state === 'copied'
+    ? messages.copied
+    : state === 'error' ? messages.copyFailed : messages.copy
 
   return (
     <button

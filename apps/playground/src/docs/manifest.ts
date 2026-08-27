@@ -1,5 +1,8 @@
-export const DOC_LOCALES = ['en', 'ko', 'ja'] as const
-export type DocLocale = typeof DOC_LOCALES[number]
+import type { SiteLocale } from '../i18n/site'
+import { SITE_LOCALES } from '../i18n/site'
+
+export const DOC_LOCALES = SITE_LOCALES
+export type DocLocale = SiteLocale
 export type DocGroup = 'Start' | 'Use' | 'Integrate' | 'Reference'
 
 export interface LocalizedText { en: string, ja: string, ko: string }

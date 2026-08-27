@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -6,11 +7,29 @@ import {
   DOC_PAGES,
   docHref,
 } from '../apps/playground/src/docs/manifest'
+import {
+  PREFIXED_SITE_LOCALES,
+  PUBLIC_MESSAGE_SECTIONS,
+} from '../apps/playground/src/i18n/site'
 
 const failures: string[] = []
 const slugs = new Set<string>()
 const contentRoot = 'apps/playground/content/docs'
 const errorCodes = readErrorCodes()
+
+function messageLeaves(value: unknown, prefix = ''): Map<string, string> {
+  const leaves = new Map<string, string>()
+  if (!value || typeof value !== 'object')
+    return leaves
+  for (const [key, child] of Object.entries(value)) {
+    const pathName = prefix ? `${prefix}.${key}` : key
+    if (typeof child === 'string')
+      leaves.set(pathName, child)
+    else
+      messageLeaves(child, pathName).forEach((text, path) => leaves.set(path, text))
+  }
+  return leaves
+}
 
 /**
  * Derived from the source union rather than copied, because `scripts/` is
@@ -67,6 +86,41 @@ for (const locale of DOC_LOCALES) {
     if (!expectedFiles.has(file))
       failures.push(`unexpected ${locale} documentation file: ${file}`)
   }
+}
+
+const englishMessages = messageLeaves(PUBLIC_MESSAGE_SECTIONS.en)
+for (const [locale, messages] of Object.entries(PUBLIC_MESSAGE_SECTIONS)) {
+  const leaves = messageLeaves(messages)
+  for (const key of englishMessages.keys()) {
+    if (!leaves.has(key))
+      failures.push(`${locale} site messages are missing ${key}`)
+    else if (!leaves.get(key)?.trim())
+      failures.push(`${locale} site message is empty: ${key}`)
+  }
+  for (const key of leaves.keys()) {
+    if (!englishMessages.has(key))
+      failures.push(`${locale} site messages have an unexpected key: ${key}`)
+  }
+}
+
+for (const route of ['page.tsx', 'playground/page.tsx', 'inspect/page.tsx', 'vanilla/page.tsx', 'compare/page.tsx', 'examples/page.tsx']) {
+  for (const locale of PREFIXED_SITE_LOCALES) {
+    const routePath = path.join('apps/playground/src/app/[locale]', route)
+    if (!existsSync(routePath))
+      failures.push(`missing /${locale} static route source: ${routePath}`)
+  }
+}
+
+const legacyHost = ['net', 'lify'].join('')
+try {
+  const matches = execFileSync('git', ['grep', '-in', '-e', legacyHost, '--', '.'], {
+    encoding: 'utf8',
+  }).trim()
+  if (matches)
+    failures.push(`tracked source still references ${legacyHost}:\n${matches}`)
+}
+catch {
+  // git grep exits with 1 when there are no matches.
 }
 
 const llms = readFileSync('apps/playground/public/llms.txt', 'utf8')

@@ -1,38 +1,53 @@
 'use client'
 
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
-import type { DocLocale } from '../docs/manifest'
+import type { SiteLocale } from '../i18n/site'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { DocsIntentLink } from '../docs/DocsNavigation'
 import { useDocsNavigation } from '../docs/docsNavigationContext'
-import { docHref } from '../docs/manifest'
 import { warmLocaleFonts } from '../docs/searchClient'
+import {
+  languageNames,
+  localizedDocPath,
+  localizedPath,
+  SITE_LOCALES,
+  stripSiteLocale,
+  switchLocalePath,
+} from '../i18n/site'
+import { useSiteLocale, useSiteMessages } from '../i18n/SiteLocale'
 
-const languageNames: Record<DocLocale, string> = {
-  en: 'English',
-  ja: '日本語',
-  ko: '한국어',
+function subscribeToLocation(callback: () => void) {
+  window.addEventListener('popstate', callback)
+  return () => window.removeEventListener('popstate', callback)
 }
 
-const languages = ['en', 'ko', 'ja'] as const
+function getLocationSearch() {
+  return window.location.search
+}
+
+function getServerSearch() {
+  return ''
+}
 
 export function SiteHeader() {
   const pathname = usePathname()
   const router = useRouter()
+  const currentLocale = useSiteLocale()
+  const messages = useSiteMessages()
   const { markPending, prefetch } = useDocsNavigation()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
+  const search = useSyncExternalStore(subscribeToLocation, getLocationSearch, getServerSearch)
   const languageRootRef = useRef<HTMLDivElement>(null)
   const languageTriggerRef = useRef<HTMLButtonElement>(null)
   const skipInitialLanguageFocusRef = useRef(false)
-  const docsMatch = pathname.match(/^\/docs\/(en|ko|ja)(?:\/(.*))?$/)
-  const currentLocale = (docsMatch?.[1] as DocLocale | undefined) ?? 'en'
-  const currentDocSlug = docsMatch?.[2] ?? ''
+  const docsMatch = pathname.match(/^\/docs\/(?:en|ko|ja)(?:\/(.*))?$/)
+  const currentDocSlug = docsMatch?.[1] ?? ''
 
-  const prepareLanguage = (language: DocLocale) => {
-    const href = docHref(language, currentDocSlug)
+  const prepareLanguage = (language: SiteLocale) => {
+    const href = switchLocalePath(pathname, language)
     prefetch(href)
     return warmLocaleFonts(language, currentDocSlug)
   }
@@ -71,7 +86,7 @@ export function SiteHeader() {
       ;(current ?? languageRootRef.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]'))?.focus()
     })
   }
-  const handleLanguageFocus = (language: DocLocale) => {
+  const handleLanguageFocus = (language: SiteLocale) => {
     if (skipInitialLanguageFocusRef.current) {
       skipInitialLanguageFocusRef.current = false
       return
@@ -95,12 +110,13 @@ export function SiteHeader() {
     event.preventDefault()
     items[next]?.focus()
   }
-  const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  const currentToolPath = stripSiteLocale(pathname)
+  const isCurrent = (href: string) => currentToolPath === href || currentToolPath.startsWith(`${href}/`)
   const examplesCurrent = /^\/docs\/(?:en|ko|ja)\/examples(?:\/|$)/.test(pathname)
   const documentationCurrent = pathname.startsWith('/docs/') && !examplesCurrent
   const handleLanguageClick = async (
     event: ReactMouseEvent<HTMLAnchorElement>,
-    language: DocLocale,
+    language: SiteLocale,
   ) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
       closeNavigation()
@@ -113,7 +129,7 @@ export function SiteHeader() {
       return
     }
     setLanguageOpen(false)
-    const href = docHref(language, currentDocSlug)
+    const href = `${switchLocalePath(pathname, language)}${window.location.search}`
     await Promise.race([
       prepareLanguage(language),
       new Promise<void>(resolve => setTimeout(resolve, 250)),
@@ -128,13 +144,13 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header-inner">
-        <DocsIntentLink className="site-wordmark" href="/" onClick={closeNavigation}>
+        <DocsIntentLink className="site-wordmark" href={localizedPath(currentLocale, '/')} onClick={closeNavigation}>
           <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
           <span>live2d-web</span>
         </DocsIntentLink>
         <button
           aria-expanded={navigationOpen}
-          aria-label="Toggle navigation"
+          aria-label={messages.header.toggle}
           className="site-menu-button"
           type="button"
           onClick={() => setNavigationOpen(value => !value)}
@@ -142,40 +158,40 @@ export function SiteHeader() {
           <span />
           <span />
         </button>
-        <nav aria-label="Primary" className={navigationOpen ? 'site-nav is-open' : 'site-nav'}>
+        <nav aria-label={messages.header.navigation} className={navigationOpen ? 'site-nav is-open' : 'site-nav'}>
           <div className="site-nav-links">
             <DocsIntentLink
               aria-current={documentationCurrent ? 'page' : undefined}
-              href={docHref(currentLocale, '')}
+              href={localizedDocPath(currentLocale)}
               onClick={closeNavigation}
             >
-              Documentation
+              {messages.docs.label}
             </DocsIntentLink>
             <DocsIntentLink
               aria-current={isCurrent('/playground') ? 'page' : undefined}
-              href="/playground"
+              href={localizedPath(currentLocale, '/playground')}
               onClick={closeNavigation}
             >
-              Playground
+              {messages.header.playground}
             </DocsIntentLink>
             <DocsIntentLink
               aria-current={isCurrent('/inspect') ? 'page' : undefined}
-              href="/inspect"
+              href={localizedPath(currentLocale, '/inspect')}
               onClick={closeNavigation}
             >
-              Inspector
+              {messages.header.inspector}
             </DocsIntentLink>
             <DocsIntentLink
               aria-current={examplesCurrent ? 'page' : undefined}
-              href={docHref(currentLocale, 'examples')}
+              href={localizedDocPath(currentLocale, 'examples')}
               onClick={closeNavigation}
             >
-              Examples
+              {messages.header.examples}
             </DocsIntentLink>
           </div>
           <div className="site-utilities">
             <a
-              aria-label="GitHub repository"
+              aria-label={messages.header.github}
               className="site-github"
               href="https://github.com/Heonys/live2d-web"
             >
@@ -189,7 +205,7 @@ export function SiteHeader() {
                 ref={languageTriggerRef}
                 aria-expanded={languageOpen}
                 aria-haspopup="menu"
-                aria-label="Documentation language"
+                aria-label={messages.header.language}
                 className="site-language-trigger"
                 type="button"
                 onClick={() => languageOpen ? setLanguageOpen(false) : openLanguageMenu()}
@@ -209,16 +225,16 @@ export function SiteHeader() {
               </button>
               {languageOpen && (
                 <div
-                  aria-label="Documentation language"
+                  aria-label={messages.header.language}
                   className="site-language-menu"
                   role="menu"
                   onKeyDown={handleLanguageKeyDown}
                 >
-                  {languages.map(language => (
+                  {SITE_LOCALES.map(language => (
                     <Link
                       key={language}
                       aria-current={language === currentLocale ? 'page' : undefined}
-                      href={docHref(language, currentDocSlug)}
+                      href={`${switchLocalePath(pathname, language)}${search}`}
                       hrefLang={language}
                       lang={language}
                       prefetch={false}

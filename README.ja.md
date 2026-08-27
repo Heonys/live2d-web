@@ -9,8 +9,8 @@
 
 <p align="center">
   <strong><a href="https://live2d-web-playground.vercel.app/docs/ja">日本語ドキュメント</a></strong> ·
-  <a href="https://live2d-web-playground.vercel.app/playground">Playground</a> ·
-  <a href="https://live2d-web-playground.vercel.app/inspect">モデル検査</a> ·
+  <a href="https://live2d-web-playground.vercel.app/ja/playground">Playground</a> ·
+  <a href="https://live2d-web-playground.vercel.app/ja/inspect">モデル検査</a> ·
   <a href="examples">サンプル</a>
 </p>
 

@@ -14,6 +14,7 @@ import {
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { StageLoading } from '../../components/StageLoading'
+import { useSiteLocale, useSiteMessages } from '../../i18n/SiteLocale'
 import {
   CUBISM_CORE_URL,
   CUBISM_CORE_URL_PIXI,
@@ -71,14 +72,17 @@ function Diagnostics({ backendName }: { backendName: string }) {
 
 function ModelControls() {
   const model = useLive2DModel()
+  const messages = useSiteMessages().compare
   return (
     <button type="button" onClick={() => void model?.motion('Tap@Body')}>
-      Play Tap@Body
+      {messages.play}
     </button>
   )
 }
 
 function BackendComparisonContent() {
+  const locale = useSiteLocale()
+  const messages = useSiteMessages()
   const searchParams = useSearchParams()
   const backendName = searchParams.get('backend') === 'pixi-v6'
     ? 'pixi-v6'
@@ -97,7 +101,7 @@ function BackendComparisonContent() {
     fetch('/assets/live2d/hiyori/manifest.json', { signal: controller.signal })
       .then((response) => {
         if (!response.ok)
-          throw new Error('Run `pnpm fetch-assets` before starting the playground.')
+          throw new Error(messages.compare.assetsMissing)
         return response.json() as Promise<AssetManifest>
       })
       .then((loaded) => {
@@ -109,18 +113,15 @@ function BackendComparisonContent() {
           setError(caught instanceof Error ? caught.message : String(caught))
       })
     return () => controller.abort()
-  }, [])
+  }, [messages.compare.assetsMissing])
 
   return (
-    <main>
+    <main lang={locale}>
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Renderer comparison</p>
-          <h1>Cubism WebGL vs Pixi v6</h1>
-          <p>
-            Both backends use the same Hiyori model, CSS size and fixed 1×
-            backing-buffer resolution. Their required Core versions differ.
-          </p>
+          <p className="eyebrow">{messages.compare.eyebrow}</p>
+          <h1>{messages.compare.title}</h1>
+          <p>{messages.compare.description}</p>
           <code className="install">npm install live2d-web</code>
         </div>
       </section>
@@ -130,7 +131,7 @@ function BackendComparisonContent() {
           {manifest
             ? (
                 <Live2DCanvas
-                  accessibility={{ label: `${backendName} model preview` }}
+                  accessibility={{ label: `${backendName} ${messages.compare.accessibility}` }}
                   key={backendName}
                   backend={backend}
                   coreUrl={backendName === 'cubism-webgl'
@@ -164,9 +165,9 @@ function BackendComparisonContent() {
 
         <aside>
           <label>
-            Backend
+            {messages.compare.backend}
             <select
-              aria-label="Backend"
+              aria-label={messages.compare.backend}
               value={backendName}
               onChange={(event) => {
                 const next = event.target.value as 'cubism-webgl' | 'pixi-v6'
@@ -180,10 +181,7 @@ function BackendComparisonContent() {
             </select>
           </label>
           <p className="note">
-            Backend changes reload the page because Cubism Core is a
-            process-global script. WebGL uses Core 5.3; the legacy Pixi
-            Framework uses the final pre-5.3 Core. The model, CSS size and
-            backing-buffer resolution and 60 FPS cap stay identical.
+            {messages.compare.note}
           </p>
         </aside>
       </section>
@@ -192,8 +190,9 @@ function BackendComparisonContent() {
 }
 
 export default function BackendComparison() {
+  const messages = useSiteMessages().compare
   return (
-    <Suspense fallback={<main>Loading comparison…</main>}>
+    <Suspense fallback={<main>{messages.loading}</main>}>
       <BackendComparisonContent />
     </Suspense>
   )

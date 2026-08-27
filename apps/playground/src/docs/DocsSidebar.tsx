@@ -4,6 +4,7 @@ import type { DocGroup, DocLocale } from './manifest'
 import { usePathname } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { canBackgroundPrefetch, scheduleIdle } from '../components/navigationPrefetch'
+import { useSiteMessages } from '../i18n/SiteLocale'
 import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
 import { useDocsNavigation } from './docsNavigationContext'
@@ -18,6 +19,7 @@ const groupNames: Record<DocLocale, Record<DocGroup, string>> = {
 }
 
 export function DocsSidebar({ locale }: { locale: DocLocale }) {
+  const messages = useSiteMessages().docs
   const pathname = usePathname()
   const { prefetch } = useDocsNavigation()
   const sidebarRef = useRef<HTMLElement>(null)
@@ -104,12 +106,12 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
   }, [backgroundHrefs, prefetch])
 
   return (
-    <aside ref={sidebarRef} aria-label="Documentation navigation" className="docs-sidebar">
+    <aside ref={sidebarRef} aria-label={messages.navigation} className="docs-sidebar">
       <DocsIntentLink className="docs-sidebar-brand" href={docHref(locale, '')}>
-        Documentation
+        {messages.label}
       </DocsIntentLink>
       <DocsSearchTrigger />
-      <nav aria-label="Documentation">
+      <nav aria-label={messages.label}>
         {groups.map(group => (
           <section key={group}>
             <h2>{groupNames[locale][group]}</h2>

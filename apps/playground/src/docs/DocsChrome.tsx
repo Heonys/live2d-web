@@ -3,6 +3,7 @@
 import type { DocLocale, DocPageMeta } from './manifest'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { useSiteMessages } from '../i18n/SiteLocale'
 import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
 import { docHref } from './manifest'
@@ -45,6 +46,7 @@ export function DocsMobileNavigation({ current, locale, pages }: {
   locale: DocLocale
   pages: readonly DocPageMeta[]
 }) {
+  const messages = useSiteMessages().docs
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -102,7 +104,7 @@ export function DocsMobileNavigation({ current, locale, pages }: {
             <button aria-label={mobileLabels[locale].close} type="button" onClick={close}>×</button>
           </div>
           <DocsSearchTrigger />
-          <nav aria-label="Documentation">
+          <nav aria-label={messages.label}>
             {pages.map(page => (
               <DocsIntentLink
                 key={page.slug}
@@ -123,6 +125,7 @@ export function DocsMobileNavigation({ current, locale, pages }: {
 interface TocHeading { depth: number, id: string, text: string }
 
 export function DocsToc({ locale }: { locale: DocLocale }) {
+  const messages = useSiteMessages().docs
   const pathname = usePathname()
   const [headings, setHeadings] = useState<TocHeading[]>([])
   const [active, setActive] = useState('')
@@ -150,9 +153,9 @@ export function DocsToc({ locale }: { locale: DocLocale }) {
     }
   }, [pathname])
   if (!headings.length)
-    return <aside aria-label="On this page" className="docs-toc" />
+    return <aside aria-label={messages.onPage} className="docs-toc" />
   return (
-    <aside aria-label="On this page" className="docs-toc">
+    <aside aria-label={messages.onPage} className="docs-toc">
       <strong>{mobileLabels[locale].onPage}</strong>
       <nav>
         {headings.map(heading => (
