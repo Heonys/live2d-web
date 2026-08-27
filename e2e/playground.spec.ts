@@ -93,7 +93,7 @@ function actionableWebGLErrors(browserName: string, errors: string[]) {
 // Scanning straight after goto() measured the shell, not the labelled canvas
 // the accessibility option exists to describe.
 const AXE_ROUTES = [
-  { ready: '.landing-stage-status', route: '/' },
+  { ready: '.landing-demo[data-load-phase="ready"]', route: '/' },
   { route: '/docs/en' },
   { ready: '[data-testid="stage-status"]', route: '/playground' },
   { route: '/inspect' },
@@ -104,8 +104,12 @@ test('has no automatically detectable accessibility violations on primary routes
 
   for (const { ready, route } of AXE_ROUTES) {
     await page.goto(route)
-    if (ready)
-      await expect(page.locator(ready)).toContainText('ready')
+    if (ready) {
+      if (route === '/')
+        await expect(page.locator(ready)).toBeVisible()
+      else
+        await expect(page.locator(ready)).toContainText('ready')
+    }
     const results = await new AxeBuilder({ page }).analyze()
     expect(
       results.violations,
@@ -188,10 +192,10 @@ test('keeps the landing page focused and links to the full playground', async ({
     '/playground',
   )
   await expect(page.locator('.landing-stage canvas')).toHaveCount(1)
-  await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  await expect(page.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
   await expect(page.getByRole('button', { name: 'Play motion' })).toBeEnabled()
 
-  const speechButton = page.getByRole('button', { name: 'Hold to speak' })
+  const speechButton = page.getByRole('button', { name: 'Hold to move mouth' })
   await speechButton.hover()
   await page.mouse.down()
   await expect(speechButton).toHaveAttribute('aria-pressed', 'true')
@@ -331,7 +335,7 @@ test('defers route prefetch until the landing model settles and shows the brande
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await expect(character).toHaveCSS('animation-name', 'none')
   await expect(loader.locator('.stage-loading-mark')).toHaveCSS('animation-name', 'none')
-  await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  await expect(page.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
   const readyStageBox = await page.locator('.landing-stage').boundingBox()
   expect(readyStageBox).not.toBeNull()
   expect(Math.abs(readyStageBox!.width - initialStageBox!.width)).toBeLessThanOrEqual(1)
@@ -362,7 +366,7 @@ test('retries a deferred landing manifest failure', async ({ browserName, page }
   await page.goto('/')
   await expect(page.locator('.landing-demo-error[role="alert"]')).toContainText('Local demo assets are unavailable.')
   await page.getByRole('button', { name: 'Retry model' }).click()
-  await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  await expect(page.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
   await expect(page.getByRole('status').filter({ hasText: 'Preparing model' })).toHaveCount(0)
   expect(attempts).toBe(2)
 })
