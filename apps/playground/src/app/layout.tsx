@@ -4,7 +4,7 @@ import { SiteHeader } from '../components/SiteHeader'
 import { DocsSearchProvider } from '../docs/DocSearch'
 import { DocsNavigationProvider } from '../docs/DocsNavigation'
 import { SiteLocaleProvider } from '../i18n/SiteLocale'
-import { SITE_ORIGIN } from '../lib/siteOrigin'
+import { SITE_ORIGIN, siteUrl } from '../lib/siteOrigin'
 import '@fontsource-variable/jetbrains-mono'
 import '@fontsource-variable/noto-sans-jp'
 import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'
@@ -26,10 +26,26 @@ const miSans = localFont({
 })
 
 export const metadata: Metadata = {
+  applicationName: 'live2d-web',
   metadataBase: new URL(SITE_ORIGIN),
-  title: 'live2d-web',
   description:
     'A WebGL2 runtime for Cubism models with optional React, lip sync, face tracking and developer tools.',
+  openGraph: {
+    description:
+      'Render Cubism 4 and 5 models with WebGL2. Add React, lip sync and face tracking only when your app needs them.',
+    locale: 'en_US',
+    siteName: 'live2d-web',
+    title: 'live2d-web · Live2D for the web',
+    type: 'website',
+    url: siteUrl('/'),
+  },
+  title: 'live2d-web · Live2D for the web',
+  twitter: {
+    card: 'summary_large_image',
+    description:
+      'Render Cubism 4 and 5 models with WebGL2. Add integrations only when your app needs them.',
+    title: 'live2d-web · Live2D for the web',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

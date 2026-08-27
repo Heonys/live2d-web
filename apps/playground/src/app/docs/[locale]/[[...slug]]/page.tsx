@@ -7,6 +7,7 @@ import { DocsIntentLink } from '../../../../docs/DocsNavigation'
 import { HighlightedCode } from '../../../../docs/HighlightedCode'
 import { DOC_LOADERS } from '../../../../docs/loaders'
 import { DOC_LOCALES, DOC_PAGES, docHref, getDocPage } from '../../../../docs/manifest'
+import { openGraphLocale } from '../../../../i18n/metadata'
 import { siteUrl } from '../../../../lib/siteOrigin'
 
 const labels: Record<DocLocale, { apiNote: string, eyebrow: string, pagination: string, next: string, previous: string }> = {
@@ -42,6 +43,8 @@ export async function generateMetadata({ params }: {
   if (!page)
     return {}
   const pagePath = docHref(locale, page.slug)
+  const title = `${page.title[locale]} · live2d-web`
+  const description = page.summary[locale]
   return {
     alternates: {
       canonical: siteUrl(pagePath),
@@ -50,8 +53,24 @@ export async function generateMetadata({ params }: {
         siteUrl(docHref(language, page.slug)),
       ])),
     },
-    description: page.summary[locale],
-    title: `${page.title[locale]} · live2d-web`,
+    description,
+    openGraph: {
+      alternateLocale: DOC_LOCALES
+        .filter(language => language !== locale)
+        .map(openGraphLocale),
+      description,
+      locale: openGraphLocale(locale),
+      siteName: 'live2d-web',
+      title,
+      type: 'article',
+      url: siteUrl(pagePath),
+    },
+    title,
+    twitter: {
+      card: 'summary_large_image',
+      description,
+      title,
+    },
   }
 }
 
