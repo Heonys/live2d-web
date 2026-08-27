@@ -8,9 +8,9 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://live2d-web-playground.vercel.app/docs/ko">한국어 문서</a></strong> ·
-  <a href="https://live2d-web-playground.vercel.app/ko/playground">Playground</a> ·
-  <a href="https://live2d-web-playground.vercel.app/ko/inspect">모델 검사기</a> ·
+  <strong><a href="https://live2d-web.heonys.dev/docs/ko">한국어 문서</a></strong> ·
+  <a href="https://live2d-web.heonys.dev/ko/playground">Playground</a> ·
+  <a href="https://live2d-web.heonys.dev/ko/inspect">모델 검사기</a> ·
   <a href="examples">예제</a>
 </p>
 
@@ -69,10 +69,10 @@ dispose하고, React 컴포넌트는 unmount 시 스스로 정리합니다.
 
 ## 자세한 문서와 예제
 
-[한국어 문서 사이트](https://live2d-web-playground.vercel.app/docs/ko)는 Core·모델
+[한국어 문서 사이트](https://live2d-web.heonys.dev/docs/ko)는 Core·모델
 준비, JavaScript, React, 모션·표정, 립싱크, MediaPipe main/Worker, Next SSR,
 모바일, 오류 해결, 보안·라이선스를 다룹니다. API 시그니처는 공개 TypeScript
-소스에서 생성한 [공통 레퍼런스](https://live2d-web-playground.vercel.app/docs/ko/api)를
+소스에서 생성한 [공통 레퍼런스](https://live2d-web.heonys.dev/docs/ko/api)를
 사용합니다.
 
 저장소의 Vite JavaScript·Next React·Vue Vite·투명 OBS overlay 예제는 CI에서

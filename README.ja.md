@@ -8,9 +8,9 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://live2d-web-playground.vercel.app/docs/ja">日本語ドキュメント</a></strong> ·
-  <a href="https://live2d-web-playground.vercel.app/ja/playground">Playground</a> ·
-  <a href="https://live2d-web-playground.vercel.app/ja/inspect">モデル検査</a> ·
+  <strong><a href="https://live2d-web.heonys.dev/docs/ja">日本語ドキュメント</a></strong> ·
+  <a href="https://live2d-web.heonys.dev/ja/playground">Playground</a> ·
+  <a href="https://live2d-web.heonys.dev/ja/inspect">モデル検査</a> ·
   <a href="examples">サンプル</a>
 </p>
 
@@ -69,11 +69,11 @@ dispose します。React component は unmount 時に自動で破棄します�
 
 ## 詳細ドキュメントとサンプル
 
-[日本語ドキュメント](https://live2d-web-playground.vercel.app/docs/ja)では Core・
+[日本語ドキュメント](https://live2d-web.heonys.dev/docs/ja)では Core・
 モデル準備、JavaScript、React、motion・表情、lip sync、MediaPipe main/Worker、
 Next SSR、mobile、troubleshooting、security・license を説明します。API
 signature は公開 TypeScript source から生成した
-[共通リファレンス](https://live2d-web-playground.vercel.app/docs/ja/api)を使います。
+[共通リファレンス](https://live2d-web.heonys.dev/docs/ja/api)を使います。
 
 repository の Vite JavaScript・Next React・Vue Vite・透明 OBS overlay の例は
 CI で production build されます。

@@ -735,7 +735,7 @@ test('localizes public routes and preserves the logical page and query', async (
 
   const sitemap = await (await page.request.get('/sitemap.xml')).text()
   for (const route of ['/ko', '/ja', '/ko/playground', '/ja/inspect', '/ko/vanilla', '/ja/compare'])
-    expect(sitemap).toContain(`https://live2d-web-playground.vercel.app${route}`)
+    expect(sitemap).toContain(`https://live2d-web.heonys.dev${route}`)
 })
 
 test('warms only the selected documentation language', async ({ browserName, page }) => {

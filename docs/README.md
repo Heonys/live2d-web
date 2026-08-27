@@ -16,9 +16,9 @@ MediaPipe Worker, 모델 검사 API·URL/zip 도구, 세 언어 문서 사이트
 6. [라이선스와 상표](licensing.md)
 7. [벤치마크 가이드](benchmarking.md)
 8. [배포물과 개발 저장소 보안 검증](security.md)
-9. [공개 문서 사이트](https://live2d-web-playground.vercel.app/docs/en) — 영어·한국어·
+9. [공개 문서 사이트](https://live2d-web.heonys.dev/docs/en) — 영어·한국어·
    일본어 가이드, TypeDoc API, 검색과 예제 갤러리
-10. [모델 검사기](https://live2d-web-playground.vercel.app/inspect) — URL·로컬 zip
+10. [모델 검사기](https://live2d-web.heonys.dev/inspect) — URL·로컬 zip
     자산/버전/트래킹 호환성 검사
 11. [v0.7 안정화 검증](benchmarks/2026-08-26-v0.7-stabilization.md)
    — API 기준선·React 18/19·독립 소비자·접근성·MediaPipe warm 생성 측정

@@ -46,10 +46,15 @@
    여기서 반드시 확인한다.
 4. **공개 사이트 배포가 main을 따라잡은 것을 확인한 뒤에만 태그를 올린다.**
    (2026-08-27부터 Vercel이 `apps/playground`를
-   <https://live2d-web-playground.vercel.app>에 배포한다. 이 URL이 저장소에
-   적힌 유일한 자리이므로, 도메인이 바뀌면 여기와 README 3종·npm README·
-   `docs/README.md`·`docs/roadmap.md`를 함께 고친다. 배포 환경을 옮길 때
-   실제로 링크 넷이 npm 페이지에 404로 남았다.)
+   <https://live2d-web.heonys.dev>에 배포한다. **소유한 도메인이므로 배포
+   업체를 옮겨도 이 주소는 유지된다.** 앞선 배포 업체 이전 때
+   업체 도메인을 쓴 탓에 이미 발행된 npm 0.6.0 페이지에 404 링크 넷이
+   영구히 남았고, 그것을 되풀이하지 않으려고 도메인을 샀다. 발행된 README는
+   고칠 수 없으므로 **주소를 바꾸려면 반드시 npm 발행 전에** 한다.
+   `live2d-web-playground.vercel.app`은 살려 두어 0.6.0의 링크가 계속
+   동작하게 한다. 주소가 바뀌면 여기와 README 3종·npm README·
+   `docs/README.md`·`docs/roadmap.md`·`apps/playground/src/lib/siteOrigin.ts`를
+   함께 고친다.)
    README 3종·npm README·docs/README.md가 `/docs/*`·`/playground` 같은 배포
    경로를 링크하는데, npm 발행이 배포보다 앞서면 패키지 페이지의 링크가
    404인 채 공개된다. `content/docs/*/examples.mdx`의 `tree/main/examples`

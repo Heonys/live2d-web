@@ -1,7 +1,7 @@
 import process from 'node:process'
 
 const LOCAL_SITE_ORIGIN = 'http://localhost:3000'
-const PRODUCTION_SITE_ORIGIN = 'https://live2d-web-playground.vercel.app'
+const PRODUCTION_SITE_ORIGIN = 'https://live2d-web.heonys.dev'
 
 function withProtocol(value: string) {
   return /^https?:\/\//u.test(value) ? value : `https://${value}`
