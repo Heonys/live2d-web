@@ -78,3 +78,40 @@ const character = await createLive2D({
 
 addEventListener('pagehide', () => character.dispose(), { once: true })
 ```
+
+## 用途に合うプロジェクトを選ぶ
+
+- **Vite JavaScript** は、最小構成と `createLive2D()` の生存期間を確認するための出発点です。
+- **Next React** は、Client Component の境界と SSR 時に安全な import を確認できます。
+- **Vue Vite** は、専用の Vue binding を使わず component lifecycle に root API を接続する例です。
+- **OBS overlay** は、透過背景と query parameter でモデルを差し替えるブラウザソース向けの例です。
+
+アプリの構成に近いものをコピーし、別のフレームワーク用コードを無理に混ぜないでください。どの例も Core とモデルを同梱しません。
+
+## ローカルファイルを用意する
+
+各プロジェクトは `/live2dcubismcore.min.js` と `/models/model.model3.json` を参照します。利用条件を確認した Core と、自分で配布できるモデルをそれぞれの `public` ディレクトリに置きます。
+
+```text
+public/
+├── live2dcubismcore.min.js
+└── models/
+    ├── model.model3.json
+    ├── model.moc3
+    └── textures/
+```
+
+ファイル名の大文字・小文字と model3 内の相対パスを保ってください。開発サーバーで動いても、配信環境の CORS と MIME type が異なる場合があります。
+
+## production build を確認する
+
+例を変更したあとは development server だけでなく production build も実行します。
+
+```sh
+pnpm --filter @live2d-web/example-vanilla-vite build
+pnpm --filter @live2d-web/example-next-react build
+pnpm --filter @live2d-web/example-vue-vite build
+pnpm --filter @live2d-web/example-obs-overlay build
+```
+
+デプロイ後は Core と model3 の URL、Canvas の表示、ページを離れたあとの `dispose()` を確認してください。

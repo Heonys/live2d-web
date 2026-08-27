@@ -27,3 +27,11 @@ devtools.dispose()
 The caller owns the container's size, position and scrolling. Devtools adds one host with an open Shadow DOM and never removes existing children. Microphones, MediaPipe and Workers remain application responsibilities.
 
 > Call `dispose()` when the model or panel unmounts. It is safe to call more than once.
+
+## Switch targets without leaking overrides
+
+Call `setTarget()` when the inspected model changes. Devtools removes only parameter drivers that it created, leaving application-owned drivers intact. Parameter sampling runs only while the Parameters tab is visible and stops on target replacement or dispose.
+
+## Keep Devtools development-only when appropriate
+
+The entry is optional and does not enter the root graph unless imported. Applications can dynamically import it behind a development flag, mount it into a fixed panel and dispose it when the panel closes. Do not use the diagnostic JSON as a model export: it intentionally omits model URLs, assets, camera data and face landmarks.

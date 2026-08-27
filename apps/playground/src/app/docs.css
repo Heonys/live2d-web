@@ -651,10 +651,6 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   border-color: var(--accent);
   color: var(--text-1);
 }
-.docs-mobile-navigation {
-  display: none;
-}
-
 @media (max-width: 1120px) {
   .docs-layout {
     grid-template-columns: 232px minmax(0, 1fr);
@@ -664,7 +660,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
   .docs-layout {
     display: block;
   }
@@ -675,70 +671,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
     padding: 0 20px;
   }
   .docs-article {
-    padding-top: 42px;
-  }
-  .docs-mobile-navigation {
-    position: sticky;
-    z-index: 50;
-    top: var(--site-header-height);
-    display: block;
-    margin-inline: -20px;
-    border-bottom: 1px solid var(--line);
-    background: var(--surface-0);
-  }
-  .docs-mobile-navigation > button {
-    display: flex;
-    width: 100%;
-    padding: 10px 20px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .docs-mobile-navigation > button span {
-    color: var(--text-3);
-    font-size: 11px;
-  }
-  .docs-mobile-navigation > button strong {
-    font-size: 14px;
-  }
-  .docs-mobile-drawer {
-    position: fixed;
-    z-index: 80;
-    inset: 0;
-    padding: 18px;
-    background: var(--surface-0);
-    overflow-y: auto;
-  }
-  .docs-mobile-drawer > div {
-    display: flex;
-    margin-bottom: 26px;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .docs-mobile-drawer .docs-search-trigger {
-    margin-bottom: 20px;
-  }
-  .docs-mobile-drawer > div > button {
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    border-color: var(--line);
-    background: transparent;
-    font-size: 24px;
-  }
-  .docs-mobile-drawer nav {
-    display: grid;
-  }
-  .docs-mobile-drawer nav a {
-    padding: 11px 3px;
-    border-bottom: 1px solid var(--line);
-    color: var(--text-2);
-    text-decoration: none;
-  }
-  .docs-mobile-drawer nav a[aria-current='page'] {
-    color: var(--accent);
+    padding-top: 32px;
   }
   .docs-search-backdrop {
     padding: 72px 0 0;
@@ -765,12 +698,6 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
 
 @media (max-width: 520px) {
   .docs-main {
-    padding-inline: 18px;
-  }
-  .docs-mobile-navigation {
-    margin-inline: -18px;
-  }
-  .docs-mobile-navigation > button {
     padding-inline: 18px;
   }
   .docs-article > h1 {

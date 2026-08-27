@@ -17,3 +17,20 @@ detach()
 ## 입력 충돌 피하기
 
 얼굴 트래킹과 마이크 립싱크를 함께 사용한다면 트래커의 `mouth` 채널을 끄세요. 두 기능이 같은 입 파라미터를 동시에 바꾸는 문제를 피할 수 있습니다. wLipSync를 사용하려면 브라우저가 AudioWorklet을 지원해야 합니다.
+
+## 프레임마다 한 번만 샘플링하기
+
+앱이 소유한 analyser에서 RMS를 한 번 계산한 뒤 `sample(rms, elapsedMs)`를 호출하세요. 처음 1.5초는 배경 소음을 추정합니다. 감소하지 않는 시간을 전달해야 attack과 release가 안정적입니다.
+
+```ts
+const startedAt = performance.now()
+function update(now: number) {
+  driver.sample(readRms(analyser), now - startedAt)
+  requestAnimationFrame(update)
+}
+requestAnimationFrame(update)
+```
+
+## 각 자원 소유자가 정리하기
+
+립싱크 detach는 런타임 driver만 제거합니다. 앱은 animation frame 취소, 오디오 노드 연결 해제, `AudioContext` 정리, 모든 `MediaStreamTrack` 중지를 처리해야 합니다.

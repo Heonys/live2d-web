@@ -95,6 +95,13 @@ for (const page of DOC_PAGES) {
     const source = readFileSync(sourcePath, 'utf8')
     if (!source.trim())
       failures.push(`empty localized MDX: ${locale}/${filename}`)
+    if (page.slug !== 'api') {
+      const sectionCount = [...source.matchAll(/^##\s+\S.*$/gmu)].length
+      if (sectionCount < 3)
+        failures.push(`${locale}/${filename} has ${sectionCount} substantive sections; expected at least 3`)
+      if (!/^```[a-z]*(?:\s|$)/mu.test(source))
+        failures.push(`${locale}/${filename} has no verified code or command example`)
+    }
     if (page.slug === 'troubleshooting') {
       for (const code of errorCodes) {
         if (!new RegExp(`^#{2,6}\\s+${code}\\s*$`, 'm').test(source))

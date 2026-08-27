@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { DocLocale } from '../../../../docs/manifest'
 import { notFound } from 'next/navigation'
 import { apiAnchor, readApiReference } from '../../../../docs/apiReference'
-import { DocsMobileNavigation, DocsToc } from '../../../../docs/DocsChrome'
+import { DocsMain, DocsToc } from '../../../../docs/DocsChrome'
 import { DocsIntentLink } from '../../../../docs/DocsNavigation'
 import { HighlightedCode } from '../../../../docs/HighlightedCode'
 import { DOC_LOADERS } from '../../../../docs/loaders'
@@ -75,8 +75,7 @@ export default async function DocumentationPage({ params }: {
 
   return (
     <>
-      <main className="docs-main">
-        <DocsMobileNavigation current={page.slug} locale={locale} pages={DOC_PAGES} />
+      <DocsMain>
         <article className="docs-article">
           <p className="eyebrow">{labels[locale].eyebrow}</p>
           <h1>{page.title[locale]}</h1>
@@ -117,7 +116,7 @@ export default async function DocumentationPage({ params }: {
             )}
           </nav>
         </article>
-      </main>
+      </DocsMain>
       <DocsToc locale={locale} />
     </>
   )

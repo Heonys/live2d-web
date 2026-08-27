@@ -10,3 +10,25 @@ model3.json은 신뢰할 수 없는 입력으로 다루세요. 렌더링하기 �
 ## 라이선스와 개인정보
 
 live2d-web은 Live2D의 공식 제품이 아닙니다. Cubism Core, Framework, 모델, MediaPipe에는 각각 별도의 이용 조건이 적용됩니다. 얼굴 추적은 사용자의 기기에서 처리되지만, 카메라 사용 동의와 안내, 앱에서 추가로 수집하는 분석 정보는 앱 개발자가 책임져야 합니다.
+
+## 신뢰 경계 정하기
+
+JSON 파싱에 성공했다고 신뢰할 수 없는 압축 파일을 렌더링하지 마세요. 먼저 검사하고 크기와 파일 수를 제한하며 경로 탈출과 외부 참조를 거부합니다. 서버 URL 검사에는 host allow-list와 outbound network 제한이 모두 필요합니다.
+
+```ts
+const report = await inspectModelSource({
+  src: submittedUrl,
+  limits: {
+    maxAssetBytes: 32 * 1024 * 1024,
+    maxTotalBytes: 128 * 1024 * 1024,
+    maxReferences: 512,
+  },
+})
+
+if (report.status === 'incompatible')
+  throw new Error('The model cannot be rendered safely.')
+```
+
+## 배포 전 확인하기
+
+Core와 모델의 배포 권한, MediaPipe WASM과 task 파일의 출처, third-party notice를 확인하세요. CSP는 report-only로 먼저 점검한 뒤 `*` 없이 모델 로드, Worker 생성, 카메라 권한이 작동하는지 검증합니다.

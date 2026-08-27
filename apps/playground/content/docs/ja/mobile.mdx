@@ -6,3 +6,36 @@
 - ページが非表示の間はカメラ入力を停止します。
 - 画面回転とバックグラウンドからの復帰を確認します。
 - 実機で性能を測定してから Worker の利用を判断します。
+
+## カメラとページのライフサイクル
+
+ユーザー操作からカメラを開始し、`visibilitychange` や `pagehide` でフレーム生成を停止します。復帰時は以前の stream が無効になる場合があるため、`video.readyState` を確認してください。
+
+```ts title="camera-lifecycle.ts"
+let stream: MediaStream | undefined
+
+async function startCamera() {
+  stream = await navigator.mediaDevices.getUserMedia({ video: true })
+  video.srcObject = stream
+}
+
+function stopCamera() {
+  stream?.getTracks().forEach(track => track.stop())
+  stream = undefined
+  video.srcObject = null
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden)
+    stopCamera()
+})
+addEventListener('pagehide', stopCamera, { once: true })
+```
+
+## 端末に合わせた描画サイズ
+
+モデル読み込み前から Canvas の CSS サイズを確保します。上半身 framing と自動品質から始め、frame 時間を測定して解像度を上げます。
+
+## 実機で確認
+
+デスクトップのエミュレーションでは、カメラ権限、熱制御、バックグラウンド復帰、mobile WebKit Worker は検証できません。端末・OS・ブラウザーを記録し、Main の後に Worker を確認します。

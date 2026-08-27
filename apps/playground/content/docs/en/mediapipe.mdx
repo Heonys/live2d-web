@@ -54,3 +54,11 @@ requires physical-device validation, and Android Chrome is explicitly
 unverified. If Worker creation fails or times out, surface the `tracking-error`
 and let the user recreate the tracker in main mode; do not wait indefinitely or
 silently fall back.
+
+## Calibrate and map deliberately
+
+Keep a neutral face in view during the initial one-second calibration. Call `calibrate()` again after camera position or lighting changes. `auto` uses Perfect Sync only when enough matching parameters exist; otherwise it selects the standard pose, eyes, brows, mouth and cheek channels. Disable `mouth` when a microphone owns `ParamMouthOpenY`.
+
+## Own capture and teardown in the app
+
+The tracker does not request camera permission or schedule frames. The app owns the `<video>`, `MediaStream`, requestAnimationFrame and visibility lifecycle. On stop, detach the target, dispose the tracker, cancel frame production and stop camera tracks. A Worker tracker also closes transferred `ImageBitmap` objects and terminates its Worker during dispose.

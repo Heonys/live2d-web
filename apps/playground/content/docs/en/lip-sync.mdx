@@ -17,3 +17,20 @@ detach()
 ## Avoid competing mouth inputs
 
 When face tracking and microphone lip sync run together, disable the tracker mouth channel. wLipSync remains a separate source mode and requires a compatible browser AudioWorklet.
+
+## Sample once per frame
+
+Compute one RMS value from the application-owned analyser, then call `sample(rms, elapsedMs)` once for that animation frame. The first 1.5 seconds estimate background noise. Invalid RMS values become zero and decreasing timestamps are clamped, but a stable monotonic clock still produces the best attack and release behavior.
+
+```ts
+const startedAt = performance.now()
+function update(now: number) {
+  driver.sample(readRms(analyser), now - startedAt)
+  requestAnimationFrame(update)
+}
+requestAnimationFrame(update)
+```
+
+## Stop every resource owner
+
+Detaching lip sync removes only the runtime driver. The application must also cancel its animation frame, disconnect audio nodes, close or suspend its `AudioContext` as appropriate, and stop every `MediaStreamTrack`. On Firefox, treat unavailable wLipSync AudioWorklet support as a capability decision and offer volume input instead.

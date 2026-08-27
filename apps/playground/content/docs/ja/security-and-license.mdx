@@ -10,3 +10,34 @@ model3.json は信頼できない入力として扱ってください。描画�
 ## ライセンスとプライバシー
 
 live2d-web は Live2D の公式製品ではありません。Cubism Core、Framework、モデル、MediaPipe には、それぞれ個別の利用条件が適用されます。フェイストラッキングは端末内で処理されますが、カメラ利用の同意と案内、アプリが追加で収集する分析情報については、アプリ開発者が責任を負います。
+
+## 信頼境界を分ける
+
+アプリのコード、利用者が指定したモデル URL、ZIP ファイル、カメラ入力は同じ信頼度ではありません。外部入力を受け取る場合は、検査と描画を分けてください。
+
+```ts
+const report = await inspectModelSource({
+  src: submittedUrl,
+  limits: {
+    maxAssetBytes: 32 * 1024 * 1024,
+    maxTotalBytes: 128 * 1024 * 1024,
+    maxReferences: 512,
+  },
+})
+
+if (report.status === 'incompatible') {
+  throw new Error('The model cannot be rendered safely.')
+}
+```
+
+サーバーから URL を検査する場合は、HTTP(S) であることだけでなく、許可する hostname、解決後の IP、redirect 先も確認します。内部ネットワークへ接続できる環境では、アプリ側のネットワークポリシーが必要です。
+
+## 公開前の確認項目
+
+1. Core、Framework、モデル、フォントのライセンスと再配布条件を確認します。
+2. Core、model3、texture、WASM、task の配信元と CORS を固定します。
+3. CSP の `script-src`、`connect-src`、`worker-src` を実際の構成に合わせます。
+4. エラーログにモデル URL、カメラ画像、顔の landmark を不要に保存しないよう確認します。
+5. unmount 後に MediaStream track、Worker、AudioContext、Canvas が残らないことを確認します。
+
+モデルや Core を issue、CI artifact、公開リポジトリへ添付する前にも、それぞれの利用条件を確認してください。

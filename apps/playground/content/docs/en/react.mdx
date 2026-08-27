@@ -41,3 +41,28 @@ buttons for tap or motion actions and reduce their animation when
 ```
 
 Use `accessibility={{ mode: 'decorative' }}` when the Canvas adds no information.
+
+## Use the controller after readiness
+
+Receive the model controller from the component API used by your view and keep commands in event handlers. Do not issue a motion during Server Component rendering or assume the controller exists before the model reports ready. A controller becomes invalid after its model unmounts.
+
+```tsx
+import { useLive2DModel } from 'live2d-web/react'
+
+function MotionButton() {
+  const controller = useLive2DModel()
+  return (
+    <button disabled={!controller} onClick={() => controller?.motion('TapBody', 0)}>
+      Play greeting
+    </button>
+  )
+}
+
+<Live2DModel src="/models/model.model3.json">
+  <MotionButton />
+</Live2DModel>
+```
+
+## Strict Mode, retry and cleanup
+
+React development Strict Mode may mount, clean up and mount again. Let `Live2DCanvas` and `Live2DModel` own their resources instead of caching a controller globally. Keep `accessibility` and model options value-stable when possible; changing meaningful Stage options intentionally recreates the Stage, while equivalent inline accessibility values do not.

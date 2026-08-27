@@ -54,6 +54,7 @@ export function DocsIntentLink({
   href,
   onClick,
   onFocus,
+  onPointerDown,
   onPointerEnter,
   ...props
 }: DocsIntentLinkProps) {
@@ -87,6 +88,10 @@ export function DocsIntentLink({
         }
       }}
       onFocus={handleIntent}
+      onPointerDown={(event) => {
+        prefetch(href)
+        onPointerDown?.(event)
+      }}
       onPointerEnter={handleIntent}
     >
       {children}

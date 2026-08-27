@@ -24,3 +24,11 @@ URL mode fetches HTTP(S) references declared by the model. Browsers enforce CORS
 ## Browser zip inspector
 
 The /inspect tool opens a zip only in the current tab. It validates size, count, paths and model references, and never uploads, stores or sends telemetry. Incompatible archives are not rendered.
+
+## Interpret the report
+
+`compatible` has no findings, `warning` can be reviewed before rendering, and `incompatible` contains at least one error. Inspect asset paths and types together: a model3 file may parse correctly while its moc3, texture or motion is missing. Capability results describe available Standard channels and whether at least 45 of 52 Perfect Sync parameters match.
+
+## Set limits and cancellation
+
+Use lower `maxAssetBytes`, `maxTotalBytes` and `maxReferences` values when inspecting user-controlled sources. Pass an `AbortSignal` when navigation or model selection can replace the request. Abort rejects; ordinary model-content problems stay in the report so the UI can show all findings in one pass.

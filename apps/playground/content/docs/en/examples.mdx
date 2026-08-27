@@ -15,6 +15,18 @@ pnpm --filter @live2d-web/example-vue-vite dev
 pnpm --filter @live2d-web/example-obs-overlay dev
 ```
 
+## Choose the closest starting point
+
+Use Vite JavaScript for the smallest imperative lifecycle, Next React for a Client Component boundary, Vue Vite for framework lifecycle integration, and OBS overlay for a transparent browser source controlled by query parameters. None of the examples bundles Cubism Core or a model.
+
+## Provide local assets
+
+Copy licensed Core to `/live2dcubismcore.min.js` and an exported model directory under `/models`. Preserve every relative reference from model3. The examples deliberately fail with a useful asset error instead of downloading proprietary files from a default CDN.
+
+## Build before adapting
+
+Run the example unchanged, verify model load and cleanup, then replace the model URL and framing. A production build is the final check for SSR boundaries, worker URLs and asset base paths.
+
 ```ts title="Vite JavaScript"
 import { createLive2D } from 'live2d-web'
 

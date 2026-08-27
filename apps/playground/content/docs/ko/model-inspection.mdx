@@ -24,3 +24,11 @@ URL로 검사하면 모델에 적힌 HTTP(S) 참조를 실제로 요청합니다
 ## 브라우저 ZIP 검사기
 
 Inspector는 ZIP 파일을 현재 브라우저 탭 안에서만 엽니다. 파일 크기, 개수, 경로, 모델 참조를 확인하며 업로드하거나 저장하지 않고 사용 정보도 전송하지 않습니다. 호환되지 않는 압축 파일은 모델로 렌더링하지 않습니다.
+
+## 검사 결과 해석하기
+
+`compatible`은 finding이 없고, `warning`은 검토 후 렌더링할 수 있으며, `incompatible`에는 하나 이상의 오류가 있습니다. model3가 정상이어도 moc3, 텍스처, 모션이 빠질 수 있으므로 asset type과 path를 함께 확인하세요.
+
+## 한도와 취소 설정하기
+
+사용자가 제공한 source라면 `maxAssetBytes`, `maxTotalBytes`, `maxReferences`를 서비스에 맞게 낮추세요. 화면 이동이나 모델 교체가 있다면 `AbortSignal`을 전달합니다. abort는 reject되고 일반 모델 문제는 여러 finding으로 함께 반환됩니다.

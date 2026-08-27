@@ -13,3 +13,21 @@ Cubism Editor에서 내보낸 디렉터리 구조를 그대로 유지하세요. 
 - `model3.json`이 가리키는 상대 경로와 파일명의 대소문자를 바꾸지 마세요.
 - 텍스처나 모션을 다른 출처에서 제공한다면 CORS를 설정하세요.
 - 렌더링 문제를 찾기 전에 Inspector로 모델 구성부터 확인하세요.
+
+## 자산을 안정적으로 제공하기
+
+버전이 붙은 모델 파일은 가능하면 같은 origin의 고정 URL에서 제공하세요. 다른 origin을 사용한다면 model3, moc3, 텍스처, 모션, 표정 파일에 `GET`과 CORS를 허용해야 합니다.
+
+```text
+public/
+├─ live2dcubismcore.min.js
+└─ models/avatar/
+   ├─ avatar.model3.json
+   ├─ avatar.moc3
+   ├─ textures/
+   └─ motions/
+```
+
+## 렌더링 전에 호환성 확인하기
+
+[Inspector](/ko/inspect)나 `inspectModelSource()`로 누락 파일, 외부 URL, 지원하지 않는 버전을 먼저 확인하세요. 공개 이슈에는 Core나 모델 파일 대신 오류 코드, 실패 URL, HTTP 상태, export 버전을 남기세요.

@@ -41,3 +41,22 @@ export function Avatar() {
 ```
 
 情報を伝えない Canvas には `accessibility={{ mode: 'decorative' }}` を使います。
+
+## 準備後の controller を使う
+
+モデル配下のコンポーネントで `useLive2DModel()` を呼び、ユーザー操作からコマンドを実行します。準備前は `null` で、unmount 後の controller は再利用できません。
+
+```tsx
+import { useLive2DModel } from 'live2d-web/react'
+
+function MotionButton() {
+  const controller = useLive2DModel()
+  return <button disabled={!controller} onClick={() => controller?.motion('TapBody', 0)}>あいさつを再生</button>
+}
+
+<Live2DModel src="/models/model.model3.json"><MotionButton /></Live2DModel>
+```
+
+## Strict Mode と再試行
+
+開発時の React Strict Mode では mount と cleanup が繰り返されます。controller をグローバルに保存せず、`Live2DCanvas` と `Live2DModel` にリソースを所有させてください。モデル変更時はモデル ID を `key` に使います。

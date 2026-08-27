@@ -9,3 +9,23 @@ pnpm add live2d-web
 ## What you provide
 
 The npm package does not include Cubism Core or a model. Download Core under Live2D’s terms, export or license a Cubism 4/5 model, and serve both from your own origin.
+
+## Display the first model
+
+Create a host with an explicit size, pass a reachable Core URL and keep the exported model directory intact. Model loading is asynchronous, so treat the resolved instance as the point at which motion and parameter commands become available.
+
+```ts
+import { createLive2D } from 'live2d-web'
+
+const character = await createLive2D({
+  container: document.querySelector('#avatar')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/avatar/avatar.model3.json',
+})
+
+await character.motion('Idle', 0)
+```
+
+## Verify and clean up
+
+Check the Network panel for the model3 file, moc3 file and every texture. A blank Canvas with a successful model3 request usually means a referenced asset, Core or WebGL problem; the [troubleshooting guide](/docs/en/troubleshooting) maps every error code to a recovery step. Call `dispose()` when the host view is removed so the Canvas, WebGL resources and animation loop are released.

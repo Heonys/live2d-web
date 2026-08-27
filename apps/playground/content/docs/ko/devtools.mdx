@@ -27,3 +27,11 @@ devtools.dispose()
 패널의 위치·크기·스크롤은 앱에서 결정합니다. Devtools는 지정한 컨테이너에 open Shadow DOM 호스트 하나만 추가하며, 기존 자식 요소는 지우지 않습니다. 마이크, MediaPipe, Worker는 앱에서 관리해야 합니다.
 
 > 모델이나 패널을 화면에서 제거할 때 `dispose()`를 호출하세요. 여러 번 호출해도 안전합니다.
+
+## target 교체와 override 정리하기
+
+검사할 모델이 바뀌면 `setTarget()`을 호출하세요. Devtools는 자신이 만든 파라미터 driver만 제거하고 앱의 driver는 유지합니다. 파라미터 샘플링은 Parameters 탭이 보일 때만 실행됩니다.
+
+## 필요할 때만 불러오기
+
+Devtools는 선택형 entry이므로 import하지 않으면 기본 번들에 포함되지 않습니다. 개발 환경에서만 동적으로 import하고 패널이 닫힐 때 dispose하세요. 진단 JSON은 모델 URL, 자산, 카메라, 얼굴 landmark를 포함하지 않습니다.

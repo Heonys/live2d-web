@@ -15,3 +15,15 @@ export function Avatar() {
   )
 }
 ```
+
+## Core와 모델은 정적 자산으로 제공하기
+
+Core와 내보낸 모델을 `public/` 아래에 두거나 같은 origin의 절대 URL을 전달하세요. moc3나 텍스처를 Server Component 번들에 import하지 않습니다. Client Component에는 직렬화할 수 있는 URL과 옵션만 넘기세요.
+
+## 초기화를 클라이언트 화면에 묶기
+
+기본 패키지와 `live2d-web/inspect`는 SSR에서 평가할 수 있지만 Canvas 생성은 브라우저에서만 가능합니다. controller를 모듈 전역에 저장하지 말고 unmount 시 컴포넌트가 정리하게 두세요.
+
+## production build 확인하기
+
+`next build` 후 주변 UI가 서버 렌더링되고 `window` 오류가 없는지 확인합니다. 최종 base path와 CSP에서도 Core, model3, 참조 자산이 정상 응답하는지 Network 탭을 확인하세요.

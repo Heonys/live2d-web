@@ -5,8 +5,10 @@ import type { SiteLocale } from '../i18n/site'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { DocsSearchTrigger } from '../docs/DocSearch'
 import { DocsIntentLink } from '../docs/DocsNavigation'
 import { useDocsNavigation } from '../docs/docsNavigationContext'
+import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref } from '../docs/manifest'
 import { warmLocaleFonts } from '../docs/searchClient'
 import {
   languageNames,
@@ -37,14 +39,75 @@ export function SiteHeader() {
   const currentLocale = useSiteLocale()
   const messages = useSiteMessages()
   const { markPending, prefetch } = useDocsNavigation()
-  const [navigationOpen, setNavigationOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
   const search = useSyncExternalStore(subscribeToLocation, getLocationSearch, getServerSearch)
   const languageRootRef = useRef<HTMLDivElement>(null)
   const languageTriggerRef = useRef<HTMLButtonElement>(null)
+  const mobileMenuRef = useRef<HTMLDetailsElement>(null)
+  const mobileSummaryRef = useRef<HTMLElement>(null)
   const skipInitialLanguageFocusRef = useRef(false)
   const docsMatch = pathname.match(/^\/docs\/(?:en|ko|ja)(?:\/(.*))?$/)
   const currentDocSlug = docsMatch?.[1] ?? ''
+
+  useEffect(() => {
+    const details = mobileMenuRef.current
+    if (!details)
+      return
+    const closeForRoute = () => {
+      details.open = false
+    }
+    closeForRoute()
+  }, [pathname])
+
+  useEffect(() => {
+    const details = mobileMenuRef.current
+    if (!details)
+      return
+    let restoreOpenState = () => {}
+    const handleToggle = () => {
+      restoreOpenState()
+      if (!details.open)
+        return
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          details.open = false
+          requestAnimationFrame(() => mobileSummaryRef.current?.focus())
+          return
+        }
+        if (event.key !== 'Tab')
+          return
+        const focusable = [...details.querySelectorAll<HTMLElement>(
+          'summary, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        )].filter(element => !element.hasAttribute('hidden'))
+        const first = focusable[0]
+        const last = focusable.at(-1)
+        if (!first || !last)
+          return
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        }
+        else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+      document.addEventListener('keydown', handleKeyDown)
+      restoreOpenState = () => {
+        document.body.style.overflow = previousOverflow
+        document.removeEventListener('keydown', handleKeyDown)
+        restoreOpenState = () => {}
+      }
+    }
+    details.addEventListener('toggle', handleToggle)
+    return () => {
+      restoreOpenState()
+      details.removeEventListener('toggle', handleToggle)
+    }
+  }, [])
 
   const prepareLanguage = (language: SiteLocale) => {
     const href = switchLocalePath(pathname, language)
@@ -74,7 +137,8 @@ export function SiteHeader() {
   }, [languageOpen])
 
   const closeNavigation = () => {
-    setNavigationOpen(false)
+    if (mobileMenuRef.current)
+      mobileMenuRef.current.open = false
     setLanguageOpen(false)
   }
   const openLanguageMenu = () => {
@@ -148,17 +212,59 @@ export function SiteHeader() {
           <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
           <span>live2d-web</span>
         </DocsIntentLink>
-        <button
-          aria-expanded={navigationOpen}
-          aria-label={messages.header.toggle}
-          className="site-menu-button"
-          type="button"
-          onClick={() => setNavigationOpen(value => !value)}
-        >
-          <span />
-          <span />
-        </button>
-        <nav aria-label={messages.header.navigation} className={navigationOpen ? 'site-nav is-open' : 'site-nav'}>
+        <details ref={mobileMenuRef} className="site-mobile-menu">
+          <summary ref={mobileSummaryRef} aria-label={messages.header.toggle} className="site-menu-button">
+            <span />
+            <span />
+          </summary>
+          <div className="site-mobile-panel">
+            {docsMatch && (
+              <div className="site-mobile-docs">
+                <DocsSearchTrigger />
+                <nav aria-label={messages.docs.label}>
+                  {DOC_GROUPS.map(group => (
+                    <section key={group}>
+                      <h2>{DOC_GROUP_NAMES[currentLocale][group]}</h2>
+                      {DOC_PAGES.filter(page => page.group === group).map(page => (
+                        <DocsIntentLink
+                          key={page.slug}
+                          aria-current={page.slug === currentDocSlug ? 'page' : undefined}
+                          href={docHref(currentLocale, page.slug)}
+                          onClick={closeNavigation}
+                        >
+                          {page.title[currentLocale]}
+                        </DocsIntentLink>
+                      ))}
+                    </section>
+                  ))}
+                </nav>
+              </div>
+            )}
+            <nav aria-label={messages.header.navigation} className="site-mobile-global-links">
+              <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
+              <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
+              <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
+              <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
+              <a href="https://github.com/Heonys/live2d-web">GitHub</a>
+            </nav>
+            <div className="site-mobile-languages" aria-label={messages.header.language}>
+              {SITE_LOCALES.map(language => (
+                <Link
+                  key={language}
+                  aria-current={language === currentLocale ? 'page' : undefined}
+                  href={`${switchLocalePath(pathname, language)}${search}`}
+                  hrefLang={language}
+                  lang={language}
+                  prefetch={false}
+                  onClick={closeNavigation}
+                >
+                  {languageNames[language]}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </details>
+        <nav aria-label={messages.header.navigation} className="site-nav">
           <div className="site-nav-links">
             <DocsIntentLink
               aria-current={documentationCurrent ? 'page' : undefined}

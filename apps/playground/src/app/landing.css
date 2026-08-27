@@ -6,8 +6,8 @@
 
 .landing-hero {
   display: grid;
-  min-height: min(760px, calc(100dvh - var(--site-header-height)));
-  padding: 78px 0 68px;
+  min-height: min(700px, calc(100dvh - var(--site-header-height)));
+  padding: 58px 0 52px;
   align-items: center;
   grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
   gap: clamp(52px, 7vw, 108px);
@@ -15,8 +15,8 @@
 .landing-copy h1 {
   max-width: 620px;
   margin: 18px 0 22px;
-  font-size: clamp(46px, 5.4vw, 74px);
-  line-height: 1.02;
+  font-size: clamp(42px, 4.9vw, 68px);
+  line-height: 1.04;
   letter-spacing: -0.055em;
 }
 .landing-status-line {
@@ -271,18 +271,14 @@
 
 .landing-features {
   display: grid;
-  padding: 76px 0;
+  padding: 54px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   grid-template-columns: repeat(3, 1fr);
   gap: 44px;
 }
-.landing-features article > span {
-  color: var(--accent);
-  font: 600 10px/1 var(--font-mono);
-}
 .landing-features h2 {
-  margin: 14px 0 9px;
+  margin: 0 0 9px;
   font-size: 18px;
   letter-spacing: -0.025em;
 }
@@ -295,7 +291,7 @@
 
 .landing-code-section {
   display: grid;
-  padding: 104px 0;
+  padding: 76px 0;
   align-items: center;
   grid-template-columns: minmax(250px, 0.65fr) minmax(0, 1fr);
   gap: 70px;

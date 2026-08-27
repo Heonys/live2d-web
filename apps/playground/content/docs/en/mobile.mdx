@@ -6,3 +6,36 @@ Automatic quality caps the Canvas backing buffer, but camera inference still dep
 - Pause capture when the page is hidden.
 - Test orientation changes and background return.
 - Prefer Worker tracking after measuring the device.
+
+## Manage camera and page lifecycle
+
+Start camera access from a user gesture and keep the active track indicator visible. On `visibilitychange` or `pagehide`, stop scheduling frames and release tracks when the experience no longer needs them. After returning from the background, check `video.readyState` before resuming inference; mobile browsers may invalidate the previous stream.
+
+```ts title="camera-lifecycle.ts"
+let stream: MediaStream | undefined
+
+async function startCamera() {
+  stream = await navigator.mediaDevices.getUserMedia({ video: true })
+  video.srcObject = stream
+}
+
+function stopCamera() {
+  stream?.getTracks().forEach(track => track.stop())
+  stream = undefined
+  video.srcObject = null
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden)
+    stopCamera()
+})
+addEventListener('pagehide', stopCamera, { once: true })
+```
+
+## Size rendering for the device
+
+Use CSS to reserve the Canvas area before the model loads and avoid layout shifts. Start with upper-body framing and automatic quality, then measure frame time before increasing resolution. Orientation changes should update layout without creating a second Canvas or tracker.
+
+## Test on hardware
+
+Desktop device emulation cannot validate camera permissions, thermal throttling, background return or mobile WebKit Worker behavior. Record the phone, OS and browser version, test Main first, then Worker, and verify that camera indicators disappear after stop and unmount. Keep Android Chrome marked unverified until a physical-device run is completed.

@@ -48,17 +48,14 @@ export function LandingPageContent({ locale }: { locale: SiteLocale }) {
 
       <section className="landing-features" aria-label={messages.highlights}>
         <article>
-          <span>01</span>
           <h2>{messages.featureOneTitle}</h2>
           <p>{messages.featureOneDescription}</p>
         </article>
         <article>
-          <span>02</span>
           <h2>{messages.featureTwoTitle}</h2>
           <p>{messages.featureTwoDescription}</p>
         </article>
         <article>
-          <span>03</span>
           <h2>{messages.featureThreeTitle}</h2>
           <p>{messages.featureThreeDescription}</p>
         </article>

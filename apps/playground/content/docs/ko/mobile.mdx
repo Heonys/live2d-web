@@ -6,3 +6,36 @@ Canvas 해상도는 자동으로 제한하지만, 카메라 추론 속도는 모
 - 페이지가 백그라운드로 가면 카메라 입력을 중지하세요.
 - 화면을 회전하거나 백그라운드에서 돌아왔을 때도 정상적으로 재개되는지 확인하세요.
 - 실제 기기의 성능을 측정한 뒤 Worker 모드 사용 여부를 결정하세요.
+
+## 카메라와 페이지 생명주기 관리하기
+
+사용자 동작에서 카메라를 시작하고 활성 track 표시를 유지하세요. `visibilitychange`나 `pagehide`에서는 프레임 예약을 멈추고, 필요 없으면 track을 종료합니다. 복귀 후에는 `video.readyState`를 확인하세요.
+
+```ts title="camera-lifecycle.ts"
+let stream: MediaStream | undefined
+
+async function startCamera() {
+  stream = await navigator.mediaDevices.getUserMedia({ video: true })
+  video.srcObject = stream
+}
+
+function stopCamera() {
+  stream?.getTracks().forEach(track => track.stop())
+  stream = undefined
+  video.srcObject = null
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden)
+    stopCamera()
+})
+addEventListener('pagehide', stopCamera, { once: true })
+```
+
+## 기기에 맞게 렌더링 크기 정하기
+
+모델 로드 전부터 Canvas 영역의 CSS 크기를 예약해 레이아웃 이동을 막습니다. 상반신 framing과 자동 품질로 시작한 뒤 frame 시간을 측정하고 해상도를 높이세요.
+
+## 실제 기기에서 확인하기
+
+데스크톱 에뮬레이션으로는 카메라 권한, 발열, 백그라운드 복귀, 모바일 WebKit Worker를 검증할 수 없습니다. 기기·OS·브라우저 버전을 기록하고 Main 후 Worker를 테스트하세요.

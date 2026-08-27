@@ -19,3 +19,17 @@ await character.expression('smile', { fadeInMs: 500 })
 ## Authored defaults stay intact
 
 Omit fade options to preserve model3, motion3 and exp3 settings. Per-parameter motion fades remain stronger than a playback-wide override.
+
+## Choose priority and observe completion
+
+Use normal priority for application actions, idle priority for background playback and force only when the current motion must be replaced. `playMotion()` resolves with `completed`, `interrupted`, `skipped` or `disposed`; asset and render failures still reject. Branch on the result instead of inferring completion from a timer.
+
+```ts
+const result = await character.playMotion('TapBody', 0, { priority: 'normal' })
+if (result.status === 'completed')
+  await character.expression('smile')
+```
+
+## Configure idle and expression ownership
+
+Weighted idle selects only indices with positive weights, and the weights array must match the group size. Calling another expression fades the previous one according to its playback options. `clearExpression()` is an immediate reset; use it for deterministic teardown rather than as a cross-fade command.

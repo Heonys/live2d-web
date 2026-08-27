@@ -9,3 +9,23 @@ pnpm add live2d-web
 ## 앱이 준비할 것
 
 npm 패키지에는 Cubism Core와 모델 파일이 들어 있지 않습니다. Live2D 약관에 따라 Cubism Core를 준비하고, 사용 권한이 있는 Cubism 4/5 모델과 함께 자신의 서버에서 제공하세요.
+
+## 첫 모델 표시하기
+
+크기가 지정된 컨테이너를 준비하고 Core URL과 model3 URL을 전달합니다. 모델 로드는 비동기로 진행되므로 `createLive2D()`가 끝난 뒤부터 모션과 파라미터 명령을 호출하세요.
+
+```ts
+import { createLive2D } from 'live2d-web'
+
+const character = await createLive2D({
+  container: document.querySelector('#avatar')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/avatar/avatar.model3.json',
+})
+
+await character.motion('Idle', 0)
+```
+
+## 로드 확인과 정리
+
+Network 탭에서 model3, moc3, 텍스처가 모두 성공했는지 확인합니다. 오류가 나면 [문제 해결 가이드](/docs/ko/troubleshooting)에서 오류 코드에 맞는 복구 방법을 찾으세요. 화면을 닫을 때는 `dispose()`로 Canvas, WebGL 자원, 애니메이션 루프를 정리합니다.

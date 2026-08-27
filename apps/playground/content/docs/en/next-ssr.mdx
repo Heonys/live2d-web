@@ -15,3 +15,15 @@ export function Avatar() {
   )
 }
 ```
+
+## Serve Core and model files as assets
+
+Place Core and exported models under `public/` or provide absolute same-origin URLs. Do not import moc3 or texture files into a Server Component bundle. A route can fetch model metadata on the server, but pass only serializable URLs and options into the Client Component.
+
+## Keep initialization tied to the client view
+
+The root package and `live2d-web/inspect` can be evaluated during SSR, but Canvas creation requires the browser. Let component unmount dispose the model, and avoid module-level singleton controllers that survive navigation. If a model route changes, render a new `Live2DModel` keyed by the model identity and keep error/retry UI in ordinary React markup.
+
+## Verify the production build
+
+Run `next build`, open the production server and check that the server-rendered page contains the surrounding UI without trying to access `window`. Then confirm that Core, model3 and referenced assets resolve from the final base path and CSP, not only from the development server.

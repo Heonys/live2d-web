@@ -53,3 +53,11 @@ iPhone Safari は実機での確認が必要で、Android Chrome は明示的に
 Worker の作成に失敗した場合や制限時間を超えた場合は `tracking-error` を表示し、
 Main thread で作り直せる案内を用意してください。無期限に待たせたり、通知せずに
 自動で切り替えたりしないでください。
+
+## キャリブレーションとマッピング
+
+最初の1秒は正面のニュートラルな表情を保ちます。カメラ位置や照明が変わったら `calibrate()` を再実行します。`auto` は必要数の Perfect Sync パラメーターがあるときだけ選択されます。
+
+## カメラと後始末はアプリが管理
+
+トラッカーはカメラ権限やフレーム生成を所有しません。アプリが `<video>`、`MediaStream`、animation frame、visibility を管理します。停止時は target、tracker、フレーム、カメラ track をすべて解放してください。

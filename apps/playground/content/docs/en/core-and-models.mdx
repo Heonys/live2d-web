@@ -13,3 +13,21 @@ Keep the exported directory together. A model may reference moc3, textures, moti
 - Keep model3.json paths relative and case-correct.
 - Serve textures and motions with CORS when they use another origin.
 - Use /inspect before debugging rendering.
+
+## Serve assets predictably
+
+Prefer same-origin, immutable URLs for versioned model files. When assets use another origin, enable `GET` and CORS for model3, moc3, textures, motions and expression files. Do not rewrite relative paths after export unless every reference in model3 is updated with the same casing.
+
+```text
+public/
+├─ live2dcubismcore.min.js
+└─ models/avatar/
+   ├─ avatar.model3.json
+   ├─ avatar.moc3
+   ├─ textures/
+   └─ motions/
+```
+
+## Check compatibility before rendering
+
+Open the model in [Inspector](/inspect) or call `inspectModelSource()` to find missing references, unexpected external URLs and unsupported versions before creating a Canvas. Keep licensed Core and model files out of public bug reports; share the error code, failing URL, HTTP status and export version instead.

@@ -27,3 +27,27 @@ devtools.dispose()
 コンテナの位置、サイズ、スクロールはアプリ側で管理します。Devtools は open Shadow DOM のホストを1つ追加しますが、既存の子要素は削除しません。マイク、MediaPipe、Worker の管理もアプリ側の責任です。
 
 > モデルまたはパネルを画面から外すときは `dispose()` を呼びます。複数回呼んでも安全です。
+
+## 対象を切り替える
+
+同じパネルで別のモデルを調べる場合は、パネルを作り直さず `setTarget()` を使います。切り替え時には Devtools が追加した一時的なパラメータ操作だけが解除され、アプリ側のドライバーは残ります。
+
+```ts
+devtools.setTarget(nextCharacter)
+devtools.setTab('parameters')
+```
+
+React で利用する場合も、`Live2DModelController` をそのまま `target` に渡せます。モデルを再読み込みしたあとに古い controller を使い続けないよう、現在の controller に切り替えてください。
+
+## 開発時だけ読み込む
+
+Devtools を本番の初期バンドルに含めたくない場合は、開発画面を開いたときに動的 import します。コンテナと対象モデルの準備が終わってからマウントしてください。
+
+```ts
+async function openDevtools(container: HTMLElement, target: Live2DInstance) {
+  const { mountLive2DDevtools } = await import('live2d-web/devtools')
+  return mountLive2DDevtools({ container, target })
+}
+```
+
+パネルを閉じる処理では、返されたインスタンスの `dispose()` を必ず呼びます。Devtools はカメラや AudioContext を停止しないため、それらは各機能を作成した側で別に解放します。

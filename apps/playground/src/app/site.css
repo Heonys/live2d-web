@@ -53,7 +53,7 @@ html::-webkit-scrollbar,
 .docs-sidebar::-webkit-scrollbar,
 .docs-toc::-webkit-scrollbar,
 .docs-search-results::-webkit-scrollbar,
-.docs-mobile-drawer::-webkit-scrollbar,
+.site-mobile-panel::-webkit-scrollbar,
 .docs-table::-webkit-scrollbar,
 .docs-code pre::-webkit-scrollbar,
 figure[data-rehype-pretty-code-figure] pre::-webkit-scrollbar,
@@ -65,7 +65,7 @@ html::-webkit-scrollbar-track,
 .docs-sidebar::-webkit-scrollbar-track,
 .docs-toc::-webkit-scrollbar-track,
 .docs-search-results::-webkit-scrollbar-track,
-.docs-mobile-drawer::-webkit-scrollbar-track,
+.site-mobile-panel::-webkit-scrollbar-track,
 .docs-table::-webkit-scrollbar-track,
 .docs-code pre::-webkit-scrollbar-track,
 figure[data-rehype-pretty-code-figure] pre::-webkit-scrollbar-track,
@@ -76,7 +76,7 @@ html::-webkit-scrollbar-thumb,
 .docs-sidebar::-webkit-scrollbar-thumb,
 .docs-toc::-webkit-scrollbar-thumb,
 .docs-search-results::-webkit-scrollbar-thumb,
-.docs-mobile-drawer::-webkit-scrollbar-thumb,
+.site-mobile-panel::-webkit-scrollbar-thumb,
 .docs-table::-webkit-scrollbar-thumb,
 .docs-code pre::-webkit-scrollbar-thumb,
 figure[data-rehype-pretty-code-figure] pre::-webkit-scrollbar-thumb,
@@ -90,7 +90,7 @@ html::-webkit-scrollbar-thumb:hover,
 .docs-sidebar::-webkit-scrollbar-thumb:hover,
 .docs-toc::-webkit-scrollbar-thumb:hover,
 .docs-search-results::-webkit-scrollbar-thumb:hover,
-.docs-mobile-drawer::-webkit-scrollbar-thumb:hover,
+.site-mobile-panel::-webkit-scrollbar-thumb:hover,
 .docs-table::-webkit-scrollbar-thumb:hover,
 .docs-code pre::-webkit-scrollbar-thumb:hover,
 figure[data-rehype-pretty-code-figure] pre::-webkit-scrollbar-thumb:hover,
@@ -102,7 +102,7 @@ figure[data-rehype-pretty-code-figure] pre::-webkit-scrollbar-thumb:hover,
 .docs-sidebar,
 .docs-toc,
 .docs-search-results,
-.docs-mobile-drawer,
+.site-mobile-panel,
 .docs-table,
 .docs-code pre,
 figure[data-rehype-pretty-code-figure] pre,
@@ -294,6 +294,9 @@ figure[data-rehype-pretty-code-figure] pre,
 .site-menu-button {
   display: none;
 }
+.site-mobile-menu {
+  display: none;
+}
 
 .page-hero {
   margin-bottom: 28px;
@@ -313,6 +316,9 @@ figure[data-rehype-pretty-code-figure] pre,
   .site-header-inner {
     padding-inline: 18px;
   }
+  .site-mobile-menu {
+    display: block;
+  }
   .site-menu-button {
     display: grid;
     width: 34px;
@@ -322,6 +328,11 @@ figure[data-rehype-pretty-code-figure] pre,
     gap: 5px;
     border-color: var(--line);
     background: transparent;
+    cursor: pointer;
+    list-style: none;
+  }
+  .site-menu-button::-webkit-details-marker {
+    display: none;
   }
   .site-menu-button span {
     display: block;
@@ -329,66 +340,99 @@ figure[data-rehype-pretty-code-figure] pre,
     height: 1px;
     background: var(--text-2);
   }
+  .site-mobile-menu[open] .site-menu-button span:first-child {
+    transform: translateY(3px) rotate(45deg);
+  }
+  .site-mobile-menu[open] .site-menu-button span:last-child {
+    transform: translateY(-3px) rotate(-45deg);
+  }
+  .site-menu-button span {
+    transition: transform 140ms ease;
+  }
   .site-nav {
+    display: none;
+  }
+  .site-mobile-panel {
     position: absolute;
     inset: var(--site-header-height) 0 auto;
-    display: none;
-    padding: 14px 18px 20px;
+    display: grid;
+    height: calc(100dvh - var(--site-header-height));
+    padding: 18px max(18px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom))
+      max(18px, env(safe-area-inset-left));
     border-bottom: 1px solid var(--line);
     background: var(--surface-1);
-    align-items: stretch;
-    flex-direction: column;
-    gap: 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    gap: 20px;
   }
-  .site-nav.is-open {
-    display: flex;
-  }
-  .site-nav-links {
+  .site-mobile-docs {
     display: grid;
-    width: 100%;
-    margin: 0;
-    gap: 0;
+    gap: 18px;
   }
-  .site-nav-links > a {
-    height: auto;
-    padding: 12px 2px;
+  .site-mobile-docs nav {
+    display: grid;
+    gap: 22px;
+  }
+  .site-mobile-docs section {
+    display: grid;
+    gap: 2px;
+  }
+  .site-mobile-docs h2 {
+    margin: 0 0 5px;
+    color: var(--text-3);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .site-mobile-docs a,
+  .site-mobile-global-links a {
+    position: relative;
+    min-height: 42px;
+    padding: 10px 10px;
+    border-radius: 6px;
+    color: var(--text-2);
     font-size: 14px;
+    text-decoration: none;
   }
-  .site-nav-links > a[aria-current='page']::after {
-    inset: 8px auto 8px -10px;
+  .site-mobile-docs a[aria-current='page'],
+  .site-mobile-global-links a[aria-current='page'] {
+    color: var(--text-1);
+    background: var(--surface-3);
+  }
+  .site-mobile-docs a[aria-current='page']::before,
+  .site-mobile-global-links a[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    inset: 9px auto 9px 0;
     width: 2px;
-    height: auto;
+    background: var(--accent);
   }
-  .site-utilities {
+  .site-mobile-global-links {
     display: grid;
     padding-top: 14px;
     border-top: 1px solid var(--line);
-    grid-template-columns: 1fr;
   }
-  .site-github {
-    display: flex;
-    width: 100%;
-    height: auto;
-    padding: 10px 2px;
-    border: 0;
-    justify-content: flex-start;
-    gap: 9px;
+  .site-mobile-languages {
+    display: grid;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
-  .site-github > span {
-    display: inline;
+  .site-mobile-languages a {
+    padding: 9px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text-2);
     font-size: 14px;
+    text-align: center;
+    text-decoration: none;
   }
-  .site-language {
-    flex: 1;
-  }
-  .site-language-trigger {
-    width: 100%;
-  }
-  .site-language-menu {
-    position: static;
-    width: 100%;
-    margin-top: 8px;
-    box-shadow: none;
+  .site-mobile-languages a[aria-current='page'] {
+    border-color: var(--line-strong);
+    color: var(--text-1);
+    background: var(--surface-3);
   }
 }
 

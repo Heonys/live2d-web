@@ -36,3 +36,21 @@ const character = await createLive2D({
 정보를 전달하지 않는 모델에는 `{ mode: 'decorative' }`를 사용하세요. 탭과
 모션 동작은 키보드로 조작할 수 있는 일반 DOM 버튼이나 컨트롤로도 제공해야 합니다.
 런타임은 Canvas에 `tabIndex`나 `role="application"`을 자동 추가하지 않습니다.
+
+## 화면 생명주기와 맞추기
+
+인스턴스는 컨테이너를 소유한 화면에서 보관하세요. 숨겨진 탭에서 애니메이션이 필요 없다면 일시 정지하고, 화면이 사라질 때 정리합니다. `dispose()`는 여러 번 호출해도 안전합니다.
+
+```ts
+const onVisibility = () => document.hidden ? character.pause() : character.resume()
+document.addEventListener('visibilitychange', onVisibility)
+
+window.addEventListener('pagehide', () => {
+  document.removeEventListener('visibilitychange', onVisibility)
+  character.dispose()
+}, { once: true })
+```
+
+## 조작과 재시도 UI 만들기
+
+모션, 표정, 재시도는 Canvas 밖의 일반 버튼으로 제공하세요. 로드 전에는 비활성화하고, 실패하면 `Live2DError.code`를 표시합니다. Core 경로, 모델 자산, WebGL 환경을 수정한 뒤 새 인스턴스로 재시도하세요.

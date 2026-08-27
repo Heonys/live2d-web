@@ -5,6 +5,14 @@ export const DOC_LOCALES = SITE_LOCALES
 export type DocLocale = SiteLocale
 export type DocGroup = 'Start' | 'Use' | 'Integrate' | 'Reference'
 
+export const DOC_GROUPS: readonly DocGroup[] = ['Start', 'Use', 'Integrate', 'Reference']
+
+export const DOC_GROUP_NAMES: Record<DocLocale, Record<DocGroup, string>> = {
+  en: { Integrate: 'Integrate', Reference: 'Reference', Start: 'Start', Use: 'Use' },
+  ja: { Integrate: '連携', Reference: 'リファレンス', Start: '導入', Use: '使い方' },
+  ko: { Integrate: '통합', Reference: '레퍼런스', Start: '시작', Use: '사용' },
+}
+
 export interface LocalizedText { en: string, ja: string, ko: string }
 export interface DocPageMeta {
   group: DocGroup

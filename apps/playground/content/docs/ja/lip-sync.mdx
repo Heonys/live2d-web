@@ -17,3 +17,20 @@ detach()
 ## 口入力の競合を避ける
 
 フェイストラッキングとマイクのリップシンクを同時に使う場合は、トラッカーの `mouth` チャンネルを無効にしてください。wLipSync は別方式の入力として動作し、AudioWorklet に対応した環境が必要です。
+
+## 1フレームに1回だけサンプリング
+
+アプリが所有する analyser から RMS を一度計算し、`sample(rms, elapsedMs)` を呼びます。最初の1.5秒は環境ノイズを推定するため、単調増加する時間を渡してください。
+
+```ts
+const startedAt = performance.now()
+function update(now: number) {
+  driver.sample(readRms(analyser), now - startedAt)
+  requestAnimationFrame(update)
+}
+requestAnimationFrame(update)
+```
+
+## リソースごとに後始末
+
+リップシンクの detach はランタイムの driver だけを外します。animation frame、オーディオノード、`AudioContext`、すべての `MediaStreamTrack` はアプリ側で停止します。

@@ -78,3 +78,37 @@ MIME タイプ、CORS ヘッダーを直すか、モデルを再度書き出し�
 ハンドルを受け取りました。**確認:** Backend 名とオプションの対応表を確認します。
 **対処:** 標準 Backend を使う、未対応のオプションを外す、または独自アダプターを
 更新してください。**再試行:** 設定を変えるまでは解決しません。
+
+## 最小構成で再現する
+
+原因が分からない場合は、機能を一度に外すのではなく、最小構成から順番に戻します。まず標準 Backend でモデル1体だけを表示し、そのあと motion、lip sync、tracking を1つずつ追加してください。
+
+```ts
+const character = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+})
+
+console.log(character.getModelInfo())
+await character.playMotion('Idle', 0)
+```
+
+再現手順には、ブラウザと OS、最初に出たエラーコード、`details`、失敗した URL の HTTP status を記録します。ライセンスを確認できない Core やモデル本体は issue に添付しないでください。
+
+## 安全に作り直す
+
+一時的な通信障害や WebGL context loss から復旧するときは、古いインスタンスを解放してから新しく作成します。同じ container に複数の Canvas を残さないでください。
+
+```ts
+let character: Live2DInstance | undefined
+
+async function reload() {
+  character?.dispose()
+  character = await createLive2D(options)
+}
+
+addEventListener('pagehide', () => character?.dispose(), { once: true })
+```
+
+`tracking-error` や `lipsync-error` の場合は、モデル全体ではなく該当する optional 機能だけを停止して再作成できます。原因が設定にあるエラーを無条件で繰り返し再試行しないでください。

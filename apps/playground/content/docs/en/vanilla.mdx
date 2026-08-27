@@ -36,3 +36,21 @@ const character = await createLive2D({
 Use `{ mode: 'decorative' }` when the model conveys no information. Keep tap
 and motion actions available through normal keyboard-accessible DOM controls;
 the runtime never adds `tabIndex` or `role="application"` to the Canvas.
+
+## Handle lifecycle and retry
+
+Keep the returned instance in the same view that owns the container. Pause it when a hidden tab does not need animation, resume it on return, and dispose exactly when the view is destroyed. `dispose()` is idempotent, so cleanup may safely run after a partial setup failure.
+
+```ts
+const onVisibility = () => document.hidden ? character.pause() : character.resume()
+document.addEventListener('visibilitychange', onVisibility)
+
+window.addEventListener('pagehide', () => {
+  document.removeEventListener('visibilitychange', onVisibility)
+  character.dispose()
+}, { once: true })
+```
+
+## Keep application controls outside Canvas
+
+Use ordinary buttons for motions, expressions and retry. This makes keyboard behavior explicit and lets the application disable controls until loading completes. Catch `Live2DError`, show its stable `code`, and recreate the instance only after the underlying Core, asset or WebGL problem has changed.

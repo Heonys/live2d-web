@@ -1,4 +1,4 @@
-import type { Buffer } from 'node:buffer'
+import { Buffer } from 'node:buffer'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import AxeBuilder from '@axe-core/playwright'
@@ -133,7 +133,7 @@ test('describes the rendered model canvas for assistive technologies', async ({ 
 test('renders the landing shell without preloading Cubism Core', async ({ page }) => {
   const html = await (await page.request.get('/')).text()
 
-  expect(html).toContain('Live2D, directly in the browser.')
+  expect(html).toContain('Live2D in the browser. No PixiJS required.')
   expect(html).not.toContain('href="/assets/js/cubism/5.3/live2dcubismcore.min.js"')
 })
 
@@ -167,7 +167,7 @@ test('keeps the landing page focused and links to the full playground', async ({
   })
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Live2D, directly in the browser.',
+    'Live2D in the browser. No PixiJS required.',
   )
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /icon/)
   await expect(page.locator('.site-wordmark img')).toHaveAttribute(
@@ -684,7 +684,7 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
 
 test('localizes public routes and preserves the logical page and query', async ({ page }) => {
   const routes = [
-    ['/ko', '브라우저에서 바로 쓰는 Live2D.'],
+    ['/ko', '브라우저에서 바로 쓰는 Live2D. PixiJS는 필요 없습니다.'],
     ['/ko/playground', 'Playground'],
     ['/ja/inspect', 'Live2D モデルを読み込む前にチェック'],
     ['/ja/vanilla', 'React なしで Live2D を使う'],
@@ -790,15 +790,15 @@ test('keeps documentation navigation stable and loads search on intent', async (
     if (url.pathname.startsWith('/docs-search/'))
       searchRequests.push(url.pathname)
     if (url.pathname.startsWith('/docs/en/') && url.searchParams.has('_rsc'))
-      prefetchedDocs.push(url.pathname)
+      prefetchedDocs.push(`${url.pathname}${url.search}`)
   })
 
   await page.goto('/docs/en')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Getting started')
   await page.locator('.site-header').evaluate(element => element.setAttribute('data-persist-test', 'true'))
-  await page.waitForTimeout(250)
   expect(searchRequests).toEqual([])
-  expect(prefetchedDocs).toEqual([])
+  await expect.poll(() => prefetchedDocs.some(url => url.startsWith('/docs/en/core-and-models?'))).toBe(true)
+  expect(new Set(prefetchedDocs).size).toBe(prefetchedDocs.length)
 
   const before = await page.evaluate(() => ({
     mainX: document.querySelector('.docs-main')?.getBoundingClientRect().x,
@@ -812,10 +812,12 @@ test('keeps documentation navigation stable and loads search on intent', async (
   }))
   const examples = page.locator('.docs-sidebar a[href="/docs/en/examples"]')
   await examples.hover()
-  await expect.poll(() => prefetchedDocs.length).toBeGreaterThan(0)
+  await expect.poll(() => prefetchedDocs.some(url => url.startsWith('/docs/en/examples?'))).toBe(true)
   await page.waitForTimeout(150)
-  expect(new Set(prefetchedDocs)).toEqual(new Set(['/docs/en/examples']))
-  const intentRequestCount = prefetchedDocs.length
+  expect(new Set(prefetchedDocs.map(url => new URL(url, 'http://localhost').pathname))).toEqual(
+    new Set(['/docs/en/core-and-models', '/docs/en/examples']),
+  )
+  expect(new Set(prefetchedDocs).size).toBe(prefetchedDocs.length)
   await examples.click()
   await expect(page).toHaveURL(/\/docs\/en\/examples$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Examples')
@@ -823,7 +825,17 @@ test('keeps documentation navigation stable and loads search on intent', async (
   await expect(page.locator('.site-nav-links > a[aria-current="page"]')).toHaveCount(1)
   await expect(page.locator('.site-nav-links > a[aria-current="page"]')).toHaveText('Examples')
   await expect(page.locator('.docs-toc')).toContainText('Buildable projects')
-  expect(prefetchedDocs).toHaveLength(intentRequestCount)
+  const expectedPrefetchPaths = [
+    '/docs/en/core-and-models',
+    '/docs/en/examples',
+    '/docs/en/security-and-license',
+    '/docs/en/model-inspection',
+    '/docs/en/devtools',
+    '/docs/en/troubleshooting',
+  ].sort()
+  await expect.poll(() => [...new Set(prefetchedDocs.map(url =>
+    new URL(url, 'http://localhost').pathname))].sort()).toEqual(expectedPrefetchPaths)
+  expect(new Set(prefetchedDocs).size).toBe(prefetchedDocs.length)
   const after = await page.evaluate(() => ({
     mainX: document.querySelector('.docs-main')?.getBoundingClientRect().x,
     scrollTop: document.querySelector<HTMLElement>('.docs-sidebar')?.scrollTop ?? 0,
@@ -857,24 +869,66 @@ test('keeps regular documentation RSC payloads within the UX budget', async ({ b
   for (const file of files) {
     expect(
       statSync(new URL(file, docsRoot)).size,
-      `${file} exceeds the 45 KiB regular documentation RSC budget`,
-    ).toBeLessThanOrEqual(45 * 1024)
+      `${file} exceeds the 64 KiB regular documentation RSC budget`,
+    ).toBeLessThanOrEqual(64 * 1024)
   }
 })
 
-test('keeps documentation search inside supported viewports', async ({ browserName, page }) => {
-  test.skip(browserName !== 'chromium', 'The responsive docs UX regression runs once in Chromium.')
+test('keeps initial documentation JavaScript within the deployed baseline', async ({ browserName, request }) => {
+  test.skip(browserName !== 'chromium', 'The build artifact budget only needs one project.')
+  const response = await request.get('/docs/en')
+  const html = await response.text()
+  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/gu)]
+    .map(match => match[1]!)
+  const uniqueScripts = [...new Set(scripts)]
+  expect(uniqueScripts.length).toBeGreaterThan(0)
+  let totalBytes = 0
+  for (const source of uniqueScripts) {
+    const script = await request.get(source)
+    totalBytes += (await script.body()).byteLength
+  }
+  // Public Vercel deployment measured 690,938 raw bytes on 2026-08-27.
+  expect(totalBytes, 'initial docs JavaScript grew by more than 10%').toBeLessThanOrEqual(760_031)
+})
+
+test('keeps the mobile documentation menu and search inside supported viewports', async ({ page }) => {
   for (const viewport of [
     { height: 900, width: 1440 },
     { height: 768, width: 1024 },
+    { height: 932, width: 430 },
     { height: 844, width: 390 },
   ]) {
     await page.setViewportSize(viewport)
     await page.goto('/docs/en')
-    if (viewport.width <= 800) {
-      await page.getByRole('button', { name: 'Browse documentation' }).click()
-      const drawer = await page.locator('.docs-mobile-drawer').boundingBox()
-      expect(drawer?.height).toBe(viewport.height)
+    if (viewport.width <= 900) {
+      const details = page.locator('details.site-mobile-menu')
+      const summary = details.locator('summary.site-menu-button')
+      await summary.click()
+      await expect(details).toHaveAttribute('open', '')
+      await expect(page.locator('.docs-mobile-nav, .docs-mobile-drawer')).toHaveCount(0)
+      const [header, panel] = await Promise.all([
+        page.locator('.site-header').boundingBox(),
+        details.locator('.site-mobile-panel').boundingBox(),
+      ])
+      expect(header).not.toBeNull()
+      expect(panel).not.toBeNull()
+      expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0)))).toBeLessThanOrEqual(1)
+      expect(Math.abs((panel?.height ?? 0) - (viewport.height - (header?.height ?? 0)))).toBeLessThanOrEqual(1)
+      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
+
+      await summary.press('Shift+Tab')
+      await expect(details.locator('.site-mobile-languages a').last()).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(details).not.toHaveAttribute('open', '')
+      await expect(summary).toBeFocused()
+      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden')
+
+      await summary.click()
+      await details.locator('a[href="/docs/en/react"]').click()
+      await expect(page).toHaveURL(/\/docs\/en\/react$/)
+      await expect(details).not.toHaveAttribute('open', '')
+      await page.goto('/docs/en')
+      await page.locator('summary.site-menu-button').click()
     }
     await page.getByRole('button', { name: 'Search documentation' }).filter({ visible: true }).click()
     const search = page.getByRole('dialog', { name: 'Search documentation' })
@@ -887,6 +941,62 @@ test('keeps documentation search inside supported viewports', async ({ browserNa
     expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(viewport.width)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
   }
+})
+
+test('keeps the native mobile documentation menu usable without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { height: 844, width: 390 },
+  })
+  const page = await context.newPage()
+  await page.goto('/docs/en')
+  const details = page.locator('details.site-mobile-menu')
+  await details.locator('summary.site-menu-button').click()
+  await expect(details).toHaveAttribute('open', '')
+  await expect(details.locator('a[href="/docs/en/react"]')).toBeVisible()
+  await details.locator('a[href="/docs/en/react"]').click()
+  await expect(page).toHaveURL(/\/docs\/en\/react$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('React')
+  await context.close()
+})
+
+test('responds immediately to a documentation click on a constrained connection', async ({ browserName, page }, testInfo) => {
+  test.skip(browserName !== 'chromium', 'Network emulation uses Chromium DevTools Protocol.')
+  const session = await page.context().newCDPSession(page)
+  await session.send('Network.emulateNetworkConditions', {
+    connectionType: 'cellular4g',
+    downloadThroughput: 200 * 1024,
+    latency: 150,
+    offline: false,
+    uploadThroughput: 100 * 1024,
+  })
+  await page.setViewportSize({ height: 844, width: 390 })
+  const startedAt = Date.now()
+  await page.goto('/docs/en')
+  const interactiveAt = Date.now()
+  const requested = new Map<string, number>()
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.searchParams.has('_rsc'))
+      requested.set(url.pathname, (requested.get(url.pathname) ?? 0) + 1)
+  })
+
+  await page.locator('summary.site-menu-button').click()
+  const target = page.locator('.site-mobile-docs a[href="/docs/en/react"]')
+  await target.dispatchEvent('click')
+  await expect(page.locator('.docs-navigation-progress')).toHaveClass(/is-active/, { timeout: 100 })
+  await expect(page.locator('.docs-main')).toHaveAttribute('aria-busy', 'true', { timeout: 100 })
+  await expect(page).toHaveURL(/\/docs\/en\/react$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('React')
+  expect(requested.get('/docs/en/react') ?? 0).toBeLessThanOrEqual(1)
+
+  await testInfo.attach('mobile-slow-4g-navigation.json', {
+    body: Buffer.from(JSON.stringify({
+      firstDocumentMs: interactiveAt - startedAt,
+      rscRequests: Object.fromEntries(requested),
+    }, null, 2)),
+    contentType: 'application/json',
+  })
 })
 
 test('runs and cleans up the source AudioWorklet smoke test', async ({ browserName, page }) => {

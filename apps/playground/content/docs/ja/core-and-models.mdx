@@ -13,3 +13,21 @@
 - model3.json に記載された相対パスとファイル名の大文字・小文字を正確に保ちます。
 - テクスチャやモーションを別オリジンから配信する場合は CORS を許可します。
 - 描画できない原因を調べるときは、先に `/inspect` でモデルを検査してください。
+
+## アセットを安定して配信
+
+バージョン付きモデルは、できるだけ同一オリジンの固定 URL から配信します。別オリジンの model3、moc3、テクスチャ、モーション、表情ファイルには CORS を設定してください。
+
+```text
+public/
+├─ live2dcubismcore.min.js
+└─ models/avatar/
+   ├─ avatar.model3.json
+   ├─ avatar.moc3
+   ├─ textures/
+   └─ motions/
+```
+
+## 描画前に互換性を確認
+
+[Inspector](/ja/inspect) または `inspectModelSource()` で、不足ファイル、外部 URL、未対応バージョンを先に検出します。公開 Issue に Core やモデルを添付せず、エラーコード、URL、HTTP ステータス、書き出しバージョンを共有してください。

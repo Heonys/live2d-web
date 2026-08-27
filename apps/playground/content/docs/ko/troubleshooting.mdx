@@ -74,3 +74,22 @@ Main thread를 선택합니다. **재시도:** 원인을 고친 뒤 트래커를
 받았습니다. **확인:** Backend 이름과 옵션 지원표를 확인합니다. **수정:** 기본 Backend를
 사용하거나 지원하지 않는 옵션을 제거하고 사용자 정의 어댑터를 갱신합니다. **재시도:** 설정을
 바꾸기 전에는 해결되지 않습니다.
+
+## 가장 작은 장면으로 재현하기
+
+MediaPipe, 마이크, custom parameter driver를 끄고 기본 Backend에서 모델 하나만 불러오세요. 뒤이은 console 메시지보다 첫 `Live2DError`를 기록합니다. 브라우저, 라이브러리·Core·export 버전, `code`, `assetType`, HTTP 상태, 실패 URL을 남기세요.
+
+```ts
+const character = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+})
+
+console.log(character.getModelInfo())
+await character.playMotion('Idle', 0)
+```
+
+## 자원을 남기지 않고 복구하기
+
+재시도 전에 driver를 해제하고 tracker와 runtime을 dispose하며 media track을 중지한 뒤 기존 Canvas가 제거됐는지 확인합니다. 경로·정책·지원 환경을 수정한 뒤 새 인스턴스를 만드세요. 같은 오류에서 retry를 반복하면 중복 요청만 늘어납니다.

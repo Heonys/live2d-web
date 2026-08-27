@@ -77,3 +77,22 @@ was lost. **Check:** the first console/driver error and GPU context count.
 from another backend. **Check:** the backend name and whether the option is
 listed as supported. **Fix:** use the default backend, remove the unsupported
 option, or update the custom adapter. **Retry:** no until configuration changes.
+
+## Reproduce with the smallest scene
+
+Disable MediaPipe, microphone input and custom parameter drivers, then load one model with the default backend. Record the first `Live2DError` rather than later console noise. Include the browser, library version, Core version, model export version, error `code`, `assetType`, HTTP status and failing URL; never attach licensed Core or model files to a public issue.
+
+```ts
+const character = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+})
+
+console.log(character.getModelInfo())
+await character.playMotion('Idle', 0)
+```
+
+## Recover without leaving resources behind
+
+Stop frame producers before retrying. Detach drivers, dispose the tracker and runtime, stop media tracks, and confirm the old Canvas is removed. Correct the underlying path, policy or capability, then create a fresh instance. Repeatedly clicking retry while the same Core or CORS error remains only creates duplicate requests and hides the first useful failure.

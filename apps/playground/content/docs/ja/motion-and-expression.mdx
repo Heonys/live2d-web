@@ -19,3 +19,17 @@ await character.expression('smile', { fadeInMs: 500 })
 ## 制作者の既定値を維持
 
 切り替え時間を省略した場合は、model3・motion3・exp3 に設定された値をそのまま使います。motion3 にパラメータごとの設定がある場合は、再生全体に指定した値よりも優先されます。
+
+## 優先度と終了状態を確認
+
+ユーザー操作は `normal`、自動待機は `idle`、現在のモーションを必ず置き換えるときだけ `force` を使います。`playMotion()` は `completed`、`interrupted`、`skipped`、`disposed` を返します。
+
+```ts
+const result = await character.playMotion('TapBody', 0, { priority: 'normal' })
+if (result.status === 'completed')
+  await character.expression('smile')
+```
+
+## Idle と表情の切り替えを管理
+
+重み付き Idle はモーション数と同じ長さの配列を使い、0 の要素は選びません。新しい表情は前の表情を fade で置き換えます。`clearExpression()` は即時初期化が必要な場面に使います。

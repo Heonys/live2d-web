@@ -1,7 +1,6 @@
 import type { DocLocale } from '../../../docs/manifest'
 import { notFound } from 'next/navigation'
 import { ReadingProgress } from '../../../docs/DocsChrome'
-import { DocsSearchProvider } from '../../../docs/DocSearch'
 import { DocsSidebar } from '../../../docs/DocsSidebar'
 import { DOC_LOCALES } from '../../../docs/manifest'
 
@@ -21,12 +20,12 @@ export default async function DocumentationLayout({ children, params }: {
   if (!isLocale(locale))
     notFound()
   return (
-    <DocsSearchProvider locale={locale}>
+    <>
       <ReadingProgress />
       <div className="docs-layout" lang={locale}>
         <DocsSidebar locale={locale} />
         {children}
       </div>
-    </DocsSearchProvider>
+    </>
   )
 }

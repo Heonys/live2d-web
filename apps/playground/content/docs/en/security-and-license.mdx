@@ -10,3 +10,25 @@ Treat model3.json as an input manifest. Inspect limits, external URLs and CORS b
 ## Licenses and privacy
 
 live2d-web is unofficial. Core, Framework, models and MediaPipe have separate terms. Face tracking runs on-device, but your application remains responsible for consent, indicators and any analytics it adds.
+
+## Define the trust boundary
+
+Do not render an untrusted archive merely because its JSON parses. Inspect first, cap compressed and expanded sizes, reject traversal and unexpected external references, and serve approved files from a controlled origin. Server-side URL inspection needs outbound network restrictions in addition to an allow-list.
+
+```ts
+const report = await inspectModelSource({
+  src: submittedUrl,
+  limits: {
+    maxAssetBytes: 32 * 1024 * 1024,
+    maxTotalBytes: 128 * 1024 * 1024,
+    maxReferences: 512,
+  },
+})
+
+if (report.status === 'incompatible')
+  throw new Error('The model cannot be rendered safely.')
+```
+
+## Review before deployment
+
+Confirm Core and every model may be distributed in the intended product, document where MediaPipe WASM and task files come from, and keep third-party notices with the application. Test CSP in report-only mode before enforcement, then verify model loading, Worker creation and camera permission without widening policies to `*`.

@@ -24,3 +24,43 @@ URL を指定した検査では、モデルに記載された HTTP(S) の参照�
 ## ブラウザで ZIP を検査
 
 `/inspect` は現在のタブ内だけで ZIP を開き、ファイルサイズ、ファイル数、パス、モデルの参照先を検査します。アップロード、保存、利用状況の送信は行いません。互換性のない圧縮ファイルは描画しません。
+
+## レポートの見方
+
+`compatible` は参照先を読み取れて、現在の Backend で扱える構成であることを示します。`warning` は外部 URL や推奨値を超えるファイルなど、配信前に確認したい項目がある状態です。`incompatible` は model3 の解析失敗や必須ファイルの欠落など、そのままでは描画できない問題を含みます。
+
+```ts title="inspection.ts" showLineNumbers
+const report = await inspectModelSource({ src: modelUrl })
+
+for (const finding of report.findings) {
+  console.log(finding.severity, finding.code, finding.path)
+}
+
+if (report.status !== 'incompatible') {
+  const capabilities = inspectModelCapabilities(modelInfo)
+  console.log(capabilities.recommendedMapping)
+}
+```
+
+検出結果はモデルの安全性を保証するものではありません。公開前にはライセンス、配信元、CORS、実機での描画も別に確認してください。
+
+## 上限と中断を設定する
+
+外部からモデルを受け付ける画面では、ファイルと参照数の上限をアプリの用途に合わせて指定します。画面を閉じるときは `AbortController` で進行中の検査を止めます。
+
+```ts
+const controller = new AbortController()
+
+const pending = inspectModelSource({
+  src: modelUrl,
+  signal: controller.signal,
+  limits: {
+    maxAssetBytes: 32 * 1024 * 1024,
+    maxTotalBytes: 128 * 1024 * 1024,
+    maxReferences: 512,
+  },
+})
+
+addEventListener('pagehide', () => controller.abort(), { once: true })
+await pending
+```

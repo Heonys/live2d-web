@@ -36,3 +36,20 @@ const character = await createLive2D({
 情報を伝えないモデルには `{ mode: 'decorative' }` を使います。タップや
 モーションはキーボードで操作できる通常の DOM ボタンやコントロールでも提供してください。
 ランタイムは Canvas に `tabIndex` や `role="application"` を自動追加しません。
+
+## 画面のライフサイクルに合わせる
+
+インスタンスはコンテナーを所有する画面で保持します。非表示タブで描画が不要なら一時停止し、画面を外すときに破棄します。`dispose()` は複数回呼んでも安全です。
+
+```ts
+const onVisibility = () => document.hidden ? character.pause() : character.resume()
+document.addEventListener('visibilitychange', onVisibility)
+window.addEventListener('pagehide', () => {
+  document.removeEventListener('visibilitychange', onVisibility)
+  character.dispose()
+}, { once: true })
+```
+
+## 通常の DOM で操作と再試行を用意
+
+モーション、表情、再試行は Canvas 外のボタンで提供します。準備前は無効にし、失敗時は `Live2DError.code` を表示して、Core、アセット、WebGL の原因を修正してから再作成します。

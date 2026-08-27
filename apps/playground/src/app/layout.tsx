@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import { SiteHeader } from '../components/SiteHeader'
+import { DocsSearchProvider } from '../docs/DocSearch'
 import { DocsNavigationProvider } from '../docs/DocsNavigation'
 import { SiteLocaleProvider } from '../i18n/SiteLocale'
 import { SITE_ORIGIN } from '../lib/siteOrigin'
@@ -37,8 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SiteLocaleProvider>
           <DocsNavigationProvider>
-            <SiteHeader />
-            {children}
+            <DocsSearchProvider>
+              <SiteHeader />
+              {children}
+            </DocsSearchProvider>
           </DocsNavigationProvider>
         </SiteLocaleProvider>
       </body>

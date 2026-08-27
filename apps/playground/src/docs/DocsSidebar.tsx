@@ -1,6 +1,6 @@
 'use client'
 
-import type { DocGroup, DocLocale } from './manifest'
+import type { DocLocale } from './manifest'
 import { usePathname } from 'next/navigation'
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { canBackgroundPrefetch, scheduleIdle } from '../components/navigationPrefetch'
@@ -8,37 +8,31 @@ import { useSiteMessages } from '../i18n/SiteLocale'
 import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
 import { useDocsNavigation } from './docsNavigationContext'
-import { DOC_PAGES, docHref, getDocPage } from './manifest'
+import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref, getDocPage } from './manifest'
 
 const SIDEBAR_SCROLL_KEY = 'live2d-web:docs-sidebar-scroll'
-
-const groupNames: Record<DocLocale, Record<DocGroup, string>> = {
-  en: { Integrate: 'Integrate', Reference: 'Reference', Start: 'Start', Use: 'Use' },
-  ja: { Integrate: '統合', Reference: 'リファレンス', Start: '導入', Use: '使い方' },
-  ko: { Integrate: '통합', Reference: '레퍼런스', Start: '시작', Use: '사용' },
-}
 
 export function DocsSidebar({ locale }: { locale: DocLocale }) {
   const messages = useSiteMessages().docs
   const pathname = usePathname()
   const { prefetch } = useDocsNavigation()
   const sidebarRef = useRef<HTMLElement>(null)
-  const groups: readonly DocGroup[] = ['Start', 'Use', 'Integrate', 'Reference']
   const currentSlug = pathname.match(/^\/docs\/(?:en|ko|ja)(?:\/(.*))?$/)?.[1] ?? ''
   const currentPage = getDocPage(currentSlug)
-  const backgroundHrefs = useMemo(() => {
+  const adjacentHrefs = useMemo(() => {
     if (!currentPage)
       return []
     const index = DOC_PAGES.findIndex(page => page.slug === currentPage.slug)
-    const candidates = [
-      ...DOC_PAGES.filter(page => page.group === currentPage.group),
-      DOC_PAGES[index - 1],
-      DOC_PAGES[index + 1],
-    ]
+    const candidates = [DOC_PAGES[index - 1], DOC_PAGES[index + 1]]
     return [...new Set(candidates
       .filter(page => page && page.slug !== currentPage.slug && page.slug !== 'api')
       .map(page => docHref(locale, page!.slug)))]
   }, [currentPage, locale])
+  const groupHrefs = useMemo(() => currentPage
+    ? DOC_PAGES
+        .filter(page => page.group === currentPage.group && page.slug !== currentPage.slug && page.slug !== 'api')
+        .map(page => docHref(locale, page.slug))
+    : [], [currentPage, locale])
 
   useLayoutEffect(() => {
     const sidebar = sidebarRef.current
@@ -83,7 +77,13 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
   }, [pathname])
 
   useEffect(() => {
-    if (!backgroundHrefs.length || !canBackgroundPrefetch())
+    if (!canBackgroundPrefetch())
+      return
+    adjacentHrefs.forEach(prefetch)
+  }, [adjacentHrefs, prefetch])
+
+  useEffect(() => {
+    if (!groupHrefs.length || !canBackgroundPrefetch())
       return
     let cancelled = false
     const timers: number[] = []
@@ -92,7 +92,7 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
       if (cancelled)
         return
       cancelIdle = scheduleIdle(() => {
-        backgroundHrefs.forEach((href, index) => {
+        groupHrefs.forEach((href, index) => {
           const timer = window.setTimeout(prefetch, index * 140, href)
           timers.push(timer)
         })
@@ -103,7 +103,7 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
       cancelIdle()
       timers.forEach(timer => window.clearTimeout(timer))
     }
-  }, [backgroundHrefs, prefetch])
+  }, [groupHrefs, prefetch])
 
   return (
     <aside ref={sidebarRef} aria-label={messages.navigation} className="docs-sidebar">
@@ -112,9 +112,9 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
       </DocsIntentLink>
       <DocsSearchTrigger />
       <nav aria-label={messages.label}>
-        {groups.map(group => (
+        {DOC_GROUPS.map(group => (
           <section key={group}>
-            <h2>{groupNames[locale][group]}</h2>
+            <h2>{DOC_GROUP_NAMES[locale][group]}</h2>
             {DOC_PAGES.filter(entry => entry.group === group).map((entry) => {
               const href = docHref(locale, entry.slug)
               return (
