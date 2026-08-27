@@ -198,7 +198,7 @@ export function LandingDemo() {
 
   return (
     <div className="landing-demo" data-load-phase={controller ? 'ready' : error ? 'error' : loadPhase}>
-      <div className="landing-stage">
+      <div className="landing-stage" data-model-visible={Boolean(controller)}>
         <output className="landing-stage-status" aria-live="polite">
           <span data-state={error ? 'error' : controller ? 'ready' : 'loading'}>
             {error ? 'error' : controller ? 'ready' : 'loading'}
@@ -236,7 +236,9 @@ export function LandingDemo() {
                   <button type="button" onClick={retryModel}>Retry model</button>
                 </div>
               )
-            : <StageLoading />}
+            : loadPhase === 'waiting'
+              ? null
+              : <StageLoading />}
       </div>
       <div className="landing-demo-controls">
         <div className="landing-demo-action">

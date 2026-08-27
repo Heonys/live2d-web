@@ -227,6 +227,7 @@ test('defers route prefetch until the landing model settles and shows the brande
   test.skip(browserName !== 'chromium', 'The deterministic landing loading regression runs once in Chromium.')
 
   const prefetchedRoutes: string[] = []
+  const modelRequest = page.waitForRequest(request => request.url().endsWith('hiyori_free_t08.model3.json'))
   page.on('request', (request) => {
     const url = new URL(request.url())
     if (url.searchParams.has('_rsc'))
@@ -238,12 +239,17 @@ test('defers route prefetch until the landing model settles and shows the brande
   })
 
   await page.goto('/')
+  const initialStageBox = await page.locator('.landing-stage').boundingBox()
+  expect(initialStageBox).not.toBeNull()
+  await modelRequest
+  const loaderShell = page.locator('.landing-stage .stage-loading')
+  await expect(loaderShell).toHaveAttribute('data-visible', 'false')
   const loader = page.getByRole('status').filter({ hasText: 'Preparing model' })
   await expect(loader).toBeVisible()
-  await expect(loader.locator('.stage-loading-mark img')).toHaveAttribute(
-    'src',
-    '/brand/model-loader.webp',
-  )
+  const character = loader.locator('.stage-loading-character')
+  await expect(character).toHaveCSS('background-image', /model-loader\.webp/)
+  await expect(character).toHaveCSS('animation-name', 'stage-loading-expression')
+  await expect(loader.locator('.stage-loading-rig')).toHaveCount(0)
   await expect.poll(async () => page.evaluate(() => {
     const paint = performance.getEntriesByName('first-contentful-paint')[0]
     const resources = performance.getEntriesByType('resource')
@@ -271,8 +277,14 @@ test('defers route prefetch until the landing model settles and shows the brande
   expect(prefetchedRoutes).toEqual([])
 
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await expect(loader.locator('.stage-loading-rig > g')).toHaveCSS('animation-name', 'none')
+  await expect(character).toHaveCSS('animation-name', 'none')
+  await expect(loader.locator('.stage-loading-mark')).toHaveCSS('animation-name', 'none')
   await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  const readyStageBox = await page.locator('.landing-stage').boundingBox()
+  expect(readyStageBox).not.toBeNull()
+  expect(Math.abs(readyStageBox!.width - initialStageBox!.width)).toBeLessThanOrEqual(1)
+  expect(Math.abs(readyStageBox!.height - initialStageBox!.height)).toBeLessThanOrEqual(1)
+  await expect(page.locator('.landing-stage canvas')).toHaveCSS('opacity', '1')
   await expect.poll(() => new Set(prefetchedRoutes).size).toBeGreaterThanOrEqual(4)
   expect(new Set(prefetchedRoutes)).toEqual(new Set([
     '/docs/en',
@@ -298,8 +310,8 @@ test('retries a deferred landing manifest failure', async ({ browserName, page }
   await page.goto('/')
   await expect(page.locator('.landing-demo-error[role="alert"]')).toContainText('Local demo assets are unavailable.')
   await page.getByRole('button', { name: 'Retry model' }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Preparing model' })).toBeVisible()
   await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  await expect(page.getByRole('status').filter({ hasText: 'Preparing model' })).toHaveCount(0)
   expect(attempts).toBe(2)
 })
 

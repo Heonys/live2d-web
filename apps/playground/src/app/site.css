@@ -46,7 +46,7 @@ a {
 }
 ::selection {
   color: var(--text-1);
-  background: rgb(255 113 143 / 26%);
+  background: rgb(134 140 150 / 34%);
 }
 
 html::-webkit-scrollbar,

@@ -464,55 +464,33 @@ label output {
 
 .stage-loading {
   justify-items: center;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.stage-loading[data-visible='true'] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 140ms ease-out;
 }
 
 .stage-loading-mark {
-  position: relative;
   display: grid;
-  width: 116px;
-  height: 116px;
+  width: 112px;
+  height: 112px;
   place-items: center;
+  animation: stage-loading-character 2.4s ease-in-out infinite;
 }
-.stage-loading-mark img {
-  position: relative;
-  z-index: 1;
+.stage-loading-character {
   display: block;
-  width: 82px;
-  height: 82px;
-  object-fit: contain;
-  filter: drop-shadow(0 5px 7px rgb(0 0 0 / 24%));
-  animation: stage-loading-character 2.2s ease-in-out infinite;
-}
-.stage-loading-rig {
-  position: absolute;
-  width: 116px;
-  height: 116px;
-  overflow: visible;
-  fill: none;
-  stroke: #656b76;
-  stroke-linecap: round;
-  stroke-width: 1.25;
-}
-.stage-loading-rig > g {
-  transform-origin: 60px 60px;
-  animation: stage-loading-rig 2.2s ease-in-out infinite;
-}
-.stage-loading-curve {
-  stroke-dasharray: 18 7;
-  animation: stage-loading-curve 2.2s linear infinite;
-}
-.stage-loading-rig circle {
-  fill: var(--surface-1);
-  stroke: var(--accent);
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: stage-loading-node 2.2s ease-in-out infinite;
-}
-.stage-loading-rig circle:nth-of-type(2) {
-  animation-delay: 150ms;
-}
-.stage-loading-rig circle:nth-of-type(3) {
-  animation-delay: 300ms;
+  width: 112px;
+  height: 112px;
+  background-image: url('/brand/model-loader.webp');
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: 300% 100%;
+  animation: stage-loading-expression 4.8s steps(1, end) infinite;
 }
 
 .stage-loading-label {
@@ -523,32 +501,35 @@ label output {
 
 @keyframes stage-loading-character {
   50% {
-    transform: translateY(-3px) scale(1.012);
+    transform: translateY(-2px) scale(1.012);
   }
 }
-@keyframes stage-loading-rig {
-  50% {
-    opacity: 0.68;
-    transform: rotate(2deg) scale(1.02);
+@keyframes stage-loading-expression {
+  0%,
+  43%,
+  50%,
+  77%,
+  88%,
+  100% {
+    background-position: 0 0;
   }
-}
-@keyframes stage-loading-curve {
-  to {
-    stroke-dashoffset: -25;
+  44%,
+  49% {
+    background-position: 50% 0;
   }
-}
-@keyframes stage-loading-node {
-  50% {
-    opacity: 0.45;
-    transform: scale(0.72);
+  78%,
+  87% {
+    background-position: 100% 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage-loading-mark img,
-  .stage-loading-rig > g,
-  .stage-loading-curve,
-  .stage-loading-rig circle {
+  .stage-loading[data-visible='true'] {
+    transition: none;
+  }
+
+  .stage-loading-mark,
+  .stage-loading-character {
     animation: none;
   }
 }

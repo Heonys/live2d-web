@@ -97,16 +97,23 @@
 }
 
 .landing-demo {
+  --landing-stage-height: 540px;
+
   overflow: hidden;
+  min-width: 0;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--surface-1);
   box-shadow: 0 10px 28px rgb(0 0 0 / 14%);
+  contain: layout paint;
 }
 .landing-stage {
   position: relative;
-  height: 540px;
+  height: var(--landing-stage-height);
+  min-height: var(--landing-stage-height);
   overflow: hidden;
+  contain: layout paint;
+  isolation: isolate;
   background:
     linear-gradient(90deg, transparent 49.9%, rgb(255 255 255 / 3%) 50%, transparent 50.1%),
     linear-gradient(0deg, transparent 49.9%, rgb(255 255 255 / 3%) 50%, transparent 50.1%),
@@ -116,6 +123,16 @@
 .landing-stage .runtime-host {
   position: absolute;
   inset: 0;
+}
+.landing-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.landing-stage[data-model-visible='true'] canvas {
+  opacity: 1;
 }
 .landing-demo-controls {
   display: grid;
@@ -330,8 +347,8 @@
   .landing-copy {
     padding-top: 28px;
   }
-  .landing-stage {
-    height: min(620px, 70dvh);
+  .landing-demo {
+    --landing-stage-height: min(620px, 70svh);
   }
   .landing-code-section {
     grid-template-columns: 1fr;
@@ -351,8 +368,8 @@
   .landing-copy h1 {
     font-size: 46px;
   }
-  .landing-stage {
-    height: 480px;
+  .landing-demo {
+    --landing-stage-height: 480px;
   }
   .landing-demo-controls {
     grid-template-columns: 1fr;
@@ -372,6 +389,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .landing-stage canvas {
+    transition: none;
+  }
+
   .landing-hold-speech[data-active='true'] .landing-speech-meter i {
     height: 8px;
     animation: none;

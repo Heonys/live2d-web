@@ -406,12 +406,13 @@
 }
 .docs-article a {
   color: var(--text-1);
-  text-decoration-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--text-3) 72%, transparent);
   text-underline-offset: 3px;
 }
 .docs-article a:hover,
 .docs-article a:focus-visible {
-  color: var(--accent-hover);
+  color: var(--text-1);
+  text-decoration-color: var(--accent);
 }
 .docs-article :not(pre) > code {
   padding: 2px 5px;
