@@ -5,6 +5,7 @@ import type { DocLocale } from '../docs/manifest'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { DocsIntentLink } from '../docs/DocsNavigation'
 import { useDocsNavigation } from '../docs/docsNavigationContext'
 import { docHref } from '../docs/manifest'
 import { warmLocaleFonts } from '../docs/searchClient'
@@ -17,28 +18,22 @@ const languageNames: Record<DocLocale, string> = {
 
 const languages = ['en', 'ko', 'ja'] as const
 
-export function SiteHeader({ docSlug = '', locale = 'en' }: {
-  docSlug?: string
-  locale?: DocLocale
-}) {
+export function SiteHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { markPending } = useDocsNavigation()
+  const { markPending, prefetch } = useDocsNavigation()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
   const languageRootRef = useRef<HTMLDivElement>(null)
   const languageTriggerRef = useRef<HTMLButtonElement>(null)
-  const prefetchedRef = useRef(new Set<string>())
+  const skipInitialLanguageFocusRef = useRef(false)
   const docsMatch = pathname.match(/^\/docs\/(en|ko|ja)(?:\/(.*))?$/)
-  const currentLocale = (docsMatch?.[1] as DocLocale | undefined) ?? locale
-  const currentDocSlug = docsMatch?.[2] ?? docSlug
+  const currentLocale = (docsMatch?.[1] as DocLocale | undefined) ?? 'en'
+  const currentDocSlug = docsMatch?.[2] ?? ''
 
   const prepareLanguage = (language: DocLocale) => {
     const href = docHref(language, currentDocSlug)
-    if (!prefetchedRef.current.has(href)) {
-      prefetchedRef.current.add(href)
-      router.prefetch(href)
-    }
+    prefetch(href)
     return warmLocaleFonts(language, currentDocSlug)
   }
 
@@ -68,14 +63,20 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
     setLanguageOpen(false)
   }
   const openLanguageMenu = () => {
+    skipInitialLanguageFocusRef.current = true
     setLanguageOpen(true)
-    for (const language of languages) {
-      if (language !== currentLocale)
-        void prepareLanguage(language)
-    }
     requestAnimationFrame(() => {
-      languageRootRef.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]')?.focus()
+      const current = languageRootRef.current
+        ?.querySelector<HTMLAnchorElement>('[role="menuitem"][aria-current="page"]')
+      ;(current ?? languageRootRef.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]'))?.focus()
     })
+  }
+  const handleLanguageFocus = (language: DocLocale) => {
+    if (skipInitialLanguageFocusRef.current) {
+      skipInitialLanguageFocusRef.current = false
+      return
+    }
+    void prepareLanguage(language)
   }
   const handleLanguageKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const items = [...event.currentTarget.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]')]
@@ -95,6 +96,8 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
     items[next]?.focus()
   }
   const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  const examplesCurrent = /^\/docs\/(?:en|ko|ja)\/examples(?:\/|$)/.test(pathname)
+  const documentationCurrent = pathname.startsWith('/docs/') && !examplesCurrent
   const handleLanguageClick = async (
     event: ReactMouseEvent<HTMLAnchorElement>,
     language: DocLocale,
@@ -119,13 +122,16 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
     router.push(href)
   }
 
+  if (/^\/(?:benchmark|e2e)(?:\/|$)/.test(pathname))
+    return null
+
   return (
     <header className="site-header">
       <div className="site-header-inner">
-        <Link className="site-wordmark" href="/" onClick={closeNavigation}>
+        <DocsIntentLink className="site-wordmark" href="/" onClick={closeNavigation}>
           <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
           <span>live2d-web</span>
-        </Link>
+        </DocsIntentLink>
         <button
           aria-expanded={navigationOpen}
           aria-label="Toggle navigation"
@@ -138,38 +144,34 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
         </button>
         <nav aria-label="Primary" className={navigationOpen ? 'site-nav is-open' : 'site-nav'}>
           <div className="site-nav-links">
-            <Link
-              aria-current={pathname.startsWith('/docs/') ? 'page' : undefined}
+            <DocsIntentLink
+              aria-current={documentationCurrent ? 'page' : undefined}
               href={docHref(currentLocale, '')}
-              prefetch={false}
               onClick={closeNavigation}
             >
               Documentation
-            </Link>
-            <Link
+            </DocsIntentLink>
+            <DocsIntentLink
               aria-current={isCurrent('/playground') ? 'page' : undefined}
               href="/playground"
-              prefetch={false}
               onClick={closeNavigation}
             >
               Playground
-            </Link>
-            <Link
+            </DocsIntentLink>
+            <DocsIntentLink
               aria-current={isCurrent('/inspect') ? 'page' : undefined}
               href="/inspect"
-              prefetch={false}
               onClick={closeNavigation}
             >
               Inspector
-            </Link>
-            <Link
-              aria-current={pathname.includes('/examples') ? 'page' : undefined}
+            </DocsIntentLink>
+            <DocsIntentLink
+              aria-current={examplesCurrent ? 'page' : undefined}
               href={docHref(currentLocale, 'examples')}
-              prefetch={false}
               onClick={closeNavigation}
             >
               Examples
-            </Link>
+            </DocsIntentLink>
           </div>
           <div className="site-utilities">
             <a
@@ -222,7 +224,7 @@ export function SiteHeader({ docSlug = '', locale = 'en' }: {
                       prefetch={false}
                       role="menuitem"
                       onClick={event => void handleLanguageClick(event, language)}
-                      onFocus={() => void prepareLanguage(language)}
+                      onFocus={() => handleLanguageFocus(language)}
                       onPointerEnter={() => void prepareLanguage(language)}
                     >
                       <span>{languageNames[language]}</span>

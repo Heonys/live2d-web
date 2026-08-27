@@ -45,8 +45,8 @@ a {
   color: inherit;
 }
 ::selection {
-  color: #101116;
-  background: var(--accent);
+  color: var(--text-1);
+  background: rgb(255 113 143 / 26%);
 }
 
 html::-webkit-scrollbar,
@@ -270,6 +270,7 @@ figure[data-rehype-pretty-code-figure] pre,
   border-radius: 5px;
   color: var(--text-2);
   font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
   text-decoration: none;
   align-items: center;
   justify-content: space-between;

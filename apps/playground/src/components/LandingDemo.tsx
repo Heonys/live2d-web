@@ -3,9 +3,10 @@
 import type { Live2DModelController } from 'live2d-web/react'
 import type { AssetManifest } from '../lib/assetManifest'
 import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { preload } from 'react-dom'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../lib/assetManifest'
+import { canBackgroundPrefetch, scheduleAfterPaintIdle, scheduleIdle } from './navigationPrefetch'
 import { StageLoading } from './StageLoading'
 
 const SPEECH_ATTACK_MS = 90
@@ -23,13 +24,15 @@ function speechEnvelope(elapsedMs: number) {
 }
 
 export function LandingDemo() {
-  preload(CUBISM_CORE_URL, { as: 'script' })
+  const router = useRouter()
   const [manifest, setManifest] = useState<AssetManifest | null>(null)
   const [controller, setController] = useState<Live2DModelController | null>(null)
   const [mouth, setMouth] = useState(0)
   const [holdingSpeech, setHoldingSpeech] = useState(false)
   const [lipSyncActive, setLipSyncActive] = useState(false)
   const [error, setError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [loadPhase, setLoadPhase] = useState<'waiting' | 'assets' | 'model'>('waiting')
   const animationFrameRef = useRef<number | null>(null)
   const holdingSpeechRef = useRef(false)
   const mouthRef = useRef(0)
@@ -99,24 +102,65 @@ export function LandingDemo() {
     animationFrameRef.current = requestAnimationFrame(speechFrame)
   }, [cancelMouthAnimation, updateMouth])
 
+  const retryModel = useCallback(() => {
+    setController(null)
+    setError('')
+    setManifest(null)
+    setLoadPhase('waiting')
+    setLoadAttempt(attempt => attempt + 1)
+  }, [])
+
   useEffect(() => {
     const request = new AbortController()
-    fetch('/assets/live2d/hiyori/manifest.json', { signal: request.signal })
-      .then((response) => {
-        if (!response.ok)
-          throw new Error('Local demo assets are unavailable.')
-        return response.json() as Promise<AssetManifest>
-      })
-      .then((loaded) => {
-        warmUpModelAssets(loaded)
-        setManifest(loaded)
-      })
-      .catch((reason: unknown) => {
-        if (!request.signal.aborted)
-          setError(reason instanceof Error ? reason.message : String(reason))
-      })
-    return () => request.abort()
-  }, [])
+    let loadStarted = false
+    let cancelScheduled = () => {}
+
+    const loadAssets = () => {
+      if (loadStarted || request.signal.aborted)
+        return
+      loadStarted = true
+      setLoadPhase('assets')
+      void fetch('/assets/live2d/hiyori/manifest.json', { signal: request.signal })
+        .then((response) => {
+          if (!response.ok)
+            throw new Error('Local demo assets are unavailable.')
+          return response.json() as Promise<AssetManifest>
+        })
+        .then((loaded) => {
+          warmUpModelAssets(loaded)
+          setManifest(loaded)
+          setLoadPhase('model')
+        })
+        .catch((reason: unknown) => {
+          if (!request.signal.aborted)
+            setError(reason instanceof Error ? reason.message : String(reason))
+        })
+    }
+
+    const scheduleVisibleLoad = () => {
+      if (loadStarted || document.visibilityState === 'hidden')
+        return
+      cancelScheduled()
+      cancelScheduled = scheduleAfterPaintIdle(loadAssets, 500)
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && !loadStarted) {
+        cancelScheduled()
+        cancelScheduled = () => {}
+      }
+      else {
+        scheduleVisibleLoad()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    scheduleVisibleLoad()
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      cancelScheduled()
+      request.abort()
+    }
+  }, [loadAttempt])
 
   useEffect(() => {
     window.addEventListener('blur', releaseSpeech)
@@ -126,6 +170,22 @@ export function LandingDemo() {
       cancelMouthAnimation()
     }
   }, [cancelMouthAnimation, releaseSpeech])
+
+  useEffect(() => {
+    if ((!controller && !error) || !canBackgroundPrefetch())
+      return
+    const timers: number[] = []
+    const cancelIdle = scheduleIdle(() => {
+      ['/docs/en', '/playground', '/inspect', '/docs/en/examples'].forEach((href, index) => {
+        const timer = window.setTimeout((target: string) => router.prefetch(target), index * 120, href)
+        timers.push(timer)
+      })
+    }, { delay: 250 })
+    return () => {
+      cancelIdle()
+      timers.forEach(timer => window.clearTimeout(timer))
+    }
+  }, [controller, error, router])
 
   const playTap = useCallback(() => {
     if (!controller)
@@ -137,7 +197,7 @@ export function LandingDemo() {
   }, [controller])
 
   return (
-    <div className="landing-demo">
+    <div className="landing-demo" data-load-phase={controller ? 'ready' : error ? 'error' : loadPhase}>
       <div className="landing-stage">
         <output className="landing-stage-status" aria-live="polite">
           <span data-state={error ? 'error' : controller ? 'ready' : 'loading'}>
@@ -170,7 +230,12 @@ export function LandingDemo() {
               </Live2DCanvas>
             )
           : error
-            ? <p className="landing-demo-error">{error}</p>
+            ? (
+                <div className="landing-demo-error" role="alert">
+                  <p>{error}</p>
+                  <button type="button" onClick={retryModel}>Retry model</button>
+                </div>
+              )
             : <StageLoading />}
       </div>
       <div className="landing-demo-controls">

@@ -3,7 +3,7 @@
 import type { DocLocale, DocPageMeta } from './manifest'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { DocSearch } from './DocSearch'
+import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
 import { docHref } from './manifest'
 
@@ -101,7 +101,7 @@ export function DocsMobileNavigation({ current, locale, pages }: {
             <strong>live2d-web</strong>
             <button aria-label={mobileLabels[locale].close} type="button" onClick={close}>×</button>
           </div>
-          <DocSearch locale={locale} />
+          <DocsSearchTrigger />
           <nav aria-label="Documentation">
             {pages.map(page => (
               <DocsIntentLink

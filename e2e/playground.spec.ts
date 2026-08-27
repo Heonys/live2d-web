@@ -102,16 +102,27 @@ test('has no automatically detectable accessibility violations on primary routes
   }
 })
 
-test('preloads Cubism Core from the server-rendered HTML', async ({ page }) => {
-  // The runtime injects the Core script after hydration, so without this link
-  // the preload scanner never sees it. React hoists the tag into <head>, which
-  // only works while the call sits outside a subtree that opts out of SSR.
+test('renders the landing shell without preloading Cubism Core', async ({ page }) => {
   const html = await (await page.request.get('/')).text()
-  const preloadIndex = html.indexOf('/assets/js/cubism/5.3/live2dcubismcore.min.js')
 
-  expect(html).toContain('rel="preload"')
-  expect(preloadIndex).toBeGreaterThan(-1)
-  expect(preloadIndex).toBeLessThan(html.indexOf('</head>'))
+  expect(html).toContain('Live2D, directly in the browser.')
+  expect(html).not.toContain('href="/assets/js/cubism/5.3/live2dcubismcore.min.js"')
+})
+
+test('keeps the initial MiSans preload to two compact files', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The generated font preload budget only needs one project.')
+
+  await page.goto('/')
+  const fontHrefs = await page.locator('link[rel="preload"][as="font"]').evaluateAll(elements =>
+    elements.map(element => (element as HTMLLinkElement).href))
+  expect(fontHrefs).toHaveLength(2)
+  let totalBytes = 0
+  for (const href of fontHrefs) {
+    const response = await page.request.get(href)
+    expect(response.ok()).toBe(true)
+    totalBytes += (await response.body()).byteLength
+  }
+  expect(totalBytes).toBeLessThanOrEqual(140 * 1024)
 })
 
 test('keeps the landing page focused and links to the full playground', async ({ page }) => {
@@ -192,6 +203,104 @@ test('keeps the landing page focused and links to the full playground', async ({
   await page.setViewportSize({ height: 844, width: 390 })
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true)
+
+  await page.locator('.site-header').evaluate((element) => {
+    element.setAttribute('data-persist-test', 'true')
+    const progress = document.querySelector('.docs-navigation-progress')
+    if (!progress)
+      throw new Error('Navigation progress element is unavailable.')
+    Object.assign(window, { __sawNavigationProgress: false })
+    new MutationObserver(() => {
+      if (progress?.classList.contains('is-active'))
+        Object.assign(window, { __sawNavigationProgress: true })
+    }).observe(progress, { attributeFilter: ['class'], attributes: true })
+  })
+  await page.getByRole('link', { name: 'Read the docs' }).click()
+  await expect(page).toHaveURL(/\/docs\/en$/)
+  await expect(page.locator('.site-header')).toHaveAttribute('data-persist-test', 'true')
+  await expect.poll(() => page.evaluate(() => (window as typeof window & {
+    __sawNavigationProgress?: boolean
+  }).__sawNavigationProgress)).toBe(true)
+})
+
+test('defers route prefetch until the landing model settles and shows the branded loader', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The deterministic landing loading regression runs once in Chromium.')
+
+  const prefetchedRoutes: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.searchParams.has('_rsc'))
+      prefetchedRoutes.push(url.pathname)
+  })
+  await page.route('**/hiyori_free_t08.model3.json', async (route) => {
+    await new Promise(resolve => setTimeout(resolve, 1_200))
+    await route.continue()
+  })
+
+  await page.goto('/')
+  const loader = page.getByRole('status').filter({ hasText: 'Preparing model' })
+  await expect(loader).toBeVisible()
+  await expect(loader.locator('.stage-loading-mark img')).toHaveAttribute(
+    'src',
+    '/brand/model-loader.webp',
+  )
+  await expect.poll(async () => page.evaluate(() => {
+    const paint = performance.getEntriesByName('first-contentful-paint')[0]
+    const resources = performance.getEntriesByType('resource')
+    const manifest = resources.find(entry => entry.name.endsWith('/assets/live2d/hiyori/manifest.json'))
+    const core = resources.find(entry => entry.name.endsWith('/assets/js/cubism/5.3/live2dcubismcore.min.js'))
+    return paint && manifest && core
+      ? { core: core.startTime, manifest: manifest.startTime, paint: paint.startTime }
+      : null
+  })).not.toBeNull()
+  const timings = await page.evaluate(() => {
+    const paint = performance.getEntriesByName('first-contentful-paint')[0]!
+    const resources = performance.getEntriesByType('resource')
+    const manifest = resources.find(entry => entry.name.endsWith('/assets/live2d/hiyori/manifest.json'))!
+    const core = resources.find(entry => entry.name.endsWith('/assets/js/cubism/5.3/live2dcubismcore.min.js'))
+    return {
+      core: core?.startTime,
+      manifest: manifest.startTime,
+      paint: paint.startTime,
+    }
+  })
+  expect(timings.manifest).toBeGreaterThanOrEqual(timings.paint)
+  expect(timings.manifest - timings.paint).toBeLessThanOrEqual(700)
+  expect(timings.core).toBeGreaterThanOrEqual(timings.manifest)
+  await page.waitForTimeout(350)
+  expect(prefetchedRoutes).toEqual([])
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(loader.locator('.stage-loading-rig > g')).toHaveCSS('animation-name', 'none')
+  await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  await expect.poll(() => new Set(prefetchedRoutes).size).toBeGreaterThanOrEqual(4)
+  expect(new Set(prefetchedRoutes)).toEqual(new Set([
+    '/docs/en',
+    '/docs/en/examples',
+    '/inspect',
+    '/playground',
+  ]))
+})
+
+test('retries a deferred landing manifest failure', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The deterministic landing retry regression runs once in Chromium.')
+
+  let attempts = 0
+  await page.route('**/assets/live2d/hiyori/manifest.json', async (route) => {
+    attempts += 1
+    if (attempts === 1) {
+      await route.fulfill({ body: 'unavailable', status: 503 })
+      return
+    }
+    await route.continue()
+  })
+
+  await page.goto('/')
+  await expect(page.locator('.landing-demo-error[role="alert"]')).toContainText('Local demo assets are unavailable.')
+  await page.getByRole('button', { name: 'Retry model' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Preparing model' })).toBeVisible()
+  await expect(page.locator('.landing-stage-status')).toContainText('ready')
+  expect(attempts).toBe(2)
 })
 
 test('links model load failures to actionable troubleshooting', async ({ browserName, page }) => {
@@ -492,7 +601,10 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).fontFamily))
     .toContain('miSans')
 
-  await page.getByLabel('Search documentation').fill('MediaPipe')
+  await page.getByRole('button', { name: 'Search documentation' }).click()
+  const search = page.getByRole('dialog', { name: 'Search documentation' })
+    .getByRole('combobox', { name: 'Search documentation' })
+  await search.fill('MediaPipe')
   await page.locator('.docs-search-results a[href="/docs/en/mediapipe"]').click()
   await expect(page).toHaveURL(/\/docs\/en\/mediapipe$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe face tracking')
@@ -530,6 +642,37 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
     expect((await page.request.get(href)).ok()).toBe(true)
 })
 
+test('warms only the selected documentation language', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The deterministic language loading regression runs once in Chromium.')
+
+  await page.goto('/docs/en/mediapipe')
+  await page.evaluate(() => document.fonts.ready)
+  const requested: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (
+      url.pathname.startsWith('/docs-search/')
+      || url.pathname.endsWith('.woff2')
+      || (url.searchParams.has('_rsc') && /^\/docs\/(?:ko|ja)(?:\/|$)/.test(url.pathname))
+    ) {
+      requested.push(`${url.pathname}${url.search}`)
+    }
+  })
+
+  await page.getByRole('button', { name: 'Documentation language' }).click()
+  await page.waitForTimeout(300)
+  expect(requested).toEqual([])
+
+  const korean = page.getByRole('menuitem', { exact: true, name: '한국어' })
+  await korean.hover()
+  await expect.poll(() => requested.some(value => value.startsWith('/docs/ko/mediapipe?'))).toBe(true)
+  expect(requested.some(value => value.startsWith('/docs-search/'))).toBe(false)
+  expect(requested.some(value => /^\/docs\/ja(?:\/|\?)/.test(value))).toBe(false)
+  await korean.click()
+  await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
+})
+
 test('keeps documentation navigation stable and loads search on intent', async ({ browserName, page }) => {
   test.skip(browserName !== 'chromium', 'The deterministic docs UX regression runs once in Chromium.')
 
@@ -556,6 +699,7 @@ test('keeps documentation navigation stable and loads search on intent', async (
 
   await page.goto('/docs/en')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Getting started')
+  await page.locator('.site-header').evaluate(element => element.setAttribute('data-persist-test', 'true'))
   await page.waitForTimeout(250)
   expect(searchRequests).toEqual([])
   expect(prefetchedDocs).toEqual([])
@@ -579,6 +723,9 @@ test('keeps documentation navigation stable and loads search on intent', async (
   await examples.click()
   await expect(page).toHaveURL(/\/docs\/en\/examples$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Examples')
+  await expect(page.locator('.site-header')).toHaveAttribute('data-persist-test', 'true')
+  await expect(page.locator('.site-nav-links > a[aria-current="page"]')).toHaveCount(1)
+  await expect(page.locator('.site-nav-links > a[aria-current="page"]')).toHaveText('Examples')
   await expect(page.locator('.docs-toc')).toContainText('Buildable projects')
   expect(prefetchedDocs).toHaveLength(intentRequestCount)
   const after = await page.evaluate(() => ({
@@ -590,8 +737,9 @@ test('keeps documentation navigation stable and loads search on intent', async (
   expect(await page.evaluate(() =>
     (window as typeof window & { __docsCls?: number }).__docsCls ?? 0)).toBeLessThanOrEqual(0.02)
 
-  const search = page.getByLabel('Search documentation')
   await page.keyboard.press('/')
+  const search = page.getByRole('dialog', { name: 'Search documentation' })
+    .getByRole('combobox', { name: 'Search documentation' })
   await expect(search).toBeFocused()
   await expect.poll(() => searchRequests.length).toBe(1)
   await search.fill('MediaPipe')
@@ -632,7 +780,9 @@ test('keeps documentation search inside supported viewports', async ({ browserNa
       const drawer = await page.locator('.docs-mobile-drawer').boundingBox()
       expect(drawer?.height).toBe(viewport.height)
     }
-    const search = page.getByLabel('Search documentation').filter({ visible: true })
+    await page.getByRole('button', { name: 'Search documentation' }).filter({ visible: true }).click()
+    const search = page.getByRole('dialog', { name: 'Search documentation' })
+      .getByRole('combobox', { name: 'Search documentation' })
     await search.fill('motion')
     await expect(page.getByRole('listbox')).toBeVisible()
     const bounds = await page.getByRole('listbox').boundingBox()

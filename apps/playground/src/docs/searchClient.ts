@@ -1,5 +1,6 @@
 import type { DocLocale } from './manifest'
 import type { DocSearchEntry } from './searchTypes'
+import { getDocPage } from './manifest'
 
 const searchCache = new Map<DocLocale, Promise<readonly DocSearchEntry[]>>()
 const fontWarmCache = new Map<string, Promise<void>>()
@@ -33,14 +34,13 @@ export function warmLocaleFonts(locale: DocLocale, slug: string): Promise<void> 
   const cached = fontWarmCache.get(key)
   if (cached)
     return cached
-  const request = loadDocSearch(locale).then(async (entries) => {
-    const href = `/docs/${locale}${slug ? `/${slug}` : ''}`
-    const entry = entries.find(candidate => candidate.kind === 'page' && candidate.href === href)
-    const text = uniqueGlyphs(`${entry?.title ?? ''}${entry?.summary ?? ''}${entry?.text ?? ''}`)
+  const request = Promise.resolve().then(async () => {
+    const page = getDocPage(slug)
+    const text = uniqueGlyphs(`${page?.title[locale] ?? ''}${page?.summary[locale] ?? ''}`)
     if (!text)
       return
     const family = locale === 'ko' ? 'Pretendard Variable' : 'Noto Sans JP Variable'
-    await Promise.all([400, 600, 700].map(weight =>
+    await Promise.all([400, 600].map(weight =>
       document.fonts.load(`${weight} 16px "${family}"`, text)))
   }).catch(() => {
     fontWarmCache.delete(key)

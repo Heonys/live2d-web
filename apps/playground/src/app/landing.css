@@ -236,6 +236,21 @@
   color: var(--text-3);
   text-align: center;
 }
+.landing-demo-error p {
+  margin: 0;
+}
+.landing-demo-error button {
+  min-height: 36px;
+  margin: 16px auto 0;
+  padding: 7px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--text-1);
+  background: var(--surface-2);
+}
+.landing-demo-error button:hover {
+  border-color: var(--accent);
+}
 
 .landing-features {
   display: grid;

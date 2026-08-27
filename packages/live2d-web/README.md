@@ -1,6 +1,6 @@
 # live2d-web
 
-An unofficial Live2D Cubism runtime for vanilla JavaScript and React. It uses a
+An unofficial Live2D Cubism runtime for JavaScript and React. It uses a
 WebGL2 renderer without PixiJS.
 
 **[Documentation](https://live2d-web-demo.netlify.app/docs/en)** ·
@@ -15,7 +15,7 @@ npm install live2d-web
 Cubism Core and model files are not bundled. Download Core under Live2D’s
 terms, self-host it, and serve a licensed Cubism 4/5 model directory.
 
-## Vanilla
+## JavaScript
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -47,7 +47,7 @@ export function Avatar() {
 }
 ```
 
-The host needs an explicit CSS size. Dispose vanilla instances when their view
+The host needs an explicit CSS size. Dispose JavaScript instances when their view
 is removed; React components clean up on unmount.
 
 ## Optional entries

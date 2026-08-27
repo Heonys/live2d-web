@@ -1,6 +1,6 @@
 # live2d-web
 
-Unofficial Live2D Cubism runtime for vanilla JavaScript and React. The default
+Unofficial Live2D Cubism runtime for JavaScript and React. The default
 backend uses WebGL2 without Pixi. Cubism Core and model files are never bundled.
 
 ## Documentation

@@ -31,7 +31,6 @@ import {
 import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { preload } from 'react-dom'
-import { SiteHeader } from '../../components/SiteHeader'
 import { StageLoading } from '../../components/StageLoading'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../../lib/syntheticLipSyncProfile'
@@ -960,7 +959,6 @@ export default function PlaygroundPage() {
 
   return (
     <>
-      <SiteHeader />
       <main className="playground-page">
         <div className="playground-intro">
           <div>

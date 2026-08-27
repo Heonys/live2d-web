@@ -13,7 +13,6 @@ import {
 } from 'live2d-web/react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { SiteHeader } from '../../components/SiteHeader'
 import { StageLoading } from '../../components/StageLoading'
 import {
   CUBISM_CORE_URL,
@@ -194,11 +193,8 @@ function BackendComparisonContent() {
 
 export default function BackendComparison() {
   return (
-    <>
-      <SiteHeader />
-      <Suspense fallback={<main>Loading comparison…</main>}>
-        <BackendComparisonContent />
-      </Suspense>
-    </>
+    <Suspense fallback={<main>Loading comparison…</main>}>
+      <BackendComparisonContent />
+    </Suspense>
   )
 }

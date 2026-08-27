@@ -7,8 +7,8 @@ import { DocsIntentLink } from '../../../../docs/DocsNavigation'
 import { HighlightedCode } from '../../../../docs/HighlightedCode'
 import { DOC_LOADERS } from '../../../../docs/loaders'
 import { DOC_LOCALES, DOC_PAGES, docHref, getDocPage } from '../../../../docs/manifest'
+import { siteUrl } from '../../../../lib/siteOrigin'
 
-const SITE_URL = 'https://live2d-web-demo.netlify.app'
 const labels: Record<DocLocale, { apiNote: string, next: string, previous: string }> = {
   en: { apiNote: 'Signatures are generated from the public TypeScript source.', next: 'Next', previous: 'Previous' },
   ja: { apiNote: 'signature は公開 TypeScript source から生成されます。', next: '次へ', previous: '前へ' },
@@ -44,10 +44,10 @@ export async function generateMetadata({ params }: {
   const pagePath = docHref(locale, page.slug)
   return {
     alternates: {
-      canonical: `${SITE_URL}${pagePath}`,
+      canonical: siteUrl(pagePath),
       languages: Object.fromEntries(DOC_LOCALES.map(language => [
         language,
-        `${SITE_URL}${docHref(language, page.slug)}`,
+        siteUrl(docHref(language, page.slug)),
       ])),
     },
     description: page.summary[locale],

@@ -466,33 +466,90 @@ label output {
   justify-items: center;
 }
 
-.stage-loading-spinner {
-  width: 26px;
-  height: 26px;
-  border: 2px solid #272b32;
-  border-top-color: #868c96;
-  border-radius: 50%;
-  animation: stage-loading-spin 0.9s linear infinite;
+.stage-loading-mark {
+  position: relative;
+  display: grid;
+  width: 116px;
+  height: 116px;
+  place-items: center;
+}
+.stage-loading-mark img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 7px rgb(0 0 0 / 24%));
+  animation: stage-loading-character 2.2s ease-in-out infinite;
+}
+.stage-loading-rig {
+  position: absolute;
+  width: 116px;
+  height: 116px;
+  overflow: visible;
+  fill: none;
+  stroke: #656b76;
+  stroke-linecap: round;
+  stroke-width: 1.25;
+}
+.stage-loading-rig > g {
+  transform-origin: 60px 60px;
+  animation: stage-loading-rig 2.2s ease-in-out infinite;
+}
+.stage-loading-curve {
+  stroke-dasharray: 18 7;
+  animation: stage-loading-curve 2.2s linear infinite;
+}
+.stage-loading-rig circle {
+  fill: var(--surface-1);
+  stroke: var(--accent);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: stage-loading-node 2.2s ease-in-out infinite;
+}
+.stage-loading-rig circle:nth-of-type(2) {
+  animation-delay: 150ms;
+}
+.stage-loading-rig circle:nth-of-type(3) {
+  animation-delay: 300ms;
 }
 
 .stage-loading-label {
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   color: #9aa0aa;
   font-size: 0.82rem;
 }
 
-/* Transform-only, so the loop costs no paint work while the main thread is
-   busy compiling shaders and parsing the model. */
-@keyframes stage-loading-spin {
+@keyframes stage-loading-character {
+  50% {
+    transform: translateY(-3px) scale(1.012);
+  }
+}
+@keyframes stage-loading-rig {
+  50% {
+    opacity: 0.68;
+    transform: rotate(2deg) scale(1.02);
+  }
+}
+@keyframes stage-loading-curve {
   to {
-    transform: rotate(360deg);
+    stroke-dashoffset: -25;
+  }
+}
+@keyframes stage-loading-node {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.72);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage-loading-spinner {
+  .stage-loading-mark img,
+  .stage-loading-rig > g,
+  .stage-loading-curve,
+  .stage-loading-rig circle {
     animation: none;
-    border-top-color: #272b32;
   }
 }
 

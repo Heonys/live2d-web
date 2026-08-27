@@ -6,7 +6,6 @@ import type { AssetManifest } from '../../lib/assetManifest'
 import { createLive2D } from 'live2d-web'
 import { useEffect, useRef, useState } from 'react'
 import { preload } from 'react-dom'
-import { SiteHeader } from '../../components/SiteHeader'
 import { StageLoading } from '../../components/StageLoading'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
 
@@ -88,85 +87,82 @@ export default function VanillaPlayground() {
   }, [mouthOpen])
 
   return (
-    <>
-      <SiteHeader />
-      <main>
-        <section className="page-hero">
-          <div>
-            <p className="eyebrow">JavaScript runtime playground</p>
-            <h1>Live2D without React bindings</h1>
-            <p>
-              This page mounts one imperative
-              {' '}
-              <code>createLive2D()</code>
-              {' '}
-              runtime with the default Framework WebGL backend.
-            </p>
-            <code className="install">npm install live2d-web</code>
-          </div>
-        </section>
+    <main>
+      <section className="page-hero">
+        <div>
+          <p className="eyebrow">JavaScript runtime playground</p>
+          <h1>Live2D without React bindings</h1>
+          <p>
+            This page mounts one imperative
+            {' '}
+            <code>createLive2D()</code>
+            {' '}
+            runtime with the default Framework WebGL backend.
+          </p>
+          <code className="install">npm install live2d-web</code>
+        </div>
+      </section>
 
-        <section className="workspace">
-          <div className="stage-shell" data-testid="vanilla-stage">
-            {mounted && <div ref={containerRef} className="runtime-host" />}
-            <output className="diagnostics" data-testid="vanilla-status">
-              <strong>{mounted ? status : 'disposed'}</strong>
-            </output>
-            {mounted && !error && status === 'loading' && <StageLoading />}
-            {error && (
-              <div className="stage-overlay error-panel" role="alert">
-                <strong>Runtime error</strong>
-                <p>{error}</p>
-              </div>
-            )}
-            {!mounted && <div className="empty-stage">Runtime disposed</div>}
-          </div>
+      <section className="workspace">
+        <div className="stage-shell" data-testid="vanilla-stage">
+          {mounted && <div ref={containerRef} className="runtime-host" />}
+          <output className="diagnostics" data-testid="vanilla-status">
+            <strong>{mounted ? status : 'disposed'}</strong>
+          </output>
+          {mounted && !error && status === 'loading' && <StageLoading />}
+          {error && (
+            <div className="stage-overlay error-panel" role="alert">
+              <strong>Runtime error</strong>
+              <p>{error}</p>
+            </div>
+          )}
+          {!mounted && <div className="empty-stage">Runtime disposed</div>}
+        </div>
 
-          <aside>
-            <label>
-              Framing
-              <select
-                value={typeof fit === 'string' ? fit : 'upper-body'}
-                onChange={event => setFit(event.target.value as 'upper-body' | 'full')}
-              >
-                <option value="upper-body">Upper body</option>
-                <option value="full">Full model</option>
-              </select>
-            </label>
+        <aside>
+          <label>
+            Framing
+            <select
+              value={typeof fit === 'string' ? fit : 'upper-body'}
+              onChange={event => setFit(event.target.value as 'upper-body' | 'full')}
+            >
+              <option value="upper-body">Upper body</option>
+              <option value="full">Full model</option>
+            </select>
+          </label>
 
-            <label>
-              ParamMouthOpenY
-              <output>{mouthOpen.toFixed(2)}</output>
-              <input
-                max="1"
-                min="0"
-                step="0.01"
-                type="range"
-                value={mouthOpen}
-                onChange={event => setMouthOpen(Number(event.target.value))}
-              />
-            </label>
+          <label>
+            ParamMouthOpenY
+            <output>{mouthOpen.toFixed(2)}</output>
+            <input
+              max="1"
+              min="0"
+              step="0.01"
+              type="range"
+              value={mouthOpen}
+              onChange={event => setMouthOpen(Number(event.target.value))}
+            />
+          </label>
 
-            <button type="button" onClick={() => void instanceRef.current?.motion('Tap@Body')}>
-              Play Tap@Body
-            </button>
-            <button type="button" onClick={() => instanceRef.current?.pause()}>
-              Pause
-            </button>
-            <button type="button" onClick={() => instanceRef.current?.resume()}>
-              Resume
-            </button>
-            <button type="button" onClick={() => setMounted(value => !value)}>
-              {mounted ? 'Dispose runtime' : 'Create runtime'}
-            </button>
+          <button type="button" onClick={() => void instanceRef.current?.motion('Tap@Body')}>
+            Play Tap@Body
+          </button>
+          <button type="button" onClick={() => instanceRef.current?.pause()}>
+            Pause
+          </button>
+          <button type="button" onClick={() => instanceRef.current?.resume()}>
+            Resume
+          </button>
+          <button type="button" onClick={() => setMounted(value => !value)}>
+            {mounted ? 'Dispose runtime' : 'Create runtime'}
+          </button>
 
-            <p className="note">
-              The root import contains no React or Pixi runtime code. Cubism Core
-              remains an application-provided script.
-            </p>
-          </aside>
-        </section>
-      </main>
-    </>
+          <p className="note">
+            The root import contains no React or Pixi runtime code. Cubism Core
+            remains an application-provided script.
+          </p>
+        </aside>
+      </section>
+    </main>
   )
 }
