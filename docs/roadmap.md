@@ -379,7 +379,7 @@ AudioContext suspend 복구와 장치 변경을 확인한다.
 **검증.** 처음 보는 개발자가 문서만으로 10분 안에 캐릭터를 띄우는 테스트를
 분기마다 1명 이상에게 실시.
 
-**0.6 통합 후보 구현 상태 (2026-08-26).** Netlify 사이트에 영어·한국어·일본어 MDX
+**0.6 통합 후보 구현 상태 (2026-08-26).** 공개 사이트에 영어·한국어·일본어 MDX
 가이드 15개와 TypeDoc API, Shiki code highlight, 정적 검색,
 canonical/hreflang, sitemap, `llms.txt`를 추가했다. 루트 landing과 고정 Canvas
 `/playground`를 분리했고, React-free `live2d-web/devtools`와 `/inspect` 공개 검사

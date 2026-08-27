@@ -53,7 +53,7 @@ compatibility validation for inspect/devtools; see `docs/roadmap.md`.
   findings and Standard/Perfect Sync parameter coverage. The public browser
   inspector accepts CORS-enabled URLs and local zip files without uploading or
   rendering incompatible archives.
-- The Netlify Playground now includes localized English, Korean and Japanese
+- The public documentation now includes localized English, Korean and Japanese
   guides, a TypeDoc-generated API reference, static search, language metadata,
   sitemap and `llms.txt`. Four production-built examples cover Vite Vanilla,
   Next React, Vue Vite and transparent OBS overlays; contribution and issue

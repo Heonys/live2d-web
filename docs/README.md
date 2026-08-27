@@ -223,7 +223,7 @@ MediaPipe Worker, 모델 검사 API·URL/zip 도구, 세 언어 문서 사이트
   재사용할 수 있지만 JSZip을 npm 루트에 넣을 이유는 없다. TypeDoc API와 실제
   build되는 예제를 함께 두면 문서 snippet이 코드와 어긋나는 위험도 줄어든다.
 - **포기와 대체**: 별도 문서 호스팅 제품, npm에 JSZip 포함, runtime telemetry,
-  소비자 없는 Canvas 접근성 API는 만들지 않는다. 기존 Netlify Playground가
+  소비자 없는 Canvas 접근성 API는 만들지 않는다. 기존 공개 Playground가
   문서·데모·검사기를 함께 제공하고 optional 책임은 subpath/app에 둔다.
 - **재검토 조건**: 처음 보는 사용자의 10분 온보딩 또는 외부 PR에서 막히는
   구간이 확인되면 가이드·예제를 먼저 바꾼다. runtime 진단 snapshot과 접근성
