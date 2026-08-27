@@ -1,8 +1,8 @@
-## メインスレッド追跡
+## メインスレッドでのトラッキング
 
-> Workerエントリを含むトラッキングは、モバイルと外部利用者の検証が完了するまで **experimental** です。minor変更にはmigrationを記録し、patchではbreaking changeを行いません。
+> Worker を含むトラッキング機能は、モバイル実機と外部利用者による検証が完了するまで **experimental** として提供します。互換性に影響する変更は変更履歴に記載し、パッチ版では破壊的変更を行いません。
 
-MediaPipe は任意 peer で、この subpath からだけ読み込まれます。WASM・Face Landmarker model・video frame・schedule はアプリが渡します。tracker は正規化値だけを保持します。
+MediaPipe は任意の依存パッケージで、このサブパスを使う場合にのみ読み込まれます。WASM、Face Landmarker のモデル、映像、更新処理はアプリ側で用意します。トラッカーが保持するのは、正規化された値だけです。
 
 ```ts
 import { createMediaPipeFaceTracker } from
@@ -23,9 +23,9 @@ detach()
 tracker.dispose()
 ```
 
-## 任意の Worker
+## Worker を使う場合
 
-Worker mode は推論を描画スレッドから分離します。update() は非同期で1 frameずつ処理し、busy frame は skipped になります。起動失敗時の暗黙 fallback はありません。初期化の期限は30秒、推論の期限は10秒です。timeout は `tracking-error` で reject し、その tracker を終了するため、アプリは新しい Worker tracker を作成するか main mode に切り替える必要があります。
+Worker を選ぶと、顔の推論を描画処理とは別のスレッドで実行できます。`update()` は非同期で、一度に1フレームだけを処理します。処理中に届いたフレームは待ち行列にためず、`skipped` として扱います。起動に失敗しても Main thread へ自動では切り替わりません。初期化は30秒、推論は10秒で打ち切られ、`tracking-error` で失敗します。その後は新しい Worker トラッカーを作るか、Main thread で作り直してください。
 
 ```ts
 const tracker = await createMediaPipeFaceTracker({
@@ -39,16 +39,17 @@ const tracker = await createMediaPipeFaceTracker({
 })
 ```
 
-## 起動段階とモバイルの状態
+## 起動状況とモバイル対応
 
-Playground は、camera 準備、tracker 作成、最初の inference、1秒の calibration、
-最終的な tracked 遷移を別々に表示します。同じ区間の MediaPipe JavaScript、
-WASM、task の Resource Timing も表示するため、長い cold start をすぐに推論
-時間だと判断せず、遅い段階を確認できます。
+Playground では、カメラの準備、トラッカーの作成、最初の推論、1秒間の補正、
+`tracked` への切り替わりを個別に表示します。同じ時間帯に読み込まれた MediaPipe の
+JavaScript、WASM、task も確認できるため、初回起動が長いときにどの段階で
+待っているかを判断できます。
 
-warm なローカル tracker 作成は、3つの desktop engine で中央値5秒の目安を
-十分下回っています。この5秒は CI が止めるゲートではなく、ローカルで手動で
-確認する目安です。tracking benchmark を実行する workflow はありません。iPhone Safari は実機検証が必要で、Android Chrome は
-明示的に未検証です。Worker 作成が失敗または timeout した場合は
-`tracking-error` を表示し、利用者が main mode で tracker を作り直せるように
-してください。無期限に待ったり暗黙に fallback したりしません。
+キャッシュ済みのファイルを使ったトラッカー作成は、3つのデスクトップブラウザで
+中央値5秒を十分に下回っています。この5秒は CI の合否基準ではなく、ローカルでの
+確認目安です。トラッキング性能の測定を自動実行するワークフローはありません。
+iPhone Safari は実機での確認が必要で、Android Chrome は明示的に未検証です。
+Worker の作成に失敗した場合や制限時間を超えた場合は `tracking-error` を表示し、
+Main thread で作り直せる案内を用意してください。無期限に待たせたり、通知せずに
+自動で切り替えたりしないでください。

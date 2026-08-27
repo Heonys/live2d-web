@@ -259,10 +259,10 @@ function stageErrorHint(error: Live2DError, locale: ReturnType<typeof useSiteLoc
     },
     ja: {
       core: 'Cubism Core を読み込めません。Core URL、CSP、ネットワーク要求を確認してください。',
-      cors: 'ブラウザーがモデルファイルを読めません。CORS と Network パネルを確認してください。',
+      cors: 'ブラウザがモデルファイルを読み込めません。CORS と Network パネルを確認してください。',
       generic: 'モデルアセットを読み込めません。URL、HTTP ステータス、アセット種別を確認してください。',
       other: '確認方法と再試行手順はトラブルシューティングを参照してください。',
-      parse: 'モデルファイルは取得できましたが解析できません。書き出しと Cubism バージョンを確認してください。',
+      parse: 'モデルファイルは取得できましたが解析できません。モデルの書き出し設定と Cubism バージョンを確認してください。',
       status404: 'モデルファイルが 404 を返しました。モデル URL、参照パス、ファイル名の大文字・小文字を確認してください。',
     },
     ko: {
@@ -270,7 +270,7 @@ function stageErrorHint(error: Live2DError, locale: ReturnType<typeof useSiteLoc
       cors: '브라우저가 모델 파일을 읽지 못했습니다. CORS와 Network 패널을 확인하세요.',
       generic: '모델 자산을 로드하지 못했습니다. URL·HTTP 상태·자산 유형을 확인하세요.',
       other: '확인 방법과 재시도 안내는 문제 해결 가이드를 참고하세요.',
-      parse: '모델 파일은 받았지만 해석하지 못했습니다. export 설정과 Cubism 버전을 확인하세요.',
+      parse: '모델 파일은 받았지만 해석하지 못했습니다. 모델 내보내기 설정과 Cubism 버전을 확인하세요.',
       status404: '모델 파일이 404를 반환했습니다. 모델 URL·참조 경로·파일명 대소문자를 확인하세요.',
     },
   }[locale]

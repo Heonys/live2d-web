@@ -1,75 +1,80 @@
-## error code から確認
+## まずエラーコードを確認する
 
-`Live2DError` には安定した code と asset URL・type・HTTP status があります。
-Issue には browser と export version も書き、ライセンス資産は添付しないでください。
+`Live2DError` には、変わらないエラーコードと、問題が起きたファイルの URL、種類、
+HTTP ステータスが含まれます。Issue にはこれらの値に加えて、ブラウザとモデルを
+書き出したバージョンを記載してください。ライセンス対象のファイルは添付しないでください。
 
 ### browser-only
 
-**原因:** SSR・Node、または必要な DOM がない Worker から browser API を
-呼びました。**確認:** stack の最初の `createLive2D()` または DOM 依存呼び出しを
-探します。**修正:** client mount 後に呼び、Next.js では Client Component から
-`/react` を import します。**再試行:** browser context に移すまで不可です。
+**原因:** SSR・Node 環境や、DOM を利用できない Worker からブラウザ API を
+呼び出しています。**確認:** 呼び出し履歴の中から、最初の `createLive2D()` または
+DOM に依存する処理を探します。**対処:** コンポーネントのマウント後に呼び出し、
+Next.js では Client Component から `/react` を読み込んでください。**再試行:**
+ブラウザで実行するように変更するまでは解決しません。
 
 ### core-missing
 
-**原因:** `coreUrl` の Cubism Core を読み込めず、互換 Core global もありません。
-**確認:** script request・CSP・CORS・Core 5.3 URL を確認します。**修正:** 公式
-Core を self-host して到達可能な URL を渡します。**再試行:** path または policy
-の修正後に可能です。
+**原因:** `coreUrl` で指定した Cubism Core を読み込めず、互換性のあるグローバルな
+Core も見つかりません。**確認:** スクリプトのリクエスト、CSP、CORS、Core 5.3 の
+URL を確認します。**対処:** 公式 Core を自分の環境で配信し、アクセス可能な URL を
+指定してください。**再試行:** パスまたはポリシーを修正したあとに可能です。
 
 ### webgl-unsupported
 
-**原因:** browser が WebGL2 context を作成できません。**確認:** WebGL2 対応、
-hardware acceleration、active context 数を確認します。**修正:** 対応 browser/GPU
-を使うか他の Canvas を解放します。**再試行:** environment の変更後のみ有効です。
+**原因:** ブラウザが WebGL2 コンテキストを作成できません。**確認:** WebGL2 の
+対応状況、ハードウェアアクセラレーション、使用中のコンテキスト数を確認します。
+**対処:** 対応するブラウザや GPU を使うか、不要な Canvas を破棄してください。
+**再試行:** 実行環境が変わったあとにのみ有効です。
 
 ### invalid-props
 
-**原因:** API argument または option が文書の形・範囲外です。**確認:** error
-message が示す field を確認します。**修正:** caller value を直します。**再試行:**
-同じ値では解決しません。
+**原因:** API の引数やオプションが、文書で定めた形式または範囲から外れています。
+**確認:** エラーメッセージに表示された項目を確認します。**対処:** 呼び出し時の値を
+修正してください。**再試行:** 同じ値のままでは解決しません。
 
 ### invalid-tree
 
-**原因:** React component が必要な provider の外にあるか、1つの Canvas を複数
-model が所有しています。**確認:** `Live2DCanvas` と `Live2DModel` 周辺の tree を
-確認します。**修正:** Canvas 1つにつき model 1つとし、hook を provider 内で
-使います。**再試行:** tree を変えるまで不可です。
+**原因:** React コンポーネントが必要な Provider の外にあるか、1つの Canvas に
+複数のモデルが接続されています。**確認:** `Live2DCanvas` と `Live2DModel` 周辺の
+コンポーネント構成を確認します。**対処:** Canvas 1つにつきモデルを1つだけ置き、
+Hook は Provider の内側で使ってください。**再試行:** 構成を直すまでは解決しません。
 
 ### lipsync-error
 
-**原因:** optional lip-sync の setup または処理が失敗しました。**確認:** secure
-context、microphone permission、AudioContext state、wLipSync profile を確認します。
-**修正:** user gesture で audio を resume するか volume driver を使います。
-**再試行:** audio setup の修正後に可能で、model 自体は動作を続けられます。
+**原因:** 任意のリップシンク機能を準備または処理する途中で失敗しました。
+**確認:** 安全な接続、マイク権限、AudioContext の状態、wLipSync のプロファイルを
+確認します。**対処:** ユーザーが画面を操作したタイミングで音声処理を再開するか、
+音量ドライバーを使用してください。**再試行:** 音声設定を直したあとに可能です。
+モデルの描画はそのまま続けられる場合があります。
 
 ### tracking-error
 
-**原因:** MediaPipe initialization・inference・Worker protocol または cleanup が
-失敗しました。**確認:** optional peer、WASM/task path、CORS、CSP `worker-src`、
-timeout と browser support を確認します。**修正:** asset/Worker setup を直し、
-Worker 非対応なら main execution にします。**再試行:** 原因修正後に tracker を
-作り直します。
+**原因:** MediaPipe の初期化、推論、Worker との通信、または終了処理に失敗しました。
+**確認:** 任意依存パッケージ、WASM・task のパス、CORS、CSP の `worker-src`、
+制限時間、ブラウザの対応状況を確認します。**対処:** ファイルや Worker の設定を直し、
+Worker を利用できない環境では Main thread を選んでください。**再試行:** 原因を
+修正したあとにトラッカーを作り直します。
 
 ### model-load-failed
 
-**原因:** model3 または参照 asset に HTTP error・CORS block・欠落・parse failure
-があります。**確認:** `details.url`、`assetType`、`httpStatus` と Network panel を
-確認します。404 は URL/path、status のない fetch failure は主に CORS/network、
-parse message は破損または非互換 export です。**修正:** 大文字小文字を含む全参照
-file と MIME/CORS header を直すか再 export します。**再試行:** 一時 network error
-または asset 修正後に可能です。
+**原因:** model3 または参照先のファイルで、HTTP エラー、CORS の拒否、ファイルの
+欠落、解析エラーが発生しています。**確認:** `details.url`、`assetType`、
+`httpStatus` とブラウザの Network パネルを確認します。404 は主にパスの誤り、
+ステータスのないリクエスト失敗は CORS やネットワーク、解析エラーは破損または
+非対応のモデル形式が原因です。**対処:** ファイル名の大文字・小文字、参照パス、
+MIME タイプ、CORS ヘッダーを直すか、モデルを再度書き出してください。
+**再試行:** 一時的な通信障害の場合、またはファイルを修正したあとに可能です。
 
 ### render-error
 
-**原因:** setup 後に rendering が停止しました。多くは WebGL context loss です。
-**確認:** 最初の console/driver error と GPU context 数を確認します。**修正:** GPU
-負荷を減らして Canvas error の retry を実行します。**再試行:** 可能で、stage
-option を保持したまま再作成します。
+**原因:** 準備完了後に描画が停止しました。よくある原因は WebGL コンテキストの
+消失です。**確認:** コンソールに最初に表示されたエラーと、GPU コンテキストの数を
+確認します。**対処:** GPU の負荷を下げ、Canvas のエラー画面から再試行してください。
+**再試行:** Stage の設定を保ったまま作り直せます。
 
 ### adapter-error
 
-**原因:** backend が未対応 capability を拒否したか、別 backend の handle を
-受け取りました。**確認:** backend 名と option support を確認します。**修正:**
-default backend を使う、未対応 option を外す、または custom adapter を更新します。
-**再試行:** configuration を変えるまで解決しません。
+**原因:** Backend が対応していない機能を要求したか、別の Backend が作成した
+ハンドルを受け取りました。**確認:** Backend 名とオプションの対応表を確認します。
+**対処:** 標準 Backend を使う、未対応のオプションを外す、または独自アダプターを
+更新してください。**再試行:** 設定を変えるまでは解決しません。

@@ -1,6 +1,6 @@
-## 再生結果とフェード
+## 再生結果と切り替え
 
-motion() は単純な Promise&lt;void&gt; を維持します。完了・中断・skip・dispose を区別する場合は playMotion() を使います。sequence は最初の非完了結果で停止します。
+`motion()` は従来どおり `Promise<void>` を返します。自然終了、中断、再生前のスキップ、モデルの破棄を区別したい場合は `playMotion()` を使用します。連続再生は、途中で正常終了以外の結果になるとそこで停止します。
 
 ```ts
 const result = await character.playMotion('TapBody', 0, {
@@ -18,4 +18,4 @@ await character.expression('smile', { fadeInMs: 500 })
 
 ## 制作者の既定値を維持
 
-fade を省略すると model3・motion3・exp3 の設定を保ちます。motion3 のパラメータ別 fade は再生全体の上書きより優先されます。
+切り替え時間を省略した場合は、model3・motion3・exp3 に設定された値をそのまま使います。motion3 にパラメータごとの設定がある場合は、再生全体に指定した値よりも優先されます。

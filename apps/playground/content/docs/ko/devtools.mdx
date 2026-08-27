@@ -1,8 +1,8 @@
-## 선택형 패널 마운트
+## 필요할 때 패널 열기
 
-> devtools는 소비자 사용, API snapshot과 후속 minor 호환성을 확인할 때까지 **experimental**입니다.
+> Devtools는 실제 프로젝트 사용 사례와 다음 마이너 버전의 호환성을 충분히 확인할 때까지 **experimental**로 제공합니다.
 
-필요한 화면에서만 Devtools를 import하세요. 이 서브패스는 React에 의존하지 않고 루트 번들에도 들어가지 않습니다.
+Devtools가 필요한 화면에서만 `live2d-web/devtools`를 불러오세요. React에 의존하지 않고, 기본 모듈을 import할 때도 함께 번들되지 않습니다.
 
 ```ts title="devtools.ts" showLineNumbers
 import { mountLive2DDevtools } from 'live2d-web/devtools'
@@ -13,17 +13,17 @@ const devtools = mountLive2DDevtools({
 })
 
 devtools.setTab('parameters')
-// 나중에 패널이 만든 UI와 파라미터 driver만 정리합니다.
+// 나중에 패널이 만든 UI와 파라미터 드라이버만 정리합니다.
 devtools.dispose()
 ```
 
 ## 제어할 수 있는 것
 
 - **Overview**는 공개 모델·런타임 정보와 진단 JSON을 보여줍니다. 모델 URL이나 카메라 데이터는 넣지 않습니다.
-- **Parameters**는 현재값 검색과 임시 슬라이더 override를 제공합니다.
-- **Motion**은 priority·fade를 적용한 모션과 간단한 sequence를 재생합니다.
-- **Expression**은 표정을 적용하고 fade하거나 해제합니다.
+- **Parameters**에서 파라미터를 검색하고 현재 값을 확인하거나, 슬라이더로 임시 값을 적용할 수 있습니다.
+- **Motion**에서 우선순위와 전환 속도를 설정해 모션을 재생하거나 간단한 연속 재생을 구성할 수 있습니다.
+- **Expression**에서 표정을 적용·해제하고 전환 속도를 조절할 수 있습니다.
 
-컨테이너의 위치·크기·스크롤은 앱이 소유합니다. Devtools는 open Shadow DOM host 하나만 추가하고 기존 자식은 지우지 않습니다. 마이크·MediaPipe·Worker 역시 앱의 책임입니다.
+패널의 위치·크기·스크롤은 앱에서 결정합니다. Devtools는 지정한 컨테이너에 open Shadow DOM 호스트 하나만 추가하며, 기존 자식 요소는 지우지 않습니다. 마이크, MediaPipe, Worker는 앱에서 관리해야 합니다.
 
-> 모델이나 패널을 unmount할 때 `dispose()`를 호출하세요. 여러 번 호출해도 안전합니다.
+> 모델이나 패널을 화면에서 제거할 때 `dispose()`를 호출하세요. 여러 번 호출해도 안전합니다.

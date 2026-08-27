@@ -1,8 +1,8 @@
-## 메인 스레드 추적
+## 메인 스레드에서 트래킹
 
-> Worker 엔트리를 포함한 트래킹은 모바일·외부 소비자 검증을 마칠 때까지 **experimental**입니다. minor 변경에는 migration을 기록하고 patch에서는 breaking change를 만들지 않습니다.
+> Worker를 포함한 트래킹 API는 모바일 기기와 실제 프로젝트에서 충분히 검증할 때까지 **experimental**로 제공합니다. 마이너 버전에서 API가 바뀌면 이전 방법을 함께 안내하고, 패치 버전에서는 기존 코드를 깨뜨리지 않습니다.
 
-MediaPipe는 선택 peer이며 해당 subpath에서만 로드됩니다. WASM·Face Landmarker 모델·video frame·스케줄링은 앱이 제공합니다. 트래커는 정규화 값만 보관하고 frame·landmark는 저장하지 않습니다.
+MediaPipe는 선택 의존성이며 `live2d-web/tracking/mediapipe`를 불러올 때만 로드됩니다. WASM, Face Landmarker 모델, 비디오 프레임, 실행 주기는 앱에서 제공합니다. 트래커는 변환된 값만 보관하며 원본 프레임과 랜드마크를 저장하지 않습니다.
 
 ```ts
 import { createMediaPipeFaceTracker } from
@@ -25,7 +25,7 @@ tracker.dispose()
 
 ## 선택형 Worker
 
-Worker 모드는 추론을 렌더링 스레드에서 분리합니다. update()는 비동기가 되고 한 번에 한 frame만 받아 busy frame은 skipped로 끝냅니다. 시작 실패 시 앱이 main을 명시적으로 선택하며 조용한 fallback은 없습니다. 초기화 제한은 30초, 추론 제한은 10초입니다. timeout은 `tracking-error`로 reject하고 해당 트래커를 종료하므로 앱이 새 Worker 트래커를 만들거나 main 모드로 전환해야 합니다.
+Worker 모드를 사용하면 얼굴 추론을 렌더링 스레드에서 분리할 수 있습니다. `update()`는 비동기로 동작하며, 한 번에 한 프레임만 처리하고 추론 중에 들어온 프레임은 `skipped`로 마무리합니다. Worker 시작이 실패해도 메인 스레드로 자동 전환하지 않습니다. 초기화가 30초, 추론이 10초 안에 끝나지 않으면 `tracking-error`를 반환하고 해당 트래커를 종료합니다. 이후에는 새 Worker 트래커를 만들거나 메인 스레드 모드로 전환하세요.
 
 ```ts
 const tracker = await createMediaPipeFaceTracker({
@@ -41,14 +41,6 @@ const tracker = await createMediaPipeFaceTracker({
 
 ## 시작 단계와 모바일 상태
 
-Playground는 카메라 준비, tracker 생성, 첫 inference, 1초 보정과 최종 tracked
-전환 시간을 나눠 보여줍니다. 같은 구간의 MediaPipe JavaScript, WASM, task
-Resource Timing도 함께 표시하므로 긴 cold start를 곧바로 추론 비용으로
-판단하지 말고 어느 단계가 느린지 먼저 확인할 수 있습니다.
+Playground는 카메라 준비, 트래커 생성, 첫 추론, 1초 보정, 최종 `tracked` 전환에 걸린 시간을 나눠 보여줍니다. MediaPipe JavaScript, WASM, task 파일의 Resource Timing도 함께 확인할 수 있습니다. 첫 시작이 느릴 때는 추론 속도 문제로 단정하지 말고 어느 단계에서 시간이 걸렸는지 먼저 확인하세요.
 
-warm 로컬 tracker 생성은 3개 데스크톱 엔진에서 중앙값 5초 기대치를 크게
-밑돕니다. 이 5초는 CI가 막는 게이트가 아니라 로컬에서 손으로 확인하는
-기대치입니다. 트래킹 벤치마크를 실행하는 워크플로는 없습니다. iPhone Safari는 아직 실기기 검증이 필요하고 Android Chrome은
-명시적인 미검증 상태입니다. Worker 생성이 실패하거나 timeout이면
-`tracking-error`를 표시하고 사용자가 main 모드 tracker를 다시 만들게 하세요.
-무한정 기다리거나 조용히 fallback하지 않습니다.
+자산이 캐시된 로컬 환경에서는 3개 데스크톱 엔진 모두 트래커 생성 시간의 중앙값이 5초 미만이었습니다. 5초는 CI의 차단 기준이 아니라 로컬 확인을 위한 참고치입니다. 트래킹 벤치마크를 자동으로 실행하는 워크플로는 없습니다. iPhone Safari는 아직 실기기 검증이 필요하며 Android Chrome은 미검증 상태입니다. Worker를 시작할 수 없거나 시간 제한을 넘기면 `tracking-error`를 보여주고, 사용자가 Main thread로 다시 시작할 수 있게 하세요. 무한정 기다리거나 알리지 않고 다른 모드로 전환해서는 안 됩니다.

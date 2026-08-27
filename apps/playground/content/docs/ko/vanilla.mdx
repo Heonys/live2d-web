@@ -1,6 +1,6 @@
 ## 생성·로드·정리
 
-JavaScript 런타임은 Canvas 하나와 모델 하나를 소유합니다. 모델 명령 전에 로드를 기다리고, 화면에서 제거될 때 반드시 dispose하세요.
+JavaScript API는 하나의 Canvas와 모델을 관리합니다. 모델을 조작하기 전에 로드가 끝날 때까지 기다리고, 화면에서 제거할 때는 반드시 `dispose()`를 호출하세요.
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -34,5 +34,5 @@ const character = await createLive2D({
 ```
 
 정보를 전달하지 않는 모델에는 `{ mode: 'decorative' }`를 사용하세요. 탭과
-모션 동작은 키보드로 조작 가능한 일반 DOM controls로도 제공해야 합니다.
+모션 동작은 키보드로 조작할 수 있는 일반 DOM 버튼이나 컨트롤로도 제공해야 합니다.
 런타임은 Canvas에 `tabIndex`나 `role="application"`을 자동 추가하지 않습니다.

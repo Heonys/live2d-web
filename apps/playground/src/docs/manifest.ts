@@ -47,8 +47,8 @@ export const DOC_PAGES = [
     slug: 'vanilla',
     summary: {
       en: 'Use the React-free root API.',
-      ja: 'React を含まないルート API を使います。',
-      ko: 'React 없는 루트 API를 사용합니다.',
+      ja: 'React に依存しない基本 API を使います。',
+      ko: 'React에 의존하지 않는 기본 API를 사용합니다.',
     },
     title: {
       en: 'JavaScript',
@@ -61,8 +61,8 @@ export const DOC_PAGES = [
     slug: 'react',
     summary: {
       en: 'Mount a model with the optional React binding.',
-      ja: '任意の React binding でモデルをマウントします。',
-      ko: '선택형 React binding으로 모델을 마운트합니다.',
+      ja: '必要なコンポーネントでのみ React 連携を読み込みます。',
+      ko: 'React가 필요한 컴포넌트에서만 연동 모듈을 불러옵니다.',
     },
     title: {
       en: 'React',
@@ -75,8 +75,8 @@ export const DOC_PAGES = [
     slug: 'motion-and-expression',
     summary: {
       en: 'Control motions, sequences, idle weights and expressions.',
-      ja: 'モーション・sequence・Idle weight・表情を制御します。',
-      ko: '모션·시퀀스·Idle 가중치·표정을 제어합니다.',
+      ja: 'モーションの連続再生、Idle の選択比率、表情の切り替えを制御します。',
+      ko: '모션 연속 재생, Idle 선택 비율, 표정 전환을 제어합니다.',
     },
     title: {
       en: 'Motion and expression',
@@ -89,8 +89,8 @@ export const DOC_PAGES = [
     slug: 'lip-sync',
     summary: {
       en: 'Choose volume, driver/value or wLipSync input.',
-      ja: '音量・driver/value・wLipSync 入力を選びます。',
-      ko: '볼륨·driver/value·wLipSync 입력을 선택합니다.',
+      ja: '音量、カスタムドライバー、wLipSync から入力方式を選びます。',
+      ko: '볼륨, 커스텀 드라이버, wLipSync 중에서 입력 방식을 선택합니다.',
     },
     title: {
       en: 'Lip sync',
@@ -103,13 +103,13 @@ export const DOC_PAGES = [
     slug: 'mediapipe',
     summary: {
       en: 'Attach standard or Perfect Sync face tracking on main or Worker.',
-      ja: 'main または Worker で Standard・Perfect Sync 顔追跡を接続します。',
-      ko: 'main 또는 Worker에서 Standard·Perfect Sync 얼굴 추적을 연결합니다.',
+      ja: 'メインスレッドまたは Worker で、Standard と Perfect Sync のフェイストラッキングを使います。',
+      ko: '메인 스레드나 Worker에서 Standard·Perfect Sync 얼굴 트래킹을 연결합니다.',
     },
     title: {
       en: 'MediaPipe face tracking',
-      ja: 'MediaPipe 顔トラッキング',
-      ko: 'MediaPipe 얼굴 추적',
+      ja: 'MediaPipe フェイストラッキング',
+      ko: 'MediaPipe 얼굴 트래킹',
     },
   },
   {
@@ -117,8 +117,8 @@ export const DOC_PAGES = [
     slug: 'next-ssr',
     summary: {
       en: 'Use live2d-web across the Next.js server/client boundary.',
-      ja: 'Next.js の server/client 境界で使います。',
-      ko: 'Next.js 서버·클라이언트 경계에서 사용합니다.',
+      ja: 'Next.js の Server Component と Client Component での使い分けを説明します。',
+      ko: 'Next.js의 Server Component와 Client Component에서 어떻게 나눠 사용하는지 설명합니다.',
     },
     title: {
       en: 'Next.js and SSR',
@@ -131,8 +131,8 @@ export const DOC_PAGES = [
     slug: 'mobile',
     summary: {
       en: 'Prepare capture and rendering for mobile browsers.',
-      ja: 'モバイルブラウザ向けに capture と描画を準備します。',
-      ko: '모바일 브라우저의 capture와 렌더링을 준비합니다.',
+      ja: 'モバイルブラウザでのカメラ入力と描画の注意点を確認します。',
+      ko: '모바일 브라우저의 카메라 입력과 렌더링 주의 사항을 확인합니다.',
     },
     title: {
       en: 'Mobile',
@@ -145,8 +145,8 @@ export const DOC_PAGES = [
     slug: 'model-inspection',
     summary: {
       en: 'Check URLs and local model zip files before loading.',
-      ja: 'URL とローカル model zip を読み込み前に検査します。',
-      ko: 'URL과 로컬 모델 zip을 로드 전에 검사합니다.',
+      ja: 'URL とローカルのモデル ZIP を読み込み前に検査します。',
+      ko: 'URL과 로컬 모델 ZIP을 불러오기 전에 검사합니다.',
     },
     title: {
       en: 'Model inspection',
@@ -159,8 +159,8 @@ export const DOC_PAGES = [
     slug: 'devtools',
     summary: {
       en: 'Mount optional, framework-free controls for a loaded model.',
-      ja: '読み込んだモデルに任意の framework-free 操作パネルを接続します。',
-      ko: '로드된 모델에 선택형 프레임워크 독립 제어 패널을 연결합니다.',
+      ja: '読み込み済みのモデルに、フレームワークに依存しない Devtools パネルを接続します。',
+      ko: '불러온 모델에 프레임워크와 무관하게 사용할 수 있는 Devtools 패널을 연결합니다.',
     },
     title: {
       en: 'Live2D Devtools',
@@ -173,8 +173,8 @@ export const DOC_PAGES = [
     slug: 'troubleshooting',
     summary: {
       en: 'Diagnose loading, Core, rendering and tracking failures.',
-      ja: '読み込み・Core・描画・tracking の問題を診断します。',
-      ko: '로드·Core·렌더·트래킹 오류를 진단합니다.',
+      ja: '読み込み、Cubism Core、描画、トラッキングで発生する問題を切り分けます。',
+      ko: '모델 로드, Cubism Core, 렌더링, 트래킹 문제의 원인을 찾습니다.',
     },
     title: {
       en: 'Troubleshooting',
@@ -187,8 +187,8 @@ export const DOC_PAGES = [
     slug: 'security-and-license',
     summary: {
       en: 'Set asset boundaries, CSP, privacy and license responsibilities.',
-      ja: 'asset 境界・CSP・privacy・license の責任を整理します。',
-      ko: '자산 경계·CSP·개인정보·라이선스 책임을 정합니다.',
+      ja: 'アセットの取り扱い、CSP、プライバシー、ライセンスの注意点を確認します。',
+      ko: '자산 제공 방식, CSP, 개인정보, 라이선스 주의 사항을 확인합니다.',
     },
     title: {
       en: 'Security and licenses',
@@ -201,8 +201,8 @@ export const DOC_PAGES = [
     slug: 'examples',
     summary: {
       en: 'Start from four verified framework and overlay examples.',
-      ja: '検証済みの framework・overlay 例4種から始めます。',
-      ko: '검증된 프레임워크·overlay 예제 4종에서 시작합니다.',
+      ja: 'ビルドを確認済みの4つのサンプルから始められます。',
+      ko: '실제 빌드를 확인한 예제 4개로 바로 시작할 수 있습니다.',
     },
     title: {
       en: 'Examples',
@@ -215,8 +215,8 @@ export const DOC_PAGES = [
     slug: 'api',
     summary: {
       en: 'English signatures generated from the public TypeScript source.',
-      ja: '公開 TypeScript source から生成した英語 API signature です。',
-      ko: '공개 TypeScript 소스에서 생성한 영어 API 시그니처입니다.',
+      ja: '公開 TypeScript 宣言から生成した英語の API リファレンスです。',
+      ko: '공개 TypeScript 선언에서 생성한 영문 API 레퍼런스입니다.',
     },
     title: {
       en: 'API reference',

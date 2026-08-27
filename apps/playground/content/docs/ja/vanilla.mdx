@@ -1,6 +1,6 @@
 ## 作成・読み込み・破棄
 
-JavaScript ランタイムは Canvas 1つとモデル1体を所有します。モデル操作の前に読み込みを待ち、画面から外すときは必ず dispose します。
+JavaScript API は1つの Canvas とモデルを管理します。モデルを操作する前に読み込みの完了を待ち、画面から外すときは必ず `dispose()` を呼んでください。
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -34,5 +34,5 @@ const character = await createLive2D({
 ```
 
 情報を伝えないモデルには `{ mode: 'decorative' }` を使います。タップや
-モーションはキーボード操作できる通常の DOM controls でも提供してください。
+モーションはキーボードで操作できる通常の DOM ボタンやコントロールでも提供してください。
 ランタイムは Canvas に `tabIndex` や `role="application"` を自動追加しません。

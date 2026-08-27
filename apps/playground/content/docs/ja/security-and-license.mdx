@@ -1,12 +1,12 @@
 ## CSP と信頼できないモデル
 
-model3.json を入力 manifest として扱い、描画前にサイズ・外部 URL・CORS を検査します。URL 検査は HTTP(S) 参照を取得します。ブラウザでは CORS が適用されますが、Node サーバーにはブラウザ CORS やプライベートネットワークの境界がないため、信頼できない URL のサーバー検査にはアプリ側の host allow-list とネットワークポリシーが必要です。ローカル archive 検査は宣言された外部 URL を取得しません。
+model3.json は信頼できない入力として扱ってください。描画前にファイルサイズ、外部 URL、CORS の設定を確認することをおすすめします。URL 検査では、モデルが参照する HTTP(S) のファイルを実際に取得します。ブラウザでは CORS が適用されますが、Node サーバーにはプライベートネットワークへのアクセスを防ぐ仕組みがありません。外部のモデル URL をサーバーで検査する場合は、アプリ側で許可するホストとネットワーク範囲を制限してください。ローカルの圧縮ファイルを検査するときは、その中に記載された外部 URL を取得しません。
 
-- Cubism Core 用の script-src を許可します。
-- model・WASM・tracking asset 用の connect-src を許可します。
-- module Worker tracking 用の worker-src を許可します。
-- asset を self-host し CORS を明示します。
+- Cubism Core の配信元を `script-src` に許可します。
+- モデル、WASM、トラッキング用ファイルの配信元を `connect-src` に許可します。
+- モジュール Worker を使う場合は `worker-src` を設定します。
+- 可能であればファイルを自分の環境で配信し、CORS を明示します。
 
 ## ライセンスとプライバシー
 
-live2d-web は非公式です。Core・Framework・model・MediaPipe には別の規約があります。顔追跡は端末内で動きますが、同意・表示・analytics はアプリの責任です。
+live2d-web は Live2D の公式製品ではありません。Cubism Core、Framework、モデル、MediaPipe には、それぞれ個別の利用条件が適用されます。フェイストラッキングは端末内で処理されますが、カメラ利用の同意と案内、アプリが追加で収集する分析情報については、アプリ開発者が責任を負います。

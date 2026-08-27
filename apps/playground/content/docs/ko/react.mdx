@@ -1,6 +1,6 @@
-## Client Component 경계
+## Client Component에서 사용하기
 
-/react는 Client Component에서만 import하세요. Live2DCanvas는 렌더링을, Live2DModel은 모델 로드와 unmount 정리를 담당합니다.
+`live2d-web/react`는 Client Component에서만 불러오세요. `Live2DCanvas`는 Canvas 렌더링을 관리하고, `Live2DModel`은 모델을 불러오며 컴포넌트가 제거될 때 자원을 정리합니다.
 
 ```tsx
 'use client'

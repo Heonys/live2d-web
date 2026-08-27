@@ -1,6 +1,6 @@
 ## Cubism Core
 
-同梱 Framework 5-r.5 アダプターには Cubism Core 5.3 を使います。coreUrl で先読みするか、アプリコードより前に script を置けます。Core を npm や公開 Issue に添付しないでください。
+同梱の Framework 5-r.5 アダプターには Cubism Core 5.3 を使用します。`coreUrl` を指定して読み込むか、アプリのコードより前にスクリプトを配置してください。Core を npm パッケージや公開 Issue に添付してはいけません。
 
 ```html
 <script src="/live2dcubismcore.min.js"></script>
@@ -8,8 +8,8 @@
 
 ## モデルディレクトリ
 
-書き出したディレクトリをまとめて配置します。モデルは moc3、texture、motion、expression、physics、pose、user-data を参照できます。
+書き出したモデルのディレクトリは、構成を変えずにそのまま配置します。モデルからは moc3、テクスチャ、モーション、表情、物理演算、ポーズ、ユーザーデータが参照されます。
 
-- model3.json の相対パスと大文字小文字を正確に保ちます。
-- 別オリジンの texture・motion には CORS を許可します。
-- 描画を調べる前に /inspect でモデルを検査します。
+- model3.json に記載された相対パスとファイル名の大文字・小文字を正確に保ちます。
+- テクスチャやモーションを別オリジンから配信する場合は CORS を許可します。
+- 描画できない原因を調べるときは、先に `/inspect` でモデルを検査してください。

@@ -1,12 +1,12 @@
 ## CSP와 신뢰하지 않는 모델
 
-model3.json을 입력 manifest로 취급하세요. 렌더 전에 크기 제한·외부 URL·CORS를 검사합니다. URL 검사는 HTTP(S) 참조를 가져옵니다. 브라우저에는 CORS가 적용되지만 Node 서버에는 브라우저 CORS나 사설망 차단 경계가 없으므로, 신뢰하지 않는 URL의 서버 검사는 앱의 호스트 allow-list와 네트워크 정책이 필요합니다. 로컬 archive 검사에서는 선언된 외부 URL을 요청하지 않습니다.
+model3.json은 신뢰할 수 없는 입력으로 다루세요. 렌더링하기 전에 파일 크기, 외부 URL, CORS 설정을 검사하는 편이 안전합니다. URL 검사에서는 모델이 참조하는 HTTP(S) 자산을 실제로 가져옵니다. 브라우저에서는 CORS가 적용되지만 Node 서버에는 사설망 접근을 막는 장치가 없습니다. 서버에서 외부 모델 URL을 검사한다면 앱에서 허용할 호스트와 네트워크 범위를 제한해야 합니다. 로컬 압축 파일을 검사할 때는 그 안에 선언된 외부 URL을 요청하지 않습니다.
 
-- Cubism Core를 위해 script-src를 허용합니다.
-- 모델·WASM·tracking 자산을 위해 connect-src를 허용합니다.
-- module Worker tracking을 위해 worker-src를 허용합니다.
-- 자산을 self-host하고 CORS를 명시적으로 설정합니다.
+- Cubism Core를 불러올 출처를 `script-src`에 허용합니다.
+- 모델·WASM·트래킹 자산의 출처를 `connect-src`에 허용합니다.
+- 모듈 Worker를 사용한다면 `worker-src`를 설정합니다.
+- 가능하면 자산을 직접 호스팅하고 CORS 정책을 명확히 지정합니다.
 
 ## 라이선스와 개인정보
 
-live2d-web은 비공식 라이브러리입니다. Core·Framework·모델·MediaPipe는 각각 별도 약관을 가집니다. 얼굴 추적은 기기에서 실행되지만 동의·표시·앱이 추가한 분석의 책임은 앱에 있습니다.
+live2d-web은 Live2D의 공식 제품이 아닙니다. Cubism Core, Framework, 모델, MediaPipe에는 각각 별도의 이용 조건이 적용됩니다. 얼굴 추적은 사용자의 기기에서 처리되지만, 카메라 사용 동의와 안내, 앱에서 추가로 수집하는 분석 정보는 앱 개발자가 책임져야 합니다.

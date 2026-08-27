@@ -1,6 +1,6 @@
 ## 音量ドライバー
 
-helper はアプリが取得した RMS を安定した口の開きに変換します。マイク権限・AudioContext・node・requestAnimationFrame はアプリが所有します。
+このヘルパーは、アプリで計測した RMS を滑らかな口の開きに変換します。マイク権限、AudioContext、AudioNode、`requestAnimationFrame` はアプリ側で管理します。
 
 ```ts
 import { createVolumeLipSync } from 'live2d-web'
@@ -16,4 +16,4 @@ detach()
 
 ## 口入力の競合を避ける
 
-顔トラッキングとマイク lip sync を併用するときは tracker の mouth channel を無効にします。wLipSync は別の source mode で、AudioWorklet 対応が必要です。
+フェイストラッキングとマイクのリップシンクを同時に使う場合は、トラッカーの `mouth` チャンネルを無効にしてください。wLipSync は別方式の入力として動作し、AudioWorklet に対応した環境が必要です。

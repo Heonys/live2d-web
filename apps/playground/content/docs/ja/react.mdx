@@ -1,6 +1,6 @@
-## Client Component 境界
+## Client Component で使う
 
-/react は Client Component からだけ import します。Live2DCanvas が描画を、Live2DModel がモデル読み込みと unmount 時の破棄を担当します。
+`/react` は Client Component でのみ読み込んでください。`Live2DCanvas` が描画を管理し、`Live2DModel` がモデルの読み込みと画面から外れたときの破棄を行います。
 
 ```tsx
 'use client'

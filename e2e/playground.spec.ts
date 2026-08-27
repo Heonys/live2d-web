@@ -653,10 +653,10 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
   await languageTrigger.click()
   await page.getByRole('menuitem', { exact: true, name: '한국어' }).click()
   await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 트래킹')
   await page.getByRole('button', { name: '사이트 언어' }).click()
   await page.getByRole('menuitem', { exact: true, name: '日本語' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 顔トラッキング')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe フェイストラッキング')
   await expect.poll(() => page.evaluate(async () => {
     await document.fonts.load('16px "Noto Sans JP Variable"', '日本語')
     return document.fonts.check('16px "Noto Sans JP Variable"', '日本語')
@@ -685,9 +685,9 @@ test('navigates localized documentation, search, API and code copy', async ({ pa
 test('localizes public routes and preserves the logical page and query', async ({ page }) => {
   const routes = [
     ['/ko', '브라우저에서 바로 쓰는 Live2D.'],
-    ['/ko/playground', '플레이그라운드'],
-    ['/ja/inspect', 'Live2D モデルの検査とテスト'],
-    ['/ja/vanilla', 'React binding なしで Live2D を使う'],
+    ['/ko/playground', 'Playground'],
+    ['/ja/inspect', 'Live2D モデルを読み込む前にチェック'],
+    ['/ja/vanilla', 'React なしで Live2D を使う'],
     ['/ja/compare', 'Cubism WebGL と Pixi v6 の比較'],
   ] as const
 
@@ -697,15 +697,31 @@ test('localizes public routes and preserves the logical page and query', async (
     await expect(page.locator('main')).toHaveAttribute('lang', route.startsWith('/ko') ? 'ko' : 'ja')
     await expect.poll(() => page.evaluate(() => document.documentElement.lang))
       .toBe(route.startsWith('/ko') ? 'ko' : 'ja')
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
+      .toBe(true)
   }
 
+  await page.goto('/ko')
+  await expect(page.getByText('작은 React 경계.')).toHaveCount(0)
+  await expect(page.getByText('React는 필요한 곳에만.')).toBeVisible()
+  await expect(page.getByRole('link', { exact: true, name: 'Documentation' })).toBeVisible()
+  await expect(page.getByRole('link', { exact: true, name: 'Playground' })).toBeVisible()
+  await expect(page.getByRole('link', { exact: true, name: 'Inspector' })).toBeVisible()
+  await expect(page.getByRole('link', { exact: true, name: 'Examples' })).toBeVisible()
+
   await page.goto('/ko/playground')
-  await page.getByRole('tab', { name: '오디오' }).click()
+  for (const tab of ['Model', 'Audio', 'Tracking', 'Code'])
+    await expect(page.getByRole('tab', { exact: true, name: tab })).toBeVisible()
+  await page.getByRole('tab', { exact: true, name: 'Audio' }).click()
   await expect(page.getByRole('heading', { name: '립싱크 입력' })).toBeVisible()
 
   await page.goto('/ja/inspect')
-  await page.getByRole('tab', { name: 'ローカル zip' }).click()
-  await expect(page.getByText('モデル zip を選択')).toBeVisible()
+  await page.getByRole('tab', { name: 'ローカル ZIP' }).click()
+  await expect(page.getByText('モデルの ZIP を選択')).toBeVisible()
+
+  await page.goto('/ja')
+  await expect(page.getByText('小さな React boundary。')).toHaveCount(0)
+  await expect(page.getByText('React は必要な部分だけ。')).toBeVisible()
 
   await page.goto('/ko/compare?backend=cubism-webgl')
   await page.getByRole('button', { name: '사이트 언어' }).click()
@@ -713,9 +729,9 @@ test('localizes public routes and preserves the logical page and query', async (
   await expect(page).toHaveURL(/\/ja\/compare\?backend=cubism-webgl$/)
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/ja\/compare$/)
   await expect(page.locator('link[hreflang="ko"]')).toHaveAttribute('href', /\/ko\/compare$/)
-  await expect(page.getByRole('link', { name: 'ドキュメント' })).toHaveAttribute('href', '/docs/ja')
-  await expect(page.getByRole('link', { name: 'プレイグラウンド' })).toHaveAttribute('href', '/ja/playground')
-  await expect(page.getByRole('link', { name: 'サンプル' })).toHaveAttribute('href', '/docs/ja/examples')
+  await expect(page.getByRole('link', { exact: true, name: 'Documentation' })).toHaveAttribute('href', '/docs/ja')
+  await expect(page.getByRole('link', { exact: true, name: 'Playground' })).toHaveAttribute('href', '/ja/playground')
+  await expect(page.getByRole('link', { exact: true, name: 'Examples' })).toHaveAttribute('href', '/docs/ja/examples')
 
   const sitemap = await (await page.request.get('/sitemap.xml')).text()
   for (const route of ['/ko', '/ja', '/ko/playground', '/ja/inspect', '/ko/vanilla', '/ja/compare'])
@@ -750,7 +766,7 @@ test('warms only the selected documentation language', async ({ browserName, pag
   expect(requested.some(value => /^\/docs\/ja(?:\/|\?)/.test(value))).toBe(false)
   await korean.click()
   await expect(page).toHaveURL(/\/docs\/ko\/mediapipe$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 추적')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('MediaPipe 얼굴 트래킹')
 })
 
 test('keeps documentation navigation stable and loads search on intent', async ({ browserName, page }) => {

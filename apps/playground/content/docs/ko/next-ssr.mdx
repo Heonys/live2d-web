@@ -1,6 +1,6 @@
-## 브라우저 코드를 use client 뒤에 두기
+## 브라우저 코드는 Client Component 안에 두기
 
-루트와 inspect entry는 SSR 평가가 안전합니다. 렌더링과 /react는 Client Component가 필요합니다. Server Component에서는 브라우저 코드를 import하지 말고 모델 URL만 데이터로 전달하세요.
+기본 모듈과 `live2d-web/inspect`는 SSR 환경에서 import해도 문제가 없습니다. 모델 렌더링과 `live2d-web/react`는 Client Component에서만 사용하세요. Server Component에서는 브라우저 코드를 불러오지 말고 모델 URL과 같은 데이터만 자식 Client Component에 전달하세요.
 
 ```tsx
 'use client'

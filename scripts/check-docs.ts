@@ -16,6 +16,20 @@ const failures: string[] = []
 const slugs = new Set<string>()
 const contentRoot = 'apps/playground/content/docs'
 const errorCodes = readErrorCodes()
+const discouragedLocalizedPhrases = {
+  ja: [
+    /client boundary/iu,
+    /entry point/iu,
+    /framework-free/iu,
+    /source mode/iu,
+  ],
+  ko: [
+    /\bbinding\b/iu,
+    /\bboundary\b/iu,
+    /entry point/iu,
+    /집중된 런타임/u,
+  ],
+} as const
 
 function messageLeaves(value: unknown, prefix = ''): Map<string, string> {
   const leaves = new Map<string, string>()
@@ -29,6 +43,22 @@ function messageLeaves(value: unknown, prefix = ''): Map<string, string> {
       messageLeaves(child, pathName).forEach((text, path) => leaves.set(path, text))
   }
   return leaves
+}
+
+function mdxProse(source: string): string {
+  let fenced = false
+  return source
+    .split('\n')
+    .map((line) => {
+      if (/^\s*```/u.test(line)) {
+        fenced = !fenced
+        return ''
+      }
+      if (fenced)
+        return ''
+      return line.replace(/`[^`]*`/gu, '')
+    })
+    .join('\n')
 }
 
 /**
@@ -100,6 +130,33 @@ for (const [locale, messages] of Object.entries(PUBLIC_MESSAGE_SECTIONS)) {
   for (const key of leaves.keys()) {
     if (!englishMessages.has(key))
       failures.push(`${locale} site messages have an unexpected key: ${key}`)
+  }
+}
+
+for (const locale of ['ko', 'ja'] as const) {
+  const leaves = messageLeaves(PUBLIC_MESSAGE_SECTIONS[locale])
+  for (const [key, value] of leaves) {
+    for (const phrase of discouragedLocalizedPhrases[locale]) {
+      if (phrase.test(value))
+        failures.push(`${locale} site message contains literal translation wording at ${key}: ${phrase.source}`)
+    }
+  }
+  for (const page of DOC_PAGES) {
+    const metadata = `${page.title[locale]}\n${page.summary[locale]}`
+    for (const phrase of discouragedLocalizedPhrases[locale]) {
+      if (phrase.test(metadata))
+        failures.push(`${locale}/${page.slug || 'index'} metadata contains literal translation wording: ${phrase.source}`)
+    }
+
+    const filename = `${page.slug || 'index'}.mdx`
+    const sourcePath = path.join(contentRoot, locale, filename)
+    if (!existsSync(sourcePath))
+      continue
+    const prose = mdxProse(readFileSync(sourcePath, 'utf8'))
+    for (const phrase of discouragedLocalizedPhrases[locale]) {
+      if (phrase.test(prose))
+        failures.push(`${locale}/${filename} contains literal translation wording: ${phrase.source}`)
+    }
   }
 }
 

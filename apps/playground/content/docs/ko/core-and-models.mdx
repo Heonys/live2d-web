@@ -1,6 +1,6 @@
 ## Cubism Core
 
-내장 Framework 5-r.5 어댑터에는 Cubism Core 5.3을 사용합니다. coreUrl로 미리 불러오거나 앱 코드 앞에 script를 둘 수 있습니다. Core를 npm 패키지나 공개 이슈 첨부물에 넣지 마세요.
+내장된 Framework 5-r.5 어댑터는 Cubism Core 5.3을 사용합니다. `coreUrl`을 지정해 라이브러리가 불러오게 하거나, 앱 코드보다 앞서 `<script>`로 로드하세요. Cubism Core는 npm 패키지나 공개 이슈의 첨부 파일로 배포하면 안 됩니다.
 
 ```html
 <script src="/live2dcubismcore.min.js"></script>
@@ -8,8 +8,8 @@
 
 ## 모델 디렉터리
 
-내보낸 디렉터리를 그대로 유지하세요. 모델은 moc3, texture, motion, expression, physics, pose, user-data 파일을 참조할 수 있습니다.
+Cubism Editor에서 내보낸 디렉터리 구조를 그대로 유지하세요. 모델은 moc3, 텍스처, 모션, 표정, 물리 연산, pose, user-data 파일을 참조할 수 있습니다.
 
-- model3.json의 경로는 상대 경로와 정확한 대소문자를 유지합니다.
-- 다른 출처의 texture·motion에는 CORS를 허용합니다.
-- 렌더 문제를 보기 전에 /inspect로 모델을 검사합니다.
+- `model3.json`이 가리키는 상대 경로와 파일명의 대소문자를 바꾸지 마세요.
+- 텍스처나 모션을 다른 출처에서 제공한다면 CORS를 설정하세요.
+- 렌더링 문제를 찾기 전에 Inspector로 모델 구성부터 확인하세요.

@@ -1,6 +1,6 @@
-## ブラウザコードを use client の内側へ
+## ブラウザで動く処理は Client Component に置く
 
-root と inspect entry は SSR 評価が安全です。描画と /react は Client Component が必要です。Server Component からは model URL だけをデータとして渡します。
+基本 API と `live2d-web/inspect` は SSR 中に読み込んでも安全です。モデルの描画と `/react` は Client Component で使用してください。Server Component からはモデルの URL だけをデータとして渡します。
 
 ```tsx
 'use client'

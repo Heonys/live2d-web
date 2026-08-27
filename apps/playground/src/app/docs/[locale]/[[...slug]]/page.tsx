@@ -11,8 +11,8 @@ import { siteUrl } from '../../../../lib/siteOrigin'
 
 const labels: Record<DocLocale, { apiNote: string, eyebrow: string, pagination: string, next: string, previous: string }> = {
   en: { apiNote: 'Signatures are generated from the public TypeScript source.', eyebrow: 'live2d-web documentation', next: 'Next', pagination: 'Pagination', previous: 'Previous' },
-  ja: { apiNote: 'signature は公開 TypeScript source から生成されます。', eyebrow: 'live2d-web ドキュメント', next: '次へ', pagination: 'ページ移動', previous: '前へ' },
-  ko: { apiNote: '시그니처는 공개 TypeScript 소스에서 생성됩니다.', eyebrow: 'live2d-web 문서', next: '다음', pagination: '페이지 이동', previous: '이전' },
+  ja: { apiNote: '公開 TypeScript の型定義から自動生成しています。', eyebrow: 'live2d-web ドキュメント', next: '次へ', pagination: 'ページ移動', previous: '前へ' },
+  ko: { apiNote: '공개 TypeScript 선언을 바탕으로 자동 생성합니다.', eyebrow: 'live2d-web 문서', next: '다음', pagination: '페이지 이동', previous: '이전' },
 }
 
 interface PageParameters { locale: string, slug?: string[] }

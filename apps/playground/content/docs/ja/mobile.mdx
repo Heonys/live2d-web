@@ -1,8 +1,8 @@
 ## モバイルチェックリスト
 
-自動画質は Canvas backing buffer を制限しますが、カメラ推論は端末依存です。モバイル2エンジンはいずれも実機未検証ですが、基準は同じではありません。**iOS Safari は0.7のブロッカー**で、実機の iPhone で Main と Worker をそれぞれ5分確認するまで完了としません。**Android Chrome は非ブロッカー**で、未検証を公開したまま発行します。どちらも desktop WebKit・desktop Chromium や device emulation では代替しないため、desktop の数値は参考に留めてください。
+自動画質調整では Canvas の描画解像度を制限できますが、カメラ推論の性能は端末によって異なります。iOS Safari と Android Chrome は、どちらも実機での検証が必要です。**iOS Safari は0.7の必須確認項目**で、実機の iPhone で Main thread と Worker をそれぞれ5分間確認するまで完了とはしません。**Android Chrome は発行を止めない確認項目**とし、未検証であることを公開したまま発行します。デスクトップ版 WebKit・Chromium や端末エミュレーションでは代用できないため、デスクトップでの測定値は参考値として扱ってください。
 
 - カメラ・マイク権限には HTTPS を使います。
-- ページが hidden の間は capture を止めます。
-- 画面回転と background 復帰を確認します。
-- 端末で測定してから Worker tracking を検討します。
+- ページが非表示の間はカメラ入力を停止します。
+- 画面回転とバックグラウンドからの復帰を確認します。
+- 実機で性能を測定してから Worker の利用を判断します。
