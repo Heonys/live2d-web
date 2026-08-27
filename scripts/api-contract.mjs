@@ -32,7 +32,10 @@ for (const [name, entry] of Object.entries(entries)) {
         reportTempFolder: '<projectFolder>/../../tmp/api-contract',
       },
       compiler: {
-        skipLibCheck: false,
+        // Matches the repository default. With it false, an error inside a
+        // dependency's own .d.ts turns api:check red on a failure that
+        // pnpm typecheck never reproduces.
+        skipLibCheck: true,
         tsconfigFilePath: '<projectFolder>/tsconfig.json',
       },
       docModel: { enabled: false },

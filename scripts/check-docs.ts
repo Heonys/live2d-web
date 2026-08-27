@@ -10,18 +10,23 @@ import {
 const failures: string[] = []
 const slugs = new Set<string>()
 const contentRoot = 'apps/playground/content/docs'
-const errorCodes = [
-  'adapter-error',
-  'browser-only',
-  'core-missing',
-  'invalid-props',
-  'invalid-tree',
-  'lipsync-error',
-  'model-load-failed',
-  'render-error',
-  'tracking-error',
-  'webgl-unsupported',
-] as const
+const errorCodes = readErrorCodes()
+
+/**
+ * Derived from the source union rather than copied, because `scripts/` is
+ * outside every typecheck project: a hand-written list would let an eleventh
+ * error code ship with no documentation and a green gate.
+ */
+function readErrorCodes(): string[] {
+  const source = 'packages/live2d-web/src/core/errors.ts'
+  const union = readFileSync(source, 'utf8').match(
+    /export type Live2DErrorCode\b([\s\S]*?)\n\n/,
+  )?.[1]
+  const codes = [...(union ?? '').matchAll(/'([a-z][a-z-]*)'/g)].map(match => match[1]!)
+  if (codes.length < 5)
+    throw new Error(`could not read the Live2DErrorCode union from ${source}`)
+  return [...codes].sort()
+}
 
 for (const page of DOC_PAGES) {
   if (slugs.has(page.slug))

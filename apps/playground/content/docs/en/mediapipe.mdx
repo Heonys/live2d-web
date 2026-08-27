@@ -46,8 +46,10 @@ one-second calibration and the final tracked transition. It also lists matching
 MediaPipe JavaScript, WASM and task Resource Timing entries. Use those phases
 before treating a long cold start as inference work.
 
-Warm local tracker creation is gated at a five-second median and is currently
-well below that budget on the three desktop test engines. iPhone Safari still
+Warm local tracker creation is measured against a five-second median and is
+currently well below that budget on the three desktop test engines. That
+five-second number is a local expectation checked by hand, not a CI gate: no
+workflow runs the tracking benchmark. iPhone Safari still
 requires physical-device validation, and Android Chrome is explicitly
 unverified. If Worker creation fails or times out, surface the `tracking-error`
 and let the user recreate the tracker in main mode; do not wait indefinitely or

@@ -423,28 +423,34 @@ production build되며 세 브라우저 문서·검사 e2e와 기여 템플릿�
 | 0.5.0 | 모션·표정 품질, 볼륨 helper, MediaPipe main 추적 | **2026-08-25 발행.** 실제 소비자·Perfect Sync·모바일 검증은 후속 증거로 유지 |
 | 0.6.0 | MediaPipe Worker와 안정성 게이트, 모델 검사, Devtools, 다국어 MDX 문서·예제, 사이트 개편과 리뷰 보완 | **2026-08-26 발행.** 원격 CI, 릴리스 5분 soak, 실제 카메라 smoke와 배포 사이트를 확인했고 모바일은 미검증으로 공개 |
 | 0.6.x | 0.6에서 발견된 회귀·문서·호환성 수정 | patch에서 공개 계약을 깨지 않고 관련 회귀 테스트 통과 |
-| **0.7 안정화 후보** | API 계약 기준선, iOS Safari 실기기 검증, 독립 프로젝트 온보딩, 접근성·호환성·오류 안내, 측정 기반 MediaPipe 초기화 조정 | **자동화·데스크톱 구현 완료, iOS 실기기 대기.** 공개 export·Canvas·오류·lifecycle 기준선과 out-of-tree 소비자 검증 완료. Android와 외부 프로젝트 수 자체는 발행 차단 조건이 아님 |
+| **0.7 안정화 후보** | API 계약 기준선, iOS Safari 실기기 검증, 독립 프로젝트 온보딩, 접근성·호환성·오류 안내, 측정 기반 MediaPipe 초기화 조정 | 공개 export·Canvas·오류·lifecycle snapshot, **iOS 결과표**, out-of-tree 소비자 온보딩 기록과 **발견된 결함 수정**. Android와 외부 프로젝트 수 자체는 발행 차단 조건이 아님. <br>_상태(2026-08-27): 자동화·데스크톱 구현 완료, iOS 실기기 대기._ |
 | 0.8 이후 | 아래 수요 기반 후보 중 증거가 가장 강한 한 묶음 | 착수 조건과 소비자·측정 결과를 결정 기록에 남긴 뒤 범위 확정 |
 
 ### 0.7 안정화 후보의 실제 범위
 
-- **API 계약 기준선**: root·React·선택 subpath의 export, 타입, 오류 code,
-  Promise 정착과 dispose 동작을 snapshot·계약 테스트로 고정한다. 기능을 동결하는
-  것이 아니라 변경 시 무엇을 보호하고 어떻게 이전할지 명확히 하는 작업이다.
-  **API Extractor 보고서와 CI `api:check` 구현 완료**
+- **API 계약 기준선**: root·React·선택 subpath의 export, 타입, 오류 code를
+  snapshot으로 고정한다. 기능을 동결하는 것이 아니라 변경 시 무엇을 보호하고
+  어떻게 이전할지 명확히 하는 작업이다.
+  _상태: API Extractor 보고서와 CI `api:check` 구현 완료._
+  _잔여: Promise 정착 순서와 `dispose()` 멱등성은 **snapshot이 덮지 못한다.**
+  `.d.mts`는 `dispose: () => void`만 기록하므로 "dispose 시 resolve"를
+  "reject"로 바꿔도 보고서가 바이트 단위로 같다. 현재는 기존 lifecycle 단위
+  테스트가 그 동작을 덮고 있고, 별도 계약 테스트는 만들지 않았다._
 - **외부 프로젝트 온보딩**: 이 저장소 밖의 작은 Vanilla/React 프로젝트에서
   실제 tarball 또는 npm 버전을 설치해 문서만으로 모델을 띄우고 정리한다. 설치·
   Core/CORS·SSR·번들·오류 안내에서 막힌 지점을 제품 결함으로 되돌린다.
-  **npm 0.6.0 Vite Vanilla와 현재 packed Next React 검증 완료**
+  _상태: npm 0.6.0 Vite Vanilla와 현재 packed Next React 설치 경계 검증 완료._
 - **접근성·호환성·오류 안내**: Canvas의 이름·fallback·키보드/모션 정책을 앱이
   전달할 수 있게 하고, 브라우저·Core·번들러 지원표와 Core 미로드·404·CORS·
-  모델 손상 오류에 바로 실행할 수 있는 해결책을 연결한다. **선택형 Canvas
-  semantics, 세 언어 오류 anchor와 Chromium axe smoke 구현 완료**
+  모델 손상 오류에 바로 실행할 수 있는 해결책을 연결한다.
+  _상태: 선택형 Canvas semantics, 세 언어 오류 anchor와 Chromium axe smoke
+  구현 완료._
 - **모바일·MediaPipe**: iOS Safari에서 카메라 중지/재시작, 백그라운드 복귀,
   Worker, 초기화·frame·추론을 먼저 측정한다. warm tracker 생성 중앙값 5초를
   넘으면 다운로드·WASM/task 생성·직렬 초기화 중 측정된 병목만 고친다. Android
-  Chrome은 0.7의 비차단 미검증 항목으로 남긴다. **데스크톱 warm 생성은
-  270~383ms로 통과했고 단계별 진단을 구현했다. iOS 실기기만 차단 상태로 남음**
+  Chrome은 0.7의 비차단 미검증 항목으로 남긴다.
+  _상태: 데스크톱 warm 생성은 270~383ms로 통과했고 단계별 진단을 구현했다.
+  iOS 실기기만 차단 상태로 남음._
 
 ### API 상태와 experimental 종료
 

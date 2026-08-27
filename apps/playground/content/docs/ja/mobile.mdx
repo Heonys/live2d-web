@@ -1,6 +1,6 @@
 ## モバイルチェックリスト
 
-自動画質は Canvas backing buffer を制限しますが、カメラ推論は端末依存です。iOS Safari・Android Chrome 実機測定は0.7の安定化候補であり、0.6ではモバイルを未検証として明記します。
+自動画質は Canvas backing buffer を制限しますが、カメラ推論は端末依存です。モバイル2エンジンはいずれも実機未検証ですが、基準は同じではありません。**iOS Safari は0.7のブロッカー**で、実機の iPhone で Main と Worker をそれぞれ5分確認するまで完了としません。**Android Chrome は非ブロッカー**で、未検証を公開したまま発行します。どちらも desktop WebKit・desktop Chromium や device emulation では代替しないため、desktop の数値は参考に留めてください。
 
 - カメラ・マイク権限には HTTPS を使います。
 - ページが hidden の間は capture を止めます。

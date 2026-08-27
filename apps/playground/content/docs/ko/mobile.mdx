@@ -1,6 +1,6 @@
 ## 모바일 체크리스트
 
-자동 품질은 Canvas backing buffer를 제한하지만 카메라 추론은 기기에 따라 달라집니다. iOS Safari·Android Chrome 실기 측정은 0.7 안정화 후보이며 0.6에서는 모바일을 미검증으로 명시하므로, 데스크톱 수치는 참고로만 보세요.
+자동 품질은 Canvas backing buffer를 제한하지만 카메라 추론은 기기에 따라 달라집니다. 두 모바일 엔진 모두 실기 미검증이고, 기준은 서로 다릅니다. **iOS Safari는 0.7의 차단 항목**으로, 실제 iPhone에서 Main과 Worker를 각각 5분 확인하기 전에는 완료로 표시하지 않습니다. **Android Chrome은 비차단**이며 미검증을 공개한 채로 발행합니다. 어느 쪽도 데스크톱 WebKit·데스크톱 Chromium이나 device emulation으로 대체하지 않으므로, 데스크톱 수치는 참고로만 보세요.
 
 - 카메라·마이크 권한에는 HTTPS를 사용합니다.
 - 페이지가 숨겨지면 capture를 중지합니다.

@@ -1,6 +1,6 @@
 ## Mobile checklist
 
-Automatic quality caps the Canvas backing buffer, but camera inference still depends on the device. iOS Safari and Android Chrome hardware measurements remain an explicit 0.7 stabilization candidate; 0.6 documents mobile as unverified, so treat desktop numbers only as a reference.
+Automatic quality caps the Canvas backing buffer, but camera inference still depends on the device. Both mobile engines are unverified on real hardware, and the two are not held to the same bar: **iOS Safari blocks 0.7** until Main and Worker each run five minutes on a physical iPhone, while **Android Chrome is non-blocking** and ships openly unverified. Neither is substituted by desktop WebKit, desktop Chromium or device emulation, so treat desktop numbers only as a reference.
 
 - Use HTTPS for camera and microphone permission.
 - Pause capture when the page is hidden.

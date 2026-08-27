@@ -13,6 +13,7 @@
 ## Public boundary and assets
 
 - [ ] Existing public APIs remain compatible, or the migration is documented.
+- [ ] `pnpm api:check` passes, or `etc/api/` was regenerated with `pnpm api:update` and the change is in `CHANGELOG.md`.
 - [ ] Optional code stays out of the root static graph.
 - [ ] No Cubism Core, licensed model, camera frame or restricted artifact is included.
 - [ ] English, Korean and Japanese guide sources are synchronized when applicable.

@@ -38,6 +38,12 @@ model, coordinate a private, licensed transfer outside a public issue.
   a browser, renderer or lifecycle boundary.
 - Run `pnpm verify:package` when exports or dependencies change. Run
   `pnpm verify:packed-consumers` when a public entry changes.
+- `pnpm api:check` compares the committed reports in `etc/api/` against the
+  current build. When a public export or type changes on purpose, run
+  `pnpm api:update`, commit the regenerated report **in the same commit as the
+  change**, and describe the change in `CHANGELOG.md` (plus a migration note
+  when it breaks a caller). A regenerated report with no changelog entry is a
+  silent contract change, not a fix for a red gate.
 - Update the English, Korean and Japanese guide source together. `pnpm
 docs:check` rejects missing localized slugs.
 - Include browser, OS, bundler, Core version, editor/export version and the
