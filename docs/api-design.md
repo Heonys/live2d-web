@@ -332,6 +332,13 @@ The three confidence thresholds default below MediaPipe's own 0.5, which drops
 the face partway into an ordinary head turn. Tracking confidence is lowest of
 the three: keeping a face already found is what carries a profile turn.
 
+A channel signal is a deflection from the parameter's own `defaultValue`, not a
+position in its range: 0 is the neutral the rigger authored, and a full signal
+reaches `maximum` or `minimum`. A rigger who left no travel on the side a
+channel drives gets no movement from it rather than a guess about their
+polarity, because the polarity is not inferable: the two published Hiyori rigs
+declare `ParamCheek` as `-1..0` and `-1..1` under the same name.
+
 `sensitivity` scales a channel's distance from the parameter's own default, so
 it reads correctly on an inverted parameter too (`ParamEyeLOpen` rests at 1, and
 the gain lands on the blink rather than on the openness). The model's range

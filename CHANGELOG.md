@@ -19,6 +19,19 @@
 
 ### Fixed
 
+- Face tracking drives each parameter away from its own `defaultValue` instead
+  of stretching a 0..1 signal across the whole `[minimum, maximum]`. Rigs that
+  do not park their defaults on a rail were visibly wrong: the official Hiyori
+  opens its eyes at 1.0 inside a 0..1.2 range, so a tracked face sat 20 percent
+  over-open and the first sixth of every blink went into undoing that, which
+  read as a wink doing nothing. Haru (0..2) needed half a blink before the lid
+  moved. `ParamCheek`, whose travel runs below its default on Hiyori, was pinned
+  to its minimum for the whole session. Sensitivity now scales the tracked
+  deflection rather than a constant bias, `onFaceLost: 'neutral'` returns to the
+  model's own defaults as documented, and tracking no longer pops the eyes wider
+  on its first frame. Rigs whose defaults sit on a rail, including every
+  ARKit-style Perfect Sync parameter and `ParamMouthOpenY` on every official
+  sample, are unchanged.
 - The `devtools` panel no longer injects `<h3>` card titles into the host
   page's heading outline. A mounted overlay cannot know the document's heading
   levels, so any host whose last heading was not an `<h2>` failed axe's

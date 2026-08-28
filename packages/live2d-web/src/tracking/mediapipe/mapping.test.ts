@@ -8,11 +8,45 @@ function info(parameters?: ModelParameterInfo[]): ModelInfo {
   return { expressions: [], hitAreas: [], motions: {}, parameters }
 }
 
-function signals(scores: Record<string, number> = {}): FaceTrackingSignals {
+function signals(
+  scores: Record<string, number> = {},
+  pose = { x: 15, y: -10, z: 5 },
+): FaceTrackingSignals {
   return {
     blendshapes: new Map(MEDIAPIPE_BLENDSHAPES.map(name => [name, scores[name] ?? 0])),
-    pose: { x: 15, y: -10, z: 5 },
+    pose,
   }
+}
+
+// Ranges declared by the official hiyori_free rig the Playground loads. Unlike
+// STANDARD_PARAMETERS, none of its defaults sit on the rail the channel drives:
+// the eyes rest at 1.0 inside 0..1.2 and ParamCheek rests at its own maximum
+// with all of its travel below. That is the shape a rig-agnostic fallback table
+// cannot represent, and the reason this defect survived every earlier test.
+const HIYORI: ModelParameterInfo[] = [
+  { defaultValue: 0, id: 'ParamAngleX', maximum: 30, minimum: -30 },
+  { defaultValue: 0, id: 'ParamAngleY', maximum: 30, minimum: -30 },
+  { defaultValue: 0, id: 'ParamAngleZ', maximum: 30, minimum: -30 },
+  { defaultValue: 1, id: 'ParamEyeLOpen', maximum: 1.2, minimum: 0 },
+  { defaultValue: 1, id: 'ParamEyeROpen', maximum: 1.2, minimum: 0 },
+  { defaultValue: 0, id: 'ParamEyeBallX', maximum: 1, minimum: -1 },
+  { defaultValue: 0, id: 'ParamEyeBallY', maximum: 1, minimum: -1 },
+  { defaultValue: 0, id: 'ParamMouthOpenY', maximum: 1, minimum: 0 },
+  { defaultValue: 1, id: 'ParamMouthForm', maximum: 1, minimum: -2 },
+  { defaultValue: 0, id: 'ParamCheek', maximum: 0, minimum: -1 },
+]
+
+const REST = signals({}, { x: 0, y: 0, z: 0 })
+
+function hiyoriRead(
+  id: string,
+  scores: Record<string, number> = {},
+  options: Parameters<typeof createParameterBindings>[1] = { mapping: 'standard' },
+) {
+  const binding = createParameterBindings(info(HIYORI), options).find(entry => entry.id === id)
+  if (!binding)
+    throw new Error(`no binding for ${id}`)
+  return binding.read(signals(scores, { x: 0, y: 0, z: 0 }))
 }
 
 // A VTube Studio style rig: ARKit names, ParamTongueOut present, no ParamNeutral,
@@ -207,5 +241,42 @@ describe('mediaPipe Live2D mapping', () => {
     expect(hasPerfectSyncParameters(declare(PERFECT_SYNC_MINIMUM_PARAMETERS))).toBe(true)
     expect(() => createParameterBindings(declare(PERFECT_SYNC_MINIMUM_PARAMETERS - 1), { mapping: 'perfect-sync' }))
       .toThrow(/needs at least 45/)
+  })
+})
+
+describe('rigs whose defaults are not on a rail', () => {
+  // The invariant the whole mapping rests on. A signal of zero is "no
+  // expression", so it has to land on whatever neutral the rigger authored.
+  it('leaves every parameter at the rig default when the face is neutral', () => {
+    for (const binding of createParameterBindings(info(HIYORI), { mapping: 'standard' }))
+      expect(binding.read(REST)).toBeCloseTo(binding.defaultValue)
+  })
+
+  it('closes the winking eye to the rig floor and leaves the other at rest', () => {
+    expect(hiyoriRead('ParamEyeLOpen', { eyeBlinkLeft: 1 })).toBeCloseTo(0)
+    expect(hiyoriRead('ParamEyeROpen', { eyeBlinkLeft: 1 })).toBeCloseTo(1)
+    // Half a blink closes the lid halfway from the rig's own open value, rather
+    // than being spent undoing an over-open rest position.
+    expect(hiyoriRead('ParamEyeLOpen', { eyeBlinkLeft: 0.5 })).toBeCloseTo(0.5)
+  })
+
+  it('does not pin a parameter to the rail the rigger left below its default', () => {
+    expect(hiyoriRead('ParamCheek')).toBeCloseTo(0)
+    // hiyori_free authored no travel above ParamCheek's default, so the channel
+    // is inert on this rig. The published Hiyori rigs declare it as -1..0 and
+    // -1..1 under the same name, so guessing the active rail would drive one of
+    // them backwards.
+    expect(hiyoriRead('ParamCheek', { cheekPuff: 1 })).toBeCloseTo(0)
+  })
+
+  it('keeps parameters whose default is already the floor unchanged', () => {
+    expect(hiyoriRead('ParamMouthOpenY', { jawOpen: 0.8 })).toBeCloseTo(0.8)
+    expect(hiyoriRead('ParamMouthOpenY', { mouthFunnel: 1 })).toBeCloseTo(0.65)
+  })
+
+  it('lands sensitivity on the tracked deflection, not on a resting offset', () => {
+    const amplified = { mapping: 'standard', sensitivity: { eyes: 2 } } as const
+    expect(hiyoriRead('ParamEyeLOpen', {}, amplified)).toBeCloseTo(1)
+    expect(hiyoriRead('ParamEyeLOpen', { eyeBlinkLeft: 0.2 }, amplified)).toBeCloseTo(0.6)
   })
 })

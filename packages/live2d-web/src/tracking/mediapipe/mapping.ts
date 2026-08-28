@@ -44,20 +44,26 @@ function clamp(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(maximum, Number.isFinite(value) ? value : minimum))
 }
 
-function scaleSigned(value: number, parameter: ModelParameterInfo) {
+/**
+ * A signal is a deflection from rest, never a position in the range. Every
+ * MediaPipe coefficient rests at 0 once calibration subtracts the neutral, and
+ * every Live2D parameter rests at its own defaultValue, which is often not a
+ * rail: the official Hiyori opens its eyes at 1.0 inside 0..1.2 and Haru at 1.0
+ * inside 0..2. Reading `minimum` as the resting value left those eyes
+ * permanently over-open, and the first sixth of every blink (half, on Haru) was
+ * spent undoing that before the lid moved at all.
+ *
+ * A rigger who authored no travel on the side a channel drives gets no movement
+ * from it. The polarity is not inferable: the two published Hiyori rigs declare
+ * ParamCheek as -1..0 and -1..1 under the same name, so a rule that guessed the
+ * active rail would drive one of them backwards.
+ */
+function scaleFromDefault(value: number, parameter: ModelParameterInfo) {
   const normalized = clamp(value, -1, 1)
   return clamp(
     parameter.defaultValue + normalized * (normalized >= 0
       ? parameter.maximum - parameter.defaultValue
       : parameter.defaultValue - parameter.minimum),
-    parameter.minimum,
-    parameter.maximum,
-  )
-}
-
-function scaleUnit(value: number, parameter: ModelParameterInfo) {
-  return clamp(
-    parameter.minimum + clamp(value, 0, 1) * (parameter.maximum - parameter.minimum),
     parameter.minimum,
     parameter.maximum,
   )
@@ -115,7 +121,6 @@ export function createParameterBindings(
   const add = (
     id: string,
     channel: MediaPipeFaceChannel,
-    normalized: 'signed' | 'unit',
     read: (signals: FaceTrackingSignals) => number,
     required = false,
   ) => {
@@ -138,9 +143,7 @@ export function createParameterBindings(
       defaultValue: range.defaultValue,
       id,
       read: (signals) => {
-        const scaled = normalized === 'unit'
-          ? scaleUnit(read(signals), range)
-          : scaleSigned(read(signals), range)
+        const scaled = scaleFromDefault(read(signals), range)
         if (channelGain === 1)
           return scaled
         return clamp(
@@ -152,12 +155,12 @@ export function createParameterBindings(
     })
   }
 
-  add('ParamAngleX', 'pose', 'signed', signals => signals.pose.x / 30)
-  add('ParamAngleY', 'pose', 'signed', signals => signals.pose.y / 30)
-  add('ParamAngleZ', 'pose', 'signed', signals => signals.pose.z / 30)
-  add('ParamBodyAngleX', 'pose', 'signed', signals => signals.pose.x / 30 * 0.3)
-  add('ParamBodyAngleY', 'pose', 'signed', signals => signals.pose.y / 30 * 0.3)
-  add('ParamBodyAngleZ', 'pose', 'signed', signals => signals.pose.z / 30 * 0.3)
+  add('ParamAngleX', 'pose', signals => signals.pose.x / 30)
+  add('ParamAngleY', 'pose', signals => signals.pose.y / 30)
+  add('ParamAngleZ', 'pose', signals => signals.pose.z / 30)
+  add('ParamBodyAngleX', 'pose', signals => signals.pose.x / 30 * 0.3)
+  add('ParamBodyAngleY', 'pose', signals => signals.pose.y / 30 * 0.3)
+  add('ParamBodyAngleZ', 'pose', signals => signals.pose.z / 30 * 0.3)
 
   if (mapping === 'perfect-sync') {
     for (const name of ARKIT_BLENDSHAPES) {
@@ -171,44 +174,47 @@ export function createParameterBindings(
           : name.startsWith('cheek') || name.startsWith('nose')
             ? 'cheeks'
             : 'mouth'
-      add(perfectSyncParameterId(name), channel, 'unit', signals => score(signals, name))
+      add(perfectSyncParameterId(name), channel, signals => score(signals, name))
     }
     return bindings
   }
 
-  add('ParamEyeLOpen', 'eyes', 'unit', signals => 1 - Math.max(
-    score(signals, 'eyeBlinkLeft'),
-    score(signals, 'eyeSquintLeft') * 0.6,
-  ))
-  add('ParamEyeROpen', 'eyes', 'unit', signals => 1 - Math.max(
-    score(signals, 'eyeBlinkRight'),
-    score(signals, 'eyeSquintRight') * 0.6,
-  ))
-  add('ParamEyeBallX', 'eyes', 'signed', signals => (
+  // A blink drives the lid down from wherever the rig rests it open, which is
+  // not the top of its range.
+  const blink = (
+    blinkName: MediaPipeBlendshape,
+    squintName: MediaPipeBlendshape,
+  ) => (signals: FaceTrackingSignals) => -Math.max(
+    score(signals, blinkName),
+    score(signals, squintName) * 0.6,
+  )
+  add('ParamEyeLOpen', 'eyes', blink('eyeBlinkLeft', 'eyeSquintLeft'))
+  add('ParamEyeROpen', 'eyes', blink('eyeBlinkRight', 'eyeSquintRight'))
+  add('ParamEyeBallX', 'eyes', signals => (
     score(signals, 'eyeLookOutLeft') - score(signals, 'eyeLookInLeft')
     + score(signals, 'eyeLookInRight') - score(signals, 'eyeLookOutRight')
   ) / 2)
-  add('ParamEyeBallY', 'eyes', 'signed', signals => (
+  add('ParamEyeBallY', 'eyes', signals => (
     score(signals, 'eyeLookUpLeft') + score(signals, 'eyeLookUpRight')
     - score(signals, 'eyeLookDownLeft') - score(signals, 'eyeLookDownRight')
   ) / 2)
-  add('ParamBrowLY', 'brows', 'signed', signals => Math.max(
+  add('ParamBrowLY', 'brows', signals => Math.max(
     score(signals, 'browInnerUp'),
     score(signals, 'browOuterUpLeft'),
   ) - score(signals, 'browDownLeft'))
-  add('ParamBrowRY', 'brows', 'signed', signals => Math.max(
+  add('ParamBrowRY', 'brows', signals => Math.max(
     score(signals, 'browInnerUp'),
     score(signals, 'browOuterUpRight'),
   ) - score(signals, 'browDownRight'))
-  add('ParamMouthOpenY', 'mouth', 'unit', signals => Math.max(
+  add('ParamMouthOpenY', 'mouth', signals => Math.max(
     score(signals, 'jawOpen'),
     score(signals, 'mouthFunnel') * 0.65,
   ))
-  add('ParamMouthForm', 'mouth', 'signed', signals => (
+  add('ParamMouthForm', 'mouth', signals => (
     score(signals, 'mouthSmileLeft') + score(signals, 'mouthSmileRight')
     - score(signals, 'mouthFrownLeft') - score(signals, 'mouthFrownRight')
   ) / 2)
-  add('ParamCheek', 'cheeks', 'unit', signals => Math.max(
+  add('ParamCheek', 'cheeks', signals => Math.max(
     score(signals, 'cheekPuff'),
     score(signals, 'cheekSquintLeft'),
     score(signals, 'cheekSquintRight'),
