@@ -979,6 +979,7 @@ test('keeps the mobile documentation menu and search inside supported viewports'
     { height: 768, width: 1024 },
     { height: 932, width: 430 },
     { height: 844, width: 390 },
+    { height: 667, width: 375 },
   ]) {
     await page.setViewportSize(viewport)
     await page.goto('/docs/en')
@@ -1001,15 +1002,34 @@ test('keeps the mobile documentation menu and search inside supported viewports'
       expect(panel).not.toBeNull()
       expect(header?.y ?? -1).toBeCloseTo(0, 0)
       expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0) + 8))).toBeLessThanOrEqual(1)
-      expect(panel?.width ?? 0).toBeLessThanOrEqual(440)
-      expect(panel?.width ?? 0).toBeCloseTo(Math.min(440, viewport.width - 24), 0)
-      expect(panel?.height ?? 0).toBeLessThanOrEqual(520)
-      await expect(siteMenu.locator('.site-mobile-link-group > p')).toHaveText([
-        'Learn',
-        'Tools',
-        'Project',
+      expect(panel?.width ?? 0).toBeLessThanOrEqual(340)
+      expect(panel?.width ?? 0).toBeCloseTo(Math.min(340, viewport.width - 24), 0)
+      expect(panel?.height ?? 0).toBeLessThanOrEqual(480)
+      await expect(siteMenu.locator('.site-mobile-link-group')).toHaveCount(0)
+      const mobileLinks = siteMenu.locator('.site-mobile-global-links > a')
+      await expect(mobileLinks).toHaveText([
+        'Documentation',
+        'Examples',
+        'Playground',
+        'Inspector',
+        'GitHub',
       ])
-      await expect(siteMenu.locator('.site-mobile-link-group a[aria-current="page"]')).toHaveText('Documentation')
+      const currentMobileLink = mobileLinks.filter({ hasText: 'Documentation' })
+      await expect(currentMobileLink).toHaveAttribute('aria-current', 'page')
+      expect(await currentMobileLink.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return {
+          background: style.backgroundColor,
+          borderLeft: style.borderLeftWidth,
+          fontWeight: style.fontWeight,
+          marker: getComputedStyle(element, '::before').content,
+        }
+      })).toEqual({
+        background: 'rgba(0, 0, 0, 0)',
+        borderLeft: '0px',
+        fontWeight: '600',
+        marker: 'none',
+      })
       await expect.poll(() => page.evaluate(
         () => document.documentElement.dataset.pageScrollLocked,
       )).toBe('true')
@@ -1019,8 +1039,22 @@ test('keeps the mobile documentation menu and search inside supported viewports'
       await expect(siteMenu).not.toHaveAttribute('open', '')
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
       await siteSummary.click()
-      await siteSummary.press('Shift+Tab')
-      await expect(siteMenu.locator('.site-mobile-languages a').last()).toBeFocused()
+      await expect(siteSummary).toBeFocused()
+      const languageLinks = siteMenu.locator('.site-mobile-languages > a')
+      const focusOrder = [
+        siteSummary,
+        ...Array.from({ length: 5 }, (_, index) => mobileLinks.nth(index)),
+        ...Array.from({ length: 3 }, (_, index) => languageLinks.nth(index)),
+      ]
+      for (const focusTarget of focusOrder.slice(1)) {
+        await page.keyboard.press('Tab')
+        await expect(focusTarget).toBeFocused()
+      }
+      await expect(languageLinks.last()).toBeInViewport()
+      await page.keyboard.press('Tab')
+      await expect(siteSummary).toBeFocused()
+      await page.keyboard.press('Shift+Tab')
+      await expect(languageLinks.last()).toBeFocused()
       await page.keyboard.press('Escape')
       await expect(siteMenu).not.toHaveAttribute('open', '')
       await expect(siteSummary).toBeFocused()
@@ -1082,6 +1116,24 @@ test('keeps the mobile documentation menu and search inside supported viewports'
   }
 })
 
+test('keeps the last mobile menu language reachable in a short viewport', async ({ page }) => {
+  await page.setViewportSize({ height: 320, width: 375 })
+  await page.goto('/docs/en')
+  const siteMenu = page.locator('details.site-mobile-menu')
+  const siteSummary = siteMenu.locator('summary.site-menu-button')
+  const panel = siteMenu.locator('.site-mobile-panel')
+  const lastLanguage = siteMenu.locator('.site-mobile-languages > a').last()
+  await siteSummary.click()
+  await expect(siteMenu).toHaveAttribute('open', '')
+  expect(await panel.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
+  await page.keyboard.press('Shift+Tab')
+  await expect(lastLanguage).toBeFocused()
+  await expect(lastLanguage).toBeInViewport()
+  expect(await panel.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
+  await page.keyboard.press('Tab')
+  await expect(siteSummary).toBeFocused()
+})
+
 test('keeps the native mobile documentation menu usable without JavaScript', async ({ browser }) => {
   const context = await browser.newContext({
     javaScriptEnabled: false,
@@ -1138,20 +1190,78 @@ test('uses a title, subtitle and divider for every documentation locale', async 
   await expect(page.locator('.docs-lead')).toHaveCSS('font-size', '19px')
 })
 
-test('keeps mobile documentation code sizing consistent', async ({ page }) => {
-  await page.setViewportSize({ height: 844, width: 390 })
-  await page.goto('/docs/en/examples')
-  const sizes = await page.locator('figure[data-rehype-pretty-code-figure] pre, .docs-code pre')
-    .evaluateAll(elements => elements
-      .filter(element => element.getBoundingClientRect().height > 0)
-      .map(element => ({
-        fontSize: getComputedStyle(element).fontSize,
-        lineHeight: getComputedStyle(element).lineHeight,
-      })))
-  expect(sizes.length).toBeGreaterThan(1)
-  expect(new Set(sizes.map(size => size.fontSize))).toEqual(new Set(['13px']))
-  expect(new Set(sizes.map(size => size.lineHeight)).size).toBe(1)
-  expect(Number.parseFloat(sizes[0]!.lineHeight)).toBeCloseTo(22.36, 1)
+test('keeps mobile documentation code sizing consistent', async ({ browser, browserName }) => {
+  test.skip(browserName === 'firefox', 'iPhone text autosizing is specific to Chromium and WebKit contexts.')
+
+  const context = await browser.newContext({
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1',
+    viewport: { height: 844, width: 390 },
+  })
+  const mobilePage = await context.newPage()
+  await mobilePage.goto('/docs/en/examples')
+  const codeBlocks = mobilePage.locator('figure[data-rehype-pretty-code-figure] pre, .docs-code pre')
+  const readCodeSizing = () => codeBlocks.evaluateAll(elements => elements
+    .filter(element => element.getBoundingClientRect().height > 0)
+    .map((element) => {
+      const pre = element as HTMLElement
+      const code = pre.querySelector<HTMLElement>('code')!
+      const line = [...pre.querySelectorAll<HTMLElement>('[data-line], .line')]
+        .find(candidate => Boolean(candidate.textContent?.trim()))!
+      const range = document.createRange()
+      range.selectNodeContents(line)
+      const preStyle = getComputedStyle(pre)
+      return {
+        clientWidth: pre.clientWidth,
+        codeDisplay: getComputedStyle(code).display,
+        documentWidth: document.documentElement.scrollWidth,
+        fontSize: preStyle.fontSize,
+        glyphHeight: range.getBoundingClientRect().height,
+        lineBoxHeight: line.getBoundingClientRect().height,
+        lineHeight: preStyle.lineHeight,
+        scrollWidth: pre.scrollWidth,
+        viewportWidth: innerWidth,
+      }
+    }))
+  const initial = await readCodeSizing()
+  expect(initial.length).toBeGreaterThan(1)
+  expect(new Set(initial.map(size => size.fontSize))).toEqual(new Set(['13px']))
+  expect(new Set(initial.map(size => size.lineHeight)).size).toBe(1)
+  expect(new Set(initial.map(size => size.codeDisplay))).toEqual(new Set(['block']))
+  expect(Number.parseFloat(initial[0]!.lineHeight)).toBeCloseTo(22.36, 1)
+  expect(Math.max(...initial.map(size => size.lineBoxHeight)) - Math.min(...initial.map(size => size.lineBoxHeight))).toBeLessThanOrEqual(0.5)
+  expect(Math.max(...initial.map(size => size.glyphHeight)) - Math.min(...initial.map(size => size.glyphHeight))).toBeLessThanOrEqual(0.5)
+  expect(initial.some(size => size.scrollWidth > size.clientWidth)).toBe(true)
+  expect(initial.every(size => size.documentWidth <= size.viewportWidth)).toBe(true)
+
+  const overflowIndex = initial.findIndex(size => size.scrollWidth > size.clientWidth)
+  const overflowScrollLeft = await codeBlocks.nth(overflowIndex).evaluate((element) => {
+    element.scrollLeft = 80
+    return element.scrollLeft
+  })
+  expect(overflowScrollLeft).toBeGreaterThan(0)
+
+  for (const viewport of [
+    { height: 390, width: 844 },
+    { height: 720, width: 390 },
+    { height: 844, width: 390 },
+  ]) {
+    await mobilePage.setViewportSize(viewport)
+    await mobilePage.evaluate(() => new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    }))
+    const current = await readCodeSizing()
+    expect(current).toHaveLength(initial.length)
+    for (const [index, size] of current.entries()) {
+      expect(size.fontSize).toBe('13px')
+      expect(size.lineBoxHeight).toBeCloseTo(initial[index]!.lineBoxHeight, 1)
+      expect(size.glyphHeight).toBeCloseTo(initial[index]!.glyphHeight, 1)
+      expect(size.documentWidth).toBeLessThanOrEqual(size.viewportWidth)
+    }
+  }
+  await context.close()
 })
 
 test('shows input-specific playground guidance and prevents demo surface selection', async ({

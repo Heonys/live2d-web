@@ -513,16 +513,30 @@ figure[data-rehype-pretty-code-figure] pre,
   background: transparent !important;
   font: 13px/1.72 var(--font-mono);
   tab-size: 2;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
 }
 figure[data-rehype-pretty-code-figure] pre:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-figure[data-rehype-pretty-code-figure] code {
-  display: grid;
-  min-width: max-content;
+figure[data-rehype-pretty-code-figure] code,
+.docs-code code {
+  display: block !important;
+  width: max-content;
+  min-width: 100%;
+}
+figure[data-rehype-pretty-code-figure] [data-line],
+.docs-code .line {
+  display: block;
+  min-height: 1.72em;
+}
+figure[data-rehype-pretty-code-figure] pre,
+figure[data-rehype-pretty-code-figure] code,
+figure[data-rehype-pretty-code-figure] [data-line],
+.docs-code pre,
+.docs-code code,
+.docs-code .line {
+  -webkit-text-size-adjust: none !important;
+  text-size-adjust: none !important;
 }
 figure[data-rehype-pretty-code-figure] code,
 .docs-code code,
@@ -566,10 +580,6 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   min-height: 28px;
   flex: none;
 }
-.docs-code .line {
-  min-height: 1.72em;
-}
-
 .api-reference {
   margin-top: 56px;
 }

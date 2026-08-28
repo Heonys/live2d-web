@@ -62,46 +62,14 @@ export function SiteHeader() {
     const details = mobileMenuRef.current
     if (!details)
       return
-    let removeOpenListeners = () => {}
     let releaseScrollLock = () => {}
     const handleToggle = () => {
-      removeOpenListeners()
       releaseScrollLock()
       releaseScrollLock = () => {}
       if (!details.open)
         return
       releaseScrollLock = lockPageScroll()
       window.dispatchEvent(new CustomEvent('live2d-web:mobile-menu-open', { detail: 'site' }))
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          details.open = false
-          requestAnimationFrame(() => mobileSummaryRef.current?.focus())
-          return
-        }
-        if (event.key !== 'Tab')
-          return
-        const focusable = [...details.querySelectorAll<HTMLElement>(
-          'summary, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-        )].filter(element => !element.hasAttribute('hidden') && element.tabIndex >= 0)
-        const first = focusable[0]
-        const last = focusable.at(-1)
-        if (!first || !last)
-          return
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        }
-        else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first.focus()
-        }
-      }
-      document.addEventListener('keydown', handleKeyDown)
-      removeOpenListeners = () => {
-        document.removeEventListener('keydown', handleKeyDown)
-        removeOpenListeners = () => {}
-      }
     }
     const closeForOtherMenu = (event: Event) => {
       if ((event as CustomEvent<string>).detail !== 'site')
@@ -110,7 +78,6 @@ export function SiteHeader() {
     details.addEventListener('toggle', handleToggle)
     window.addEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
     return () => {
-      removeOpenListeners()
       releaseScrollLock()
       details.removeEventListener('toggle', handleToggle)
       window.removeEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
@@ -148,6 +115,34 @@ export function SiteHeader() {
     if (mobileMenuRef.current)
       mobileMenuRef.current.open = false
     setLanguageOpen(false)
+  }
+  const handleMobileMenuKeyDown = (event: ReactKeyboardEvent<HTMLDetailsElement>) => {
+    const details = event.currentTarget
+    if (!details.open)
+      return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      details.open = false
+      requestAnimationFrame(() => mobileSummaryRef.current?.focus())
+      return
+    }
+    if (event.key !== 'Tab')
+      return
+    const focusable = [...details.querySelectorAll<HTMLElement>(
+      'summary, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+    )].filter(element => !element.hasAttribute('hidden')
+      && element.tabIndex >= 0
+      && element.getClientRects().length > 0)
+    const first = focusable[0]
+    const last = focusable.at(-1)
+    if (!first || !last)
+      return
+    const currentIndex = focusable.indexOf(document.activeElement as HTMLElement)
+    const nextIndex = event.shiftKey
+      ? currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1
+      : currentIndex < 0 || currentIndex === focusable.length - 1 ? 0 : currentIndex + 1
+    event.preventDefault()
+    focusable[nextIndex]?.focus()
   }
   const openLanguageMenu = () => {
     skipInitialLanguageFocusRef.current = true
@@ -221,7 +216,7 @@ export function SiteHeader() {
             <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
             <span>live2d-web</span>
           </DocsIntentLink>
-          <details ref={mobileMenuRef} className="site-mobile-menu">
+          <details ref={mobileMenuRef} className="site-mobile-menu" onKeyDown={handleMobileMenuKeyDown}>
             <summary ref={mobileSummaryRef} aria-label={messages.header.toggle} className="site-menu-button">
               <span />
               <span />
@@ -235,20 +230,11 @@ export function SiteHeader() {
             />
             <div className="site-mobile-panel" data-page-scroll-region>
               <nav aria-label={messages.header.navigation} className="site-mobile-global-links">
-                <div className="site-mobile-link-group">
-                  <p>{messages.header.learn}</p>
-                  <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
-                  <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
-                </div>
-                <div className="site-mobile-link-group">
-                  <p>{messages.header.tools}</p>
-                  <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
-                  <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
-                </div>
-                <div className="site-mobile-link-group">
-                  <p>{messages.header.project}</p>
-                  <a href="https://github.com/Heonys/live2d-web" onClick={closeNavigation}>GitHub</a>
-                </div>
+                <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} tabIndex={0} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
+                <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} tabIndex={0} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
+                <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} tabIndex={0} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
+                <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} tabIndex={0} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
+                <a href="https://github.com/Heonys/live2d-web" tabIndex={0} onClick={closeNavigation}>GitHub</a>
               </nav>
               <div className="site-mobile-languages" aria-label={messages.header.language}>
                 {SITE_LOCALES.map(language => (
@@ -259,6 +245,7 @@ export function SiteHeader() {
                     hrefLang={language}
                     lang={language}
                     prefetch={false}
+                    tabIndex={0}
                     onClick={closeNavigation}
                   >
                     {languageNames[language]}
