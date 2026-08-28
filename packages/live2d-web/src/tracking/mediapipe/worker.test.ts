@@ -146,6 +146,74 @@ describe('mediaPipe worker runner', () => {
     expect(scope.closed).toBe(true)
   })
 
+  // Measured on Chrome for iOS, whose WKWebView hands back a real module
+  // worker. MediaPipe's loader reaches for document there and dies with a bare
+  // reference error that tells the caller nothing it can act on.
+  it('names the module-worker limitation instead of forwarding a bare reference error', async () => {
+    const scope = new FakeWorkerScope()
+    vi.stubGlobal('self', scope)
+    vi.stubGlobal('postMessage', scope.postMessage.bind(scope))
+    vi.stubGlobal('close', scope.close.bind(scope))
+    vi.stubGlobal('importScripts', undefined)
+    vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope))
+    mediaPipeMocks.forVisionTasks.mockRejectedValue(
+      new ReferenceError('Can\'t find variable: document'),
+    )
+    const startMediaPipeFaceTrackerWorker = await loadWorkerRunner()
+    startMediaPipeFaceTrackerWorker()
+
+    scope.dispatch({
+      id: 0,
+      options: {
+        delegate: 'CPU',
+        minFaceDetectionConfidence: 0.4,
+        minFacePresenceConfidence: 0.4,
+        minTrackingConfidence: 0.3,
+        wasmPath: 'https://example.test/wasm',
+      },
+      protocol: MEDIAPIPE_WORKER_PROTOCOL,
+      type: 'init',
+    })
+
+    await vi.waitFor(() => expect(scope.messages).toHaveLength(1))
+    const [response] = scope.messages
+    expect(response.type).toBe('error')
+    const message = (response as { error: { message: string } }).error.message
+    expect(message).toContain('module worker')
+    expect(message).toContain('execution: \'main\'')
+  })
+
+  // A classic worker that fails for an unrelated reason must not be told to
+  // switch execution modes.
+  it('leaves a classic worker failure unchanged', async () => {
+    const scope = new FakeWorkerScope()
+    vi.stubGlobal('self', scope)
+    vi.stubGlobal('postMessage', scope.postMessage.bind(scope))
+    vi.stubGlobal('close', scope.close.bind(scope))
+    vi.stubGlobal('importScripts', vi.fn())
+    vi.stubGlobal('addEventListener', scope.addEventListener.bind(scope))
+    mediaPipeMocks.forVisionTasks.mockRejectedValue(new Error('Load failed'))
+    const startMediaPipeFaceTrackerWorker = await loadWorkerRunner()
+    startMediaPipeFaceTrackerWorker()
+
+    scope.dispatch({
+      id: 0,
+      options: {
+        delegate: 'CPU',
+        minFaceDetectionConfidence: 0.4,
+        minFacePresenceConfidence: 0.4,
+        minTrackingConfidence: 0.3,
+        wasmPath: 'https://example.test/wasm',
+      },
+      protocol: MEDIAPIPE_WORKER_PROTOCOL,
+      type: 'init',
+    })
+
+    await vi.waitFor(() => expect(scope.messages).toHaveLength(1))
+    const message = (scope.messages[0] as { error: { message: string } }).error.message
+    expect(message).toBe('Load failed')
+  })
+
   it('rejects an init from a different protocol version', async () => {
     const scope = new FakeWorkerScope()
     vi.stubGlobal('self', scope)

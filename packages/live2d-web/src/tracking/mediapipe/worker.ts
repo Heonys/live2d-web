@@ -25,6 +25,31 @@ function serializeError(error: unknown) {
     : { message: String(error) }
 }
 
+/**
+ * MediaPipe 1.0.1 loads its WASM loader with `document.createElement('script')`
+ * whenever `importScripts` is missing, which is exactly what a standards
+ * compliant module worker looks like. There is no document in a worker, so the
+ * task dies with a bare `Can't find variable: document`. Measured on Chrome for
+ * iOS, whose WKWebView really does hand back a module worker; Safari and the
+ * desktop bundlers get a classic bootstrap and never reach this path.
+ *
+ * Say so instead of forwarding the raw message. The caller cannot act on
+ * "document is not defined"; it can act on "run this tracker on the main
+ * thread". Falling back silently is deliberately not offered: execution mode is
+ * the application's choice, not something a library should switch underneath it.
+ */
+function explainWorkerFailure(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  if (isClassicWorker() || !/\bdocument\b/.test(message))
+    return error
+  return new Error(
+    `${message}. This browser gave the library a real module worker, and the `
+    + `bundled MediaPipe loader can only fetch its WASM from a classic worker `
+    + `or the main thread. Create the tracker with execution: 'main' here.`,
+    { cause: error },
+  )
+}
+
 function isClassicWorker() {
   const importScripts = (globalThis as unknown as { importScripts?: () => void }).importScripts
   if (!importScripts)
@@ -140,7 +165,7 @@ export function startMediaPipeFaceTrackerWorker(): void {
       // the worker down over it would turn a version skew into a dead tracker.
     }
     catch (error) {
-      send({ id: request.id, error: serializeError(error), type: 'error' })
+      send({ id: request.id, error: serializeError(explainWorkerFailure(error)), type: 'error' })
     }
   })
 }

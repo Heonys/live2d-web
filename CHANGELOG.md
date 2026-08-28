@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A MediaPipe worker that fails because the browser handed the library a real
+  module worker now says so and names the remedy. MediaPipe 1.0.1 loads its
+  WASM through `document.createElement` whenever `importScripts` is missing,
+  which is what a standards-compliant module worker looks like, so the task
+  died with a bare `Can't find variable: document`. Measured on Chrome for iOS;
+  Safari and the desktop bundlers get a classic bootstrap and never reach it.
+  The tracker still refuses to switch execution modes on its own, because that
+  is the application's choice.
+- A tracking failure renders above the panel controls with its error code and
+  the asset URL, instead of as grey small print below every checkbox. On a
+  phone the old placement was a screen or two down, and the message it carried
+  was `[object Event]`, which named neither the file nor the status.
+
 ## 0.7.0 - 2026-08-28
 
 ### Added
