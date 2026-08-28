@@ -126,16 +126,16 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | 브라우저 | Main | Worker | 관측된 메시지와 해석 |
 | --- | --- | --- | --- |
 | Safari | 정상 | 정상 | 기준 |
-| Chrome 앱 | **정상** | **실패** | `Can't find variable: document`. WKWebView가 **진짜 module worker**를 주는데 MediaPipe 1.0.1의 로더는 `importScripts`가 없으면 `document.createElement`로 WASM 로더를 받는다. 워커에는 document가 없다. `AGENTS.md` 함정 29가 예견한 경우이며, 데스크톱과 Safari는 번들러가 classic bootstrap으로 낮춰 이 경로에 닿지 않는다. |
-| 카카오톡 | 실패 | 실패 | Main은 `[object Event]`(script 태그 로드 실패), Worker는 `Load failed`(fetch 실패). **두 경로 모두 자산을 못 받는다.** 캐시가 아니므로 인앱 브라우저의 네트워크 제약으로 보이나 특정하지 못했다. |
-| Google 앱 | 실패 | 실패 | `The request is not allowed by the user agent or the platform`. `getUserMedia` 권한 거부이며 라이브러리 밖의 문제다. |
+| Chrome 앱 | **정상** | **실패** | `Can't find variable: document`. MediaPipe 1.0.1이 WASM을 받는 도중 `document`를 참조하는데 워커에는 없다. **워커 종류와 무관하다.** 처음에는 진짜 module worker에서만 나는 줄 알고 그렇게 판정했으나, 실기가 classic worker에서도 같은 실패를 내는 것을 보여줬다. |
+| 카카오톡 | 정상 | 정상 | 2026-08-28 재확인. 앞선 실패는 캐시된 404였다. |
+| Google 앱 | 정상 | **실패** | Chrome 앱과 같다. 권한을 준 뒤에는 Main이 동작하고 Worker만 `document`로 실패한다. |
 
 **대응.** Chrome 앱의 module worker 실패는 원인이 확정됐고 라이브러리가 고칠 수
 없다(MediaPipe 로더의 제약이다). 대신 그 실패를 **`execution: 'main'`으로
 전환하라는 문구가 포함된 오류**로 바꿔 소비자가 조치할 수 있게 했다. 조용한
 fallback은 제공하지 않는다. 실행 모드는 애플리케이션의 선택이다.
 
-카카오톡은 원인 미확정이라 미검증으로 남긴다.
+Safari와 카카오톡은 두 모드 모두 정상이므로 인앱 브라우저 자체의 제약은 아니다.
 
 ### iOS Safari 실기 지표 (2026-08-28)
 

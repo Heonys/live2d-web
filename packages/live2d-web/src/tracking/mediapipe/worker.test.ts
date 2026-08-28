@@ -179,13 +179,12 @@ describe('mediaPipe worker runner', () => {
     const [response] = scope.messages
     expect(response.type).toBe('error')
     const message = (response as { error: { message: string } }).error.message
-    expect(message).toContain('module worker')
+    expect(message).toContain('no worker has one')
     expect(message).toContain('execution: \'main\'')
   })
 
-  // A classic worker that fails for an unrelated reason must not be told to
-  // switch execution modes.
-  it('leaves a classic worker failure unchanged', async () => {
+  // A failure with an unrelated cause must not be told to switch execution modes.
+  it('leaves an unrelated worker failure unchanged', async () => {
     const scope = new FakeWorkerScope()
     vi.stubGlobal('self', scope)
     vi.stubGlobal('postMessage', scope.postMessage.bind(scope))
