@@ -426,7 +426,7 @@ export function InspectorApp() {
   )
 
   return (
-    <main lang={locale}>
+    <main className="inspector-page" lang={locale}>
       <section className="page-hero">
         <div>
           <p className="eyebrow">{messages.inspector.eyebrow}</p>
@@ -467,7 +467,7 @@ export function InspectorApp() {
             </section>
           )}
 
-      <section className="workspace">
+      <section className="workspace inspector-workspace">
         <div className="stage-shell" data-testid="inspector-stage" onPointerMove={moveFocus}>
           {candidate
             ? (

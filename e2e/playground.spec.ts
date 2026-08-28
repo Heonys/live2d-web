@@ -1100,6 +1100,285 @@ test('keeps mobile documentation code sizing consistent', async ({ page }) => {
   expect(Number.parseFloat(sizes[0]!.lineHeight)).toBeCloseTo(22.36, 1)
 })
 
+test('shows input-specific playground guidance and prevents demo surface selection', async ({
+  browser,
+  browserName,
+  page,
+}) => {
+  test.skip(browserName === 'firefox', 'Mobile pointer capabilities are covered in Chromium and WebKit.')
+
+  await page.setViewportSize({ height: 900, width: 1440 })
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await expect(page.locator('.stage-hint-desktop')).toHaveText(
+    'Move the pointer to guide her gaze. Click to play a motion.',
+  )
+  await expect(page.locator('.stage-hint-desktop')).toBeVisible()
+  await expect(page.locator('.stage-hint-mobile')).toBeHidden()
+
+  const context = await browser.newContext({
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { height: 844, width: 390 },
+  })
+  const mobilePage = await context.newPage()
+  const localizedHints = [
+    {
+      height: 844,
+      route: '/playground',
+      text: 'Drag to guide her gaze. Tap to play a motion.',
+      width: 390,
+    },
+    {
+      height: 932,
+      route: '/ko/playground',
+      text: '손가락으로 끌어 시선을 유도하세요. 탭하면 모션이 재생됩니다.',
+      width: 430,
+    },
+    {
+      height: 844,
+      route: '/ja/playground',
+      text: 'ドラッグで視線を動かせます。タップでモーションを再生します。',
+      width: 390,
+    },
+  ] as const
+
+  for (const { height, route, text, width } of localizedHints) {
+    await mobilePage.setViewportSize({ height, width })
+    await mobilePage.goto(route)
+    await expect(mobilePage.getByTestId('stage-status')).toContainText('ready')
+    await expect(mobilePage.locator('.stage-hint-mobile')).toHaveText(text)
+    await expect(mobilePage.locator('.stage-hint-mobile')).toBeVisible()
+    await expect(mobilePage.locator('.stage-hint-desktop')).toBeHidden()
+  }
+
+  const playgroundSurface = await mobilePage.locator('.playground-workspace canvas').evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      touchAction: style.touchAction,
+      userSelect: style.userSelect || style.getPropertyValue('-webkit-user-select'),
+    }
+  })
+  expect(playgroundSurface.touchAction).toBe('pan-y')
+  expect(playgroundSurface.userSelect).toBe('none')
+
+  await mobilePage.goto('/')
+  await expect(mobilePage.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
+  for (const selector of ['.landing-stage canvas', '.landing-hold-speech']) {
+    const surface = await mobilePage.locator(selector).evaluate((element) => {
+      const style = getComputedStyle(element)
+      return {
+        userSelect: style.userSelect || style.getPropertyValue('-webkit-user-select'),
+      }
+    })
+    expect(surface.userSelect).toBe('none')
+  }
+  await context.close()
+})
+
+test('uses document scrolling for mobile playground controls and keeps tabs available', async ({
+  browser,
+  browserName,
+  page,
+}) => {
+  test.skip(browserName === 'firefox', 'The mobile page-flow regression runs in Chromium and WebKit.')
+
+  const context = await browser.newContext({
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { height: 844, width: 390 },
+  })
+  const mobilePage = await context.newPage()
+
+  for (const viewport of [
+    { height: 844, width: 390 },
+    { height: 932, width: 430 },
+  ]) {
+    await mobilePage.setViewportSize(viewport)
+    await mobilePage.goto('/playground')
+    await expect(mobilePage.getByTestId('stage-status')).toContainText('ready')
+    const initial = await mobilePage.evaluate(() => {
+      const stage = document.querySelector<HTMLElement>('.playground-workspace .stage-shell')!
+      const panel = document.querySelector<HTMLElement>('.playground-panel')!
+      const panelScroll = document.querySelector<HTMLElement>('.playground-panel-scroll')!
+      return {
+        documentHeight: document.documentElement.scrollHeight,
+        panelOverflow: getComputedStyle(panel).overflowY,
+        panelScrollOverflow: getComputedStyle(panelScroll).overflowY,
+        panelTop: panel.getBoundingClientRect().top + window.scrollY,
+        stageHeight: stage.getBoundingClientRect().height,
+        viewportHeight: window.innerHeight,
+      }
+    })
+    expect(initial.documentHeight).toBeGreaterThan(initial.viewportHeight + 500)
+    expect(initial.panelOverflow).toBe('visible')
+    expect(initial.panelScrollOverflow).toBe('visible')
+    expect(initial.stageHeight).toBeGreaterThanOrEqual(280)
+    expect(initial.stageHeight).toBeLessThanOrEqual(381)
+
+    await mobilePage.evaluate(panelTop => window.scrollTo(0, panelTop + 240), initial.panelTop)
+    await expect.poll(() => mobilePage.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+    const scrolled = await mobilePage.evaluate(() => ({
+      headerHeight: document.querySelector('.site-header')!.getBoundingClientRect().height,
+      stageBottom: document.querySelector('.playground-workspace .stage-shell')!.getBoundingClientRect().bottom,
+      tabsTop: document.querySelector('.playground-tabs')!.getBoundingClientRect().top,
+    }))
+    expect(scrolled.stageBottom).toBeLessThan(0)
+    expect(scrolled.tabsTop).toBeCloseTo(scrolled.headerHeight, 0)
+  }
+  await context.close()
+
+  await page.setViewportSize({ height: 900, width: 1440 })
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  const desktop = await page.evaluate(() => {
+    const stage = document.querySelector('.playground-workspace .stage-shell')!.getBoundingClientRect()
+    const panel = document.querySelector('.playground-panel')!.getBoundingClientRect()
+    return {
+      panelOverflow: getComputedStyle(document.querySelector('.playground-panel-scroll')!).overflowY,
+      panelX: panel.x,
+      stageRight: stage.right,
+      stageY: stage.y,
+      tabsPosition: getComputedStyle(document.querySelector('.playground-tabs')!).position,
+      panelY: panel.y,
+    }
+  })
+  expect(desktop.stageRight).toBeLessThanOrEqual(desktop.panelX + 1)
+  expect(desktop.stageY).toBeCloseTo(desktop.panelY, 0)
+  expect(desktop.panelOverflow).toBe('auto')
+  expect(desktop.tabsPosition).toBe('static')
+})
+
+test('keeps the mobile playground canvas stable while viewport chrome and scroll change', async ({
+  browser,
+  browserName,
+}) => {
+  test.skip(browserName === 'firefox', 'Mobile Canvas stability is covered in Chromium and WebKit.')
+
+  const context = await browser.newContext({
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { height: 844, width: 390 },
+  })
+  const page = await context.newPage()
+  const consoleErrors: string[] = []
+  const pageErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => pageErrors.push(error.message))
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  const canvas = page.locator('.playground-workspace canvas')
+  await canvas.evaluate(element => element.setAttribute('data-stability-probe', 'original'))
+
+  const readDimensions = () => page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('.playground-workspace .stage-shell')!
+    const canvas = stage.querySelector<HTMLCanvasElement>('canvas')!
+    return {
+      backingHeight: canvas.height,
+      backingWidth: canvas.width,
+      canvasHeight: canvas.getBoundingClientRect().height,
+      stageHeight: stage.getBoundingClientRect().height,
+    }
+  })
+  const baseline = await readDimensions()
+  for (const height of [780, 720, 844]) {
+    await page.setViewportSize({ height, width: 390 })
+    await page.waitForTimeout(250)
+    const current = await readDimensions()
+    expect(current.stageHeight).toBeCloseTo(baseline.stageHeight, 0)
+    expect(current.canvasHeight).toBeCloseTo(baseline.canvasHeight, 0)
+    expect(current.backingHeight).toBe(baseline.backingHeight)
+    expect(current.backingWidth).toBe(baseline.backingWidth)
+    await expect(canvas).toHaveAttribute('data-stability-probe', 'original')
+  }
+
+  const beforeScroll = await readDimensions()
+  await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>('.playground-panel')!
+    window.scrollTo(0, panel.offsetTop + 240)
+  })
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+  const afterScroll = await readDimensions()
+  expect(afterScroll).toEqual(beforeScroll)
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+  await context.close()
+})
+
+test('keeps the mobile inspector canvas stable while viewport chrome and scroll change', async ({
+  browser,
+  browserName,
+}) => {
+  test.skip(browserName === 'firefox', 'Mobile Canvas stability is covered in Chromium and WebKit.')
+
+  const context = await browser.newContext({
+    deviceScaleFactor: 3,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { height: 844, width: 390 },
+  })
+  const page = await context.newPage()
+  const consoleErrors: string[] = []
+  const pageErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => pageErrors.push(error.message))
+  await page.goto('/inspect')
+  const canvas = page.locator('[data-testid="inspector-stage"] canvas')
+  await expect(canvas).toBeVisible()
+  await canvas.evaluate(element => element.setAttribute('data-stability-probe', 'original'))
+
+  const readDimensions = () => page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
+    const canvas = stage.querySelector<HTMLCanvasElement>('canvas')!
+    return {
+      backingHeight: canvas.height,
+      backingWidth: canvas.width,
+      canvasHeight: canvas.getBoundingClientRect().height,
+      stageHeight: stage.getBoundingClientRect().height,
+    }
+  })
+  const baseline = await readDimensions()
+  for (const height of [780, 720, 844]) {
+    await page.setViewportSize({ height, width: 390 })
+    await page.waitForTimeout(250)
+    const current = await readDimensions()
+    expect(current.stageHeight).toBeCloseTo(baseline.stageHeight, 0)
+    expect(current.canvasHeight).toBeCloseTo(baseline.canvasHeight, 0)
+    expect(current.backingHeight).toBe(baseline.backingHeight)
+    expect(current.backingWidth).toBe(baseline.backingWidth)
+    await expect(canvas).toHaveAttribute('data-stability-probe', 'original')
+  }
+
+  const beforeScroll = await readDimensions()
+  await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
+    window.scrollTo(0, stage.offsetTop + stage.offsetHeight)
+  })
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+  const afterScroll = await readDimensions()
+  expect(afterScroll).toEqual(beforeScroll)
+  const interactionStyle = await canvas.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      touchAction: style.touchAction,
+      userSelect: style.userSelect || style.getPropertyValue('-webkit-user-select'),
+    }
+  })
+  expect(interactionStyle).toEqual({ touchAction: 'pan-y', userSelect: 'none' })
+  expect(consoleErrors).toEqual([])
+  expect(pageErrors).toEqual([])
+  await context.close()
+})
+
 test('allows vertical page scrolling over the landing Live2D stage on touch screens', async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 })
   await page.goto('/')

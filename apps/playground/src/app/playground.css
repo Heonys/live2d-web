@@ -33,6 +33,14 @@
   box-shadow: 0 24px 64px rgb(0 0 0 / 24%);
   grid-template-columns: minmax(0, 1fr) 390px;
 }
+.playground-workspace .stage-shell,
+.playground-workspace [data-live2d-canvas],
+.playground-workspace canvas,
+.playground-workspace .stage-hint {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .playground-workspace .stage-shell {
   height: 100%;
   border: 0;
@@ -261,17 +269,38 @@ body.drawer-open {
     display: none;
   }
   .playground-workspace {
-    height: calc(100dvh - var(--site-header-height) - 88px);
-    min-height: 620px;
-    grid-template-rows: minmax(0, 1fr) minmax(250px, 42dvh);
+    height: auto;
+    min-height: 0;
+    overflow: visible;
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+  .playground-workspace .stage-shell {
+    height: clamp(280px, 86.67vw, 380px);
+  }
+  .playground-workspace [data-live2d-canvas],
+  .playground-workspace canvas {
+    touch-action: pan-y !important;
   }
   .playground-panel {
+    height: auto;
+    overflow: visible;
     border-top: 1px solid var(--line);
     border-left: 0;
+    grid-template-rows: auto auto;
+  }
+  .playground-tabs {
+    position: sticky;
+    z-index: 8;
+    top: var(--site-header-height);
+    background: var(--surface-1);
   }
   .playground-panel-scroll {
+    min-height: auto;
     padding-bottom: max(18px, env(safe-area-inset-bottom));
+    overflow-y: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
   }
   .playground-workspace .diagnostics {
     font-size: 9px;

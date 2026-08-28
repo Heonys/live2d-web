@@ -335,6 +335,23 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
   transform: translateX(-50%);
   white-space: nowrap;
 }
+.stage-hint-mobile {
+  display: none;
+}
+@media (hover: none), (pointer: coarse) {
+  .stage-hint {
+    width: max-content;
+    max-width: calc(100% - 28px);
+    text-align: center;
+    white-space: normal;
+  }
+  .stage-hint-desktop {
+    display: none;
+  }
+  .stage-hint-mobile {
+    display: inline;
+  }
+}
 
 .hit-readout {
   pointer-events: none;
@@ -724,5 +741,22 @@ label output {
 
   .stage-shell {
     height: 68vh;
+  }
+
+  .inspector-workspace .stage-shell {
+    height: clamp(360px, min(calc((100vw - 20px) * 1.5), calc(100svh - var(--site-header-height) - 48px)), 580px);
+  }
+
+  .inspector-workspace .stage-shell,
+  .inspector-workspace [data-live2d-canvas],
+  .inspector-workspace canvas {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .inspector-workspace [data-live2d-canvas],
+  .inspector-workspace canvas {
+    touch-action: pan-y !important;
   }
 }

@@ -141,6 +141,14 @@
   box-shadow: 0 10px 28px rgb(0 0 0 / 14%);
   contain: layout paint;
 }
+.landing-stage,
+.landing-stage [data-live2d-canvas],
+.landing-stage canvas,
+.landing-demo-controls button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .landing-stage {
   position: relative;
   height: var(--landing-stage-height);

@@ -252,7 +252,12 @@ function StageHint() {
   const messages = useSiteMessages().playground
   if (stage.status !== 'ready')
     return null
-  return <p className="stage-hint">{messages.followHint}</p>
+  return (
+    <p className="stage-hint">
+      <span className="stage-hint-desktop">{messages.followHintDesktop}</span>
+      <span className="stage-hint-mobile">{messages.followHintMobile}</span>
+    </p>
+  )
 }
 
 function stageErrorHint(error: Live2DError, locale: ReturnType<typeof useSiteLocale>) {
