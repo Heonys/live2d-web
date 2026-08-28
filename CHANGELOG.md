@@ -4,14 +4,14 @@
 
 ### Fixed
 
-- A MediaPipe worker that fails because the browser handed the library a real
-  module worker now says so and names the remedy. MediaPipe 1.0.1 loads its
-  WASM through `document.createElement` whenever `importScripts` is missing,
-  which is what a standards-compliant module worker looks like, so the task
-  died with a bare `Can't find variable: document`. Measured on Chrome for iOS;
-  Safari and the desktop bundlers get a classic bootstrap and never reach it.
-  The tracker still refuses to switch execution modes on its own, because that
-  is the application's choice.
+- A MediaPipe worker that dies reaching for `document` now names the remedy
+  instead of forwarding `Can't find variable: document`, which the caller
+  cannot act on. MediaPipe 1.0.1 touches `document` while fetching its WASM and
+  no worker has one. Measured on Chrome and the Google app on iOS, which run
+  WebKit inside their own WKWebView; Safari and KakaoTalk run the same build
+  without it. The tracker still refuses to switch execution modes on its own,
+  because that is the application's choice: catch the error and recreate with
+  `execution: 'main'`.
 - A tracking failure renders above the panel controls with its error code and
   the asset URL, instead of as grey small print below every checkbox. On a
   phone the old placement was a screen or two down, and the message it carried
