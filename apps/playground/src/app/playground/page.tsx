@@ -3,7 +3,6 @@
 import type {
   ExpressionOptions,
   IdleMotion,
-  Live2DError,
   ModelFit,
   ModelInfo,
   MotionOptions,
@@ -20,7 +19,7 @@ import type {
   MediaPipeWorkerFaceTracker,
 } from 'live2d-web/tracking/mediapipe'
 import type { AssetManifest } from '../../lib/assetManifest'
-import { createVolumeLipSync } from 'live2d-web'
+import { createVolumeLipSync, Live2DError } from 'live2d-web'
 import { mountLive2DDevtools } from 'live2d-web/devtools'
 import {
   LipSync,
@@ -95,6 +94,22 @@ function trackingResourceTimings(startedAt: number) {
       const filename = pathname.split('/').pop() || pathname
       return `${filename} ${entry.duration.toFixed(0)}ms`
     })
+}
+
+/**
+ * MediaPipe rejects a failed asset fetch with a DOM `error` Event, which
+ * stringifies to `[object Event]` and carries neither the URL nor the status.
+ * A tracking failure is almost always an asset that did not arrive, so keep
+ * whatever the library did manage to attach.
+ */
+function describeTrackingFailure(error: unknown) {
+  if (error instanceof Live2DError) {
+    const url = error.details && 'url' in error.details
+      ? String((error.details as { url?: unknown }).url ?? '')
+      : ''
+    return { code: error.code, message: error.message, url: url || undefined }
+  }
+  return { message: error instanceof Error ? error.message : String(error) }
 }
 
 function formatFaceStartupTiming(timing: FaceStartupTiming) {
@@ -351,7 +366,11 @@ export default function PlaygroundPage() {
   const [lipSyncError, setLipSyncError] = useState('')
   const [lipSyncMode, setLipSyncMode] = useState<'demo' | 'source'>('demo')
   const [faceTrackingActive, setFaceTrackingActive] = useState(false)
-  const [faceTrackingError, setFaceTrackingError] = useState('')
+  const [faceTrackingError, setFaceTrackingError] = useState<{
+    code?: string
+    message: string
+    url?: string
+  } | null>(null)
   const [faceTrackingStatus, setFaceTrackingStatus] = useState('idle')
   const [faceInferenceMs, setFaceInferenceMs] = useState(0)
   const [faceRoundTripMs, setFaceRoundTripMs] = useState(0)
@@ -454,7 +473,7 @@ export default function PlaygroundPage() {
 
   const startFaceTracking = useCallback(async () => {
     stopFaceTracking()
-    setFaceTrackingError('')
+    setFaceTrackingError(null)
     setFaceTrackingStatus('initializing')
     setFaceStartupTiming(null)
     resetFacePeak()
@@ -610,7 +629,7 @@ export default function PlaygroundPage() {
             }
           }
           catch (error) {
-            setFaceTrackingError(error instanceof Error ? error.message : String(error))
+            setFaceTrackingError(describeTrackingFailure(error))
             stopFaceTracking()
           }
         }
@@ -628,7 +647,7 @@ export default function PlaygroundPage() {
         video.srcObject = null
       }
       if (generation === faceGenerationRef.current) {
-        setFaceTrackingError(error instanceof Error ? error.message : String(error))
+        setFaceTrackingError(describeTrackingFailure(error))
         setFaceTrackingStatus('error')
       }
     }
@@ -836,7 +855,7 @@ export default function PlaygroundPage() {
     }
     catch (error) {
       queueMicrotask(() => {
-        setFaceTrackingError(error instanceof Error ? error.message : String(error))
+        setFaceTrackingError(describeTrackingFailure(error))
         stopFaceTracking()
       })
     }
@@ -1306,6 +1325,13 @@ export default function PlaygroundPage() {
                   {faceTrackingStatus}
                   {faceTrackingActive && ` · inference ${faceInferenceMs.toFixed(1)} ms · round trip ${faceRoundTripMs.toFixed(1)} ms · ${faceEffectiveFps.toFixed(0)} fps · ${(faceSkippedRatio * 100).toFixed(0)}% skipped`}
                 </output>
+                {faceTrackingError && (
+                  <p className="tracking-error" data-testid="tracking-failure" role="alert">
+                    {faceTrackingError.code && <strong>{faceTrackingError.code}</strong>}
+                    {faceTrackingError.message}
+                    {faceTrackingError.url && <span className="note">{faceTrackingError.url}</span>}
+                  </p>
+                )}
                 {faceStartupTiming && (
                   <output className="note" data-testid="face-startup-timing">
                     {formatFaceStartupTiming(faceStartupTiming)}
@@ -1447,7 +1473,6 @@ export default function PlaygroundPage() {
                     {messages.playground[channel]}
                   </label>
                 ))}
-                {faceTrackingError && <p className="note">{faceTrackingError}</p>}
               </section>
 
               <section

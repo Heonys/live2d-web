@@ -652,20 +652,7 @@ test('owns microphone sampling and tracks across restart and unmount', async ({
   expect(unexpectedErrors).toEqual([])
 })
 
-test('owns MediaPipe camera tracks across stop, restart and canvas unmount', async ({
-  browserName,
-  page,
-}) => {
-  test.skip(browserName !== 'chromium', 'The deterministic canvas camera uses Chromium captureStream.')
-  const unexpectedErrors: string[] = []
-  page.on('console', (message) => {
-    const isMediaPipeDelegateInfo = message.text().includes(
-      'Created TensorFlow Lite XNNPACK delegate for CPU.',
-    )
-    if (message.type() === 'error' && !isMediaPipeDelegateInfo)
-      unexpectedErrors.push(message.text())
-  })
-  page.on('pageerror', error => unexpectedErrors.push(error.message))
+async function stubCamera(page: Page) {
   await page.addInitScript(() => {
     const metrics = { activeTracks: 0, calls: 0, stops: 0 }
     const state = window as typeof window & { __fakeCamera: typeof metrics }
@@ -712,6 +699,23 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
       },
     })
   })
+}
+
+test('owns MediaPipe camera tracks across stop, restart and canvas unmount', async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== 'chromium', 'The deterministic canvas camera uses Chromium captureStream.')
+  const unexpectedErrors: string[] = []
+  page.on('console', (message) => {
+    const isMediaPipeDelegateInfo = message.text().includes(
+      'Created TensorFlow Lite XNNPACK delegate for CPU.',
+    )
+    if (message.type() === 'error' && !isMediaPipeDelegateInfo)
+      unexpectedErrors.push(message.text())
+  })
+  page.on('pageerror', error => unexpectedErrors.push(error.message))
+  await stubCamera(page)
 
   const metrics = () => page.evaluate(() => ({
     ...(window as typeof window & {
@@ -754,6 +758,29 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
   await expect.poll(async () => (await metrics()).activeTracks).toBe(0)
   expect(await metrics()).toMatchObject({ calls: 2, stops: 2 })
   expect(unexpectedErrors).toEqual([])
+})
+
+test('surfaces a tracking asset failure where the wearer will see it', async ({ page }) => {
+  await stubCamera(page)
+  // The exact failure that shipped for two releases: the MediaPipe assets 404.
+  await page.route('**/assets/mediapipe/**', route => route.abort())
+
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+  await page.getByRole('tab', { name: 'Tracking' }).click()
+  await page.getByRole('button', { name: 'Start face tracking' }).click()
+
+  const failure = page.getByTestId('tracking-failure')
+  await expect(failure).toBeVisible({ timeout: 60_000 })
+  await expect(failure).toContainText('tracking-error')
+  await expect(page.getByTestId('face-tracking-status')).toContainText('error')
+  // Above the controls, not buried under them: the panel scrolls on a phone and
+  // a message below every checkbox is a message nobody reads.
+  const [failureBox, buttonBox] = await Promise.all([
+    failure.boundingBox(),
+    page.getByRole('button', { name: 'Start face tracking' }).boundingBox(),
+  ])
+  expect(failureBox!.y).toBeLessThan(buttonBox!.y)
 })
 
 test('surfaces WebGL context loss and recreates the stage', async ({ page, browserName }) => {

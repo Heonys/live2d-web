@@ -195,6 +195,28 @@
  * tracker sees. A phone hands back a portrait stream, which `cover` cropped to
  * a sliver of the face inside a landscape box.
  */
+/*
+ * A tracking failure is the one message a wearer must not have to hunt for.
+ * It used to render as grey 12.5px text below every control, a screen or two
+ * down on a phone, which turned a plain 404 into an afternoon of guessing.
+ */
+.tracking-tools .tracking-error {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--text-1);
+  font: 13px/1.5 var(--font-mono);
+}
+.tracking-tools .tracking-error strong {
+  color: var(--danger);
+}
+.tracking-tools .tracking-error .note {
+  overflow-wrap: anywhere;
+}
+
 .tracking-tools video {
   width: 100%;
   aspect-ratio: 4 / 3;
