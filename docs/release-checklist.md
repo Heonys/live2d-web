@@ -19,10 +19,28 @@
 
 ## 2. 사람이 확인하는 것
 
-- **실제 카메라 10분.** Playground 웹캠 데모를 Hiyori(표준 매핑)로 연다.
-  고개를 위·아래·좌·우로 돌렸을 때 모델이 같은 방향으로 따라오는지, 눈을
-  감으면 감기는지, 입을 벌리면 벌어지는지. CI는 정지 초상뿐이라 부호가
-  뒤집혀도 잡지 못한다. Perfect Sync 모델이 있으면 같은 확인을 한 번 더.
+- **배포된 자산 확인.** 트래킹을 만지기 전에 공개 URL에서 MediaPipe 자산이
+  실제로 내려오는지 본다. 이것을 하지 않아 공개 데모의 얼굴 트래킹이 두 번의
+  발행에 걸쳐 죽어 있었다(2026-08-27 발견).
+
+  ```sh
+  for p in asset-manifest.json face_landmarker.task \
+           wasm/vision_wasm_internal.js wasm/vision_wasm_nosimd_internal.wasm; do
+    curl -s -o /dev/null -w "%{http_code} $p\n" \
+      https://live2d-web.heonys.dev/assets/mediapipe/$p
+  done
+  ```
+
+  넷 다 200이어야 한다. 하나라도 404면 배포 빌드가
+  `pnpm -w fetch-mediapipe-assets`를 부르지 않은 것이다.
+- **실제 카메라 10분.** **로컬이 아니라 배포된 공개 URL에서 연다.** 로컬에는
+  자산이 이미 있어 배포 누락이 결코 재현되지 않는다. Playground 웹캠 데모를
+  Hiyori(표준 매핑)로 열고, 고개를 위·아래·좌·우로 돌렸을 때 모델이 같은
+  방향으로 따라오는지, 눈을 감으면 감기는지, 입을 벌리면 벌어지는지 본다.
+  단계별 지표(`camera`·`tracker`·`first inference`·`calibration`·`tracked`)가
+  전부 숫자로 채워져야 한다. `…ms`가 남아 있으면 그 단계에서 실패한 것이다.
+  CI는 정지 초상뿐이라 부호가 뒤집혀도 잡지 못한다. Perfect Sync 모델이 있으면
+  같은 확인을 한 번 더.
 - **soak.** 트래킹은 main과 Worker를 합쳐 릴리스 총 5분(각 2.5분), 주간
   총 15분(각 7.5분)을 자동 실행한다. `LIVE2D_TRACKING_SOAK_MODES`로 한 모드만
   선택하면 설정한 전체 시간을 그 모드가 사용한다. 문제 조사 때

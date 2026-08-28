@@ -173,6 +173,15 @@ URL()` 전에 raw segment를 encode하지 않으면 `%`, `#`, `?`가 escape/quer
     대시보드가 아니라 파일에 있어야 빌드가 숨은 상태에 의존하지 않는다. Node
     버전은 `apps/playground/package.json`의 `engines.node`가 정한다.
 
+31. **자산 스크립트는 둘이고 배포는 둘 다 불러야 한다.** `fetch-assets`는
+    Cubism Core·Hiyori를, `fetch-mediapipe-assets`는 `face_landmarker.task`와
+    WASM 3종을 가져온다. `public/assets/`는 gitignore이므로 부르지 않은 쪽은
+    배포에 존재하지 않는다. 2026-08-27까지 배포 설정이 앞의 하나만 불러
+    **공개 데모의 얼굴 트래킹이 발행 두 번에 걸쳐 100% 실패**하고 있었다.
+    캐릭터는 뜨는데 트래킹만 죽으므로 증상이 브라우저 비호환처럼 보인다.
+    **CI 초록은 배포 정상을 뜻하지 않는다.** CI 워크플로는 둘 다 부르기 때문에
+    트래킹 e2e·soak·벤치마크가 전부 통과한다. 배포본을 검사하는 게이트는 없다.
+
 ## 규칙
 
 - 결정은 해당 주제 문서에 날짜 붙은 섹션으로 기록한다: 결정문 → 근거 → 포기와 대체 → 재검토 조건. 별도 adr/ 폴더를 만들지 않는다

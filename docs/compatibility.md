@@ -98,7 +98,7 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | warm tracker 생성 | 데스크톱 검증 | 로컬 자산과 warm HTTP cache에서 모드별 3회 중앙값이 Chromium main/Worker 339/373ms, WebKit 367/383ms, Firefox 270/340ms로 모두 5초 기준 이내다. Playground는 카메라·tracker·첫 inference·보정·tracked와 JS/WASM/task Resource Timing을 분리해 cold 지연 위치를 표시한다. |
 | Worker 안정성 | 데스크톱 검증 | Chromium 15분 soak에서 두 차례 재생성, pending 요청 정착, 최종 dispose, console/page error와 heap 증가 한계를 통과(2026-08-25) |
 | 물리 카메라 | **부분 검증** | 2026-08-25 실측에서 세 결함을 찾아 고쳤다. 얼굴을 너무 일찍 놓침(임계값 기본 0.5), 놓치면 0.55초 만에 정면 복귀, 경계 프레임의 자세 튐. 여기에 물리보다 뒤에 적용되어 머리카락이 따라오지 않던 문제까지 넷이다. |
-| iOS Safari 실기 | **미검증·0.7 차단 항목** | 실제 iPhone에서 Main/Worker 각 5분, 회전·백그라운드 복귀·정리와 실제 전면 카메라 지표가 필요하다. 데스크톱 WebKit이나 자동화로 대체하지 않는다. |
+| iOS Safari 실기 | **미검증·0.7 차단 항목** | 실제 iPhone에서 Main/Worker 각 5분, 회전·백그라운드 복귀·정리와 실제 전면 카메라 지표가 필요하다. 데스크톱 WebKit이나 자동화로 대체하지 않는다. **2026-08-27 첫 시도는 무효다.** 그 시점 배포에 MediaPipe 자산이 없어(전부 404) 어느 브라우저로 접속해도 tracker 생성이 실패했다. iOS 호환성에 대해 아무것도 말해주지 않으므로 결과로 세지 않는다. |
 | Android Chrome 실기 | **미검증·비차단** | 실제 Android 기기에서 Main/Worker 동작, 회전·백그라운드 복귀·정리와 **실제 후면/전면 카메라 지표**가 필요하다. 데스크톱 Chromium이나 device emulation으로 대체하지 않는다. 이 상태를 공개한 채 0.7을 발행할 수 있지만 지원 근거로 사용하지 않는다. |
 | 감도 기본값 | 1대 측정 | `sensitivity.pose` 기본은 **3**이다. 2026-08-25에 눈높이보다 낮은 노트북 카메라 한 대에서 자연스럽게 느껴진 값이며, 표본이 하나다. 카메라 위치에 좌우되므로 소비자는 사용자에게 노출하는 편이 낫다. |
 
