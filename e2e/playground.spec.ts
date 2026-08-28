@@ -1475,9 +1475,10 @@ test('keeps the mobile playground canvas stable while viewport chrome and scroll
   const readDimensions = () => page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('.playground-workspace .stage-shell')!
     const canvas = stage.querySelector<HTMLCanvasElement>('canvas')!
+    // The backing buffer is deliberately not part of this contract: automatic
+    // quality lowers it on long frames, which is a documented feature rather
+    // than drift. What must stay put is the CSS geometry and the canvas itself.
     return {
-      backingHeight: canvas.height,
-      backingWidth: canvas.width,
       canvasHeight: canvas.getBoundingClientRect().height,
       stageHeight: stage.getBoundingClientRect().height,
     }
@@ -1489,8 +1490,6 @@ test('keeps the mobile playground canvas stable while viewport chrome and scroll
     const current = await readDimensions()
     expect(current.stageHeight).toBeCloseTo(baseline.stageHeight, 0)
     expect(current.canvasHeight).toBeCloseTo(baseline.canvasHeight, 0)
-    expect(current.backingHeight).toBe(baseline.backingHeight)
-    expect(current.backingWidth).toBe(baseline.backingWidth)
     await expect(canvas).toHaveAttribute('data-stability-probe', 'original')
   }
 
@@ -1543,14 +1542,11 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
     const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
     const originalCanvas = stage.querySelector<HTMLCanvasElement>('canvas')!
     const baseline = {
-      backingHeight: originalCanvas.height,
-      backingWidth: originalCanvas.width,
       canvasHeight: originalCanvas.getBoundingClientRect().height,
       canvasWidth: originalCanvas.getBoundingClientRect().width,
       stageHeight: stage.getBoundingClientRect().height,
       stageWidth: stage.getBoundingClientRect().width,
     }
-    let backingMutations = 0
     let frameMismatches = 0
     let replacements = 0
     let resizeMismatches = 0
@@ -1561,15 +1557,12 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
         return true
       const canvasRect = currentCanvas.getBoundingClientRect()
       const stageRect = stage.getBoundingClientRect()
-      return Math.abs(currentCanvas.height - baseline.backingHeight) >= 1
-        || Math.abs(currentCanvas.width - baseline.backingWidth) >= 1
-        || Math.abs(canvasRect.height - baseline.canvasHeight) >= 0.5
+      return Math.abs(canvasRect.height - baseline.canvasHeight) >= 0.5
         || Math.abs(canvasRect.width - baseline.canvasWidth) >= 0.5
         || Math.abs(stageRect.height - baseline.stageHeight) >= 0.5
         || Math.abs(stageRect.width - baseline.stageWidth) >= 0.5
     }
     const publish = () => {
-      stage.dataset.stabilityBackingMutations = String(backingMutations)
       stage.dataset.stabilityFrameMismatches = String(frameMismatches)
       stage.dataset.stabilityReplacements = String(replacements)
       stage.dataset.stabilityResizeMismatches = String(resizeMismatches)
@@ -1581,26 +1574,12 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
     })
     resizeObserver.observe(stage)
     resizeObserver.observe(originalCanvas)
-    const mutationObserver = new MutationObserver((records) => {
+    const mutationObserver = new MutationObserver(() => {
       if (stage.querySelector('canvas') !== originalCanvas)
         replacements += 1
-      for (const record of records) {
-        if (record.type !== 'attributes')
-          continue
-        const baselineValue = record.attributeName === 'width'
-          ? String(baseline.backingWidth)
-          : String(baseline.backingHeight)
-        if (record.oldValue !== baselineValue || originalCanvas.getAttribute(record.attributeName!) !== baselineValue)
-          backingMutations += 1
-      }
       publish()
     })
     mutationObserver.observe(stage, { childList: true, subtree: true })
-    mutationObserver.observe(originalCanvas, {
-      attributeFilter: ['height', 'width'],
-      attributeOldValue: true,
-      attributes: true,
-    })
     const sampleFrame = () => {
       if (stage.querySelector('canvas') !== originalCanvas)
         replacements += 1
@@ -1616,9 +1595,10 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
   const readDimensions = () => page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
     const canvas = stage.querySelector<HTMLCanvasElement>('canvas')!
+    // The backing buffer is deliberately not part of this contract: automatic
+    // quality lowers it on long frames, which is a documented feature rather
+    // than drift. What must stay put is the CSS geometry and the canvas itself.
     return {
-      backingHeight: canvas.height,
-      backingWidth: canvas.width,
       canvasHeight: canvas.getBoundingClientRect().height,
       stageHeight: stage.getBoundingClientRect().height,
     }
@@ -1641,8 +1621,6 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
     const current = await readDimensions()
     expect(current.stageHeight).toBeCloseTo(baseline.stageHeight, 0)
     expect(current.canvasHeight).toBeCloseTo(baseline.canvasHeight, 0)
-    expect(current.backingHeight).toBe(baseline.backingHeight)
-    expect(current.backingWidth).toBe(baseline.backingWidth)
     await expect(canvas).toHaveAttribute('data-stability-probe', 'original')
   }
 
@@ -1675,13 +1653,11 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
   })
   expect(await readDimensions()).toEqual(beforeScroll)
   const stability = await page.getByTestId('inspector-stage').evaluate(element => ({
-    backingMutations: Number((element as HTMLElement).dataset.stabilityBackingMutations),
     frameMismatches: Number((element as HTMLElement).dataset.stabilityFrameMismatches),
     replacements: Number((element as HTMLElement).dataset.stabilityReplacements),
     resizeMismatches: Number((element as HTMLElement).dataset.stabilityResizeMismatches),
   }))
   expect(stability).toEqual({
-    backingMutations: 0,
     frameMismatches: 0,
     replacements: 0,
     resizeMismatches: 0,
