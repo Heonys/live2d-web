@@ -32,8 +32,8 @@ model, coordinate a private, licensed transfer outside a public issue.
 
 - Keep the root entry React-free and SSR-safe. Heavy or optional behavior uses
   a subpath and dynamic loading.
-- Preserve existing 0.x public contracts where possible. Discuss deprecation
-  and migration in `docs/api-design.md` before changing a signature.
+- Preserve existing 0.x public contracts where possible. Open an issue to
+  discuss deprecation and migration before changing a signature.
 - Add a focused unit test. Add Playwright coverage only for behavior that needs
   a browser, renderer or lifecycle boundary.
 - Run `pnpm verify:package` when exports or dependencies change. Run
