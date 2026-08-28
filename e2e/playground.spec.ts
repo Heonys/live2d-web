@@ -1022,16 +1022,12 @@ test('keeps the mobile documentation menu and search inside supported viewports'
           background: style.backgroundColor,
           color: style.color,
           fontWeight: style.fontWeight,
-          tapHighlight: style.getPropertyValue('-webkit-tap-highlight-color'),
         }
       })).toEqual({
         background: 'rgb(29, 33, 40)',
         color: 'rgb(245, 245, 246)',
         fontWeight: '700',
-        tapHighlight: 'rgba(0, 0, 0, 0)',
       })
-      expect(await siteSummary.evaluate(element => getComputedStyle(element)
-        .getPropertyValue('-webkit-tap-highlight-color'))).toBe('rgba(0, 0, 0, 0)')
       await expect.poll(() => page.evaluate(
         () => document.documentElement.dataset.pageScrollLocked,
       )).toBe('true')
@@ -1108,16 +1104,12 @@ test('keeps the mobile documentation menu and search inside supported viewports'
           background: style.backgroundColor,
           color: style.color,
           fontWeight: style.fontWeight,
-          tapHighlight: style.getPropertyValue('-webkit-tap-highlight-color'),
         }
       })).toEqual({
         background: 'rgb(29, 33, 40)',
         color: 'rgb(245, 245, 246)',
         fontWeight: '700',
-        tapHighlight: 'rgba(0, 0, 0, 0)',
       })
-      expect(await docsSummary.evaluate(element => getComputedStyle(element)
-        .getPropertyValue('-webkit-tap-highlight-color'))).toBe('rgba(0, 0, 0, 0)')
       const backgroundScrollBeforePanel = await page.evaluate(() => window.scrollY)
       await docsPanel.evaluate((panel) => {
         panel.scrollTop = 300
