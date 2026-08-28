@@ -10,10 +10,10 @@ import { DOC_LOCALES, DOC_PAGES, docHref, getDocPage } from '../../../../docs/ma
 import { openGraphLocale } from '../../../../i18n/metadata'
 import { siteUrl } from '../../../../lib/siteOrigin'
 
-const labels: Record<DocLocale, { apiNote: string, eyebrow: string, pagination: string, next: string, previous: string }> = {
-  en: { apiNote: 'Signatures are generated from the public TypeScript source.', eyebrow: 'live2d-web documentation', next: 'Next', pagination: 'Pagination', previous: 'Previous' },
-  ja: { apiNote: '公開 TypeScript の型定義から自動生成しています。', eyebrow: 'live2d-web ドキュメント', next: '次へ', pagination: 'ページ移動', previous: '前へ' },
-  ko: { apiNote: '공개 TypeScript 선언을 바탕으로 자동 생성합니다.', eyebrow: 'live2d-web 문서', next: '다음', pagination: '페이지 이동', previous: '이전' },
+const labels: Record<DocLocale, { apiNote: string, pagination: string, next: string, previous: string }> = {
+  en: { apiNote: 'Signatures are generated from the public TypeScript source.', next: 'Next', pagination: 'Pagination', previous: 'Previous' },
+  ja: { apiNote: '公開 TypeScript の型定義から自動生成しています。', next: '次へ', pagination: 'ページ移動', previous: '前へ' },
+  ko: { apiNote: '공개 TypeScript 선언을 바탕으로 자동 생성합니다.', next: '다음', pagination: '페이지 이동', previous: '이전' },
 }
 
 interface PageParameters { locale: string, slug?: string[] }
@@ -96,9 +96,10 @@ export default async function DocumentationPage({ params }: {
     <>
       <DocsMain>
         <article className="docs-article">
-          <p className="eyebrow">{labels[locale].eyebrow}</p>
-          <h1>{page.title[locale]}</h1>
-          <p className="docs-lead">{page.summary[locale]}</p>
+          <header className="docs-article-header">
+            <h1>{page.title[locale]}</h1>
+            <p className="docs-lead">{page.summary[locale]}</p>
+          </header>
           <Content />
           {api && (
             <section className="api-reference">

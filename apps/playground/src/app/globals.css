@@ -744,7 +744,7 @@ label output {
   }
 
   .inspector-workspace .stage-shell {
-    height: clamp(360px, min(calc((100vw - 20px) * 1.5), calc(100svh - var(--site-header-height) - 48px)), 580px);
+    height: clamp(360px, calc((100vw - 20px) * 1.5), 580px);
   }
 
   .inspector-workspace .stage-shell,

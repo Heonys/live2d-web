@@ -83,7 +83,7 @@ export function SiteHeader() {
           return
         const focusable = [...details.querySelectorAll<HTMLElement>(
           'summary, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-        )].filter(element => !element.hasAttribute('hidden'))
+        )].filter(element => !element.hasAttribute('hidden') && element.tabIndex >= 0)
         const first = focusable[0]
         const last = focusable.at(-1)
         if (!first || !last)
@@ -226,13 +226,29 @@ export function SiteHeader() {
               <span />
               <span />
             </summary>
+            <button
+              aria-label={messages.header.close}
+              className="site-mobile-backdrop"
+              tabIndex={-1}
+              type="button"
+              onClick={closeNavigation}
+            />
             <div className="site-mobile-panel" data-page-scroll-region>
               <nav aria-label={messages.header.navigation} className="site-mobile-global-links">
-                <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
-                <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
-                <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
-                <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
-                <a href="https://github.com/Heonys/live2d-web">GitHub</a>
+                <div className="site-mobile-link-group">
+                  <p>{messages.header.learn}</p>
+                  <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
+                  <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
+                </div>
+                <div className="site-mobile-link-group">
+                  <p>{messages.header.tools}</p>
+                  <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
+                  <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
+                </div>
+                <div className="site-mobile-link-group">
+                  <p>{messages.header.project}</p>
+                  <a href="https://github.com/Heonys/live2d-web" onClick={closeNavigation}>GitHub</a>
+                </div>
               </nav>
               <div className="site-mobile-languages" aria-label={messages.header.language}>
                 {SITE_LOCALES.map(language => (

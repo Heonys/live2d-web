@@ -1000,10 +1000,25 @@ test('keeps the mobile documentation menu and search inside supported viewports'
       expect(header).not.toBeNull()
       expect(panel).not.toBeNull()
       expect(header?.y ?? -1).toBeCloseTo(0, 0)
-      expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0)))).toBeLessThanOrEqual(1)
-      expect(Math.abs((panel?.height ?? 0) - (viewport.height - (header?.height ?? 0)))).toBeLessThanOrEqual(1)
+      expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0) + 8))).toBeLessThanOrEqual(1)
+      expect(panel?.width ?? 0).toBeLessThanOrEqual(440)
+      expect(panel?.width ?? 0).toBeCloseTo(Math.min(440, viewport.width - 24), 0)
+      expect(panel?.height ?? 0).toBeLessThanOrEqual(520)
+      await expect(siteMenu.locator('.site-mobile-link-group > p')).toHaveText([
+        'Learn',
+        'Tools',
+        'Project',
+      ])
+      await expect(siteMenu.locator('.site-mobile-link-group a[aria-current="page"]')).toHaveText('Documentation')
+      await expect.poll(() => page.evaluate(
+        () => document.documentElement.dataset.pageScrollLocked,
+      )).toBe('true')
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
 
+      await siteMenu.locator('.site-mobile-backdrop').click({ position: { x: 4, y: 4 } })
+      await expect(siteMenu).not.toHaveAttribute('open', '')
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
+      await siteSummary.click()
       await siteSummary.press('Shift+Tab')
       await expect(siteMenu.locator('.site-mobile-languages a').last()).toBeFocused()
       await page.keyboard.press('Escape')
@@ -1074,6 +1089,11 @@ test('keeps the native mobile documentation menu usable without JavaScript', asy
   })
   const page = await context.newPage()
   await page.goto('/docs/en')
+  const siteMenu = page.locator('details.site-mobile-menu')
+  await siteMenu.locator('summary.site-menu-button').click()
+  await expect(siteMenu).toHaveAttribute('open', '')
+  await expect(siteMenu.locator('a[href="/playground"]')).toBeVisible()
+  await siteMenu.locator('summary.site-menu-button').click()
   const details = page.locator('details.docs-mobile-navigation')
   await details.locator('summary.docs-mobile-summary').click()
   await expect(details).toHaveAttribute('open', '')
@@ -1082,6 +1102,40 @@ test('keeps the native mobile documentation menu usable without JavaScript', asy
   await expect(page).toHaveURL(/\/docs\/en\/react$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('React')
   await context.close()
+})
+
+test('uses a title, subtitle and divider for every documentation locale', async ({ page }) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  for (const [route, title] of [
+    ['/docs/en', 'Getting started'],
+    ['/docs/ko', '시작하기'],
+    ['/docs/ja', 'はじめに'],
+  ] as const) {
+    await page.goto(route)
+    const header = page.locator('.docs-article-header')
+    await expect(header.getByRole('heading', { level: 1 })).toHaveText(title)
+    await expect(header.locator('.docs-lead')).not.toBeEmpty()
+    await expect(page.locator('.docs-article > .eyebrow')).toHaveCount(0)
+    const style = await header.evaluate((element) => {
+      const heading = element.querySelector('h1')!
+      const lead = element.querySelector<HTMLElement>('.docs-lead')!
+      return {
+        borderBottomWidth: getComputedStyle(element).borderBottomWidth,
+        headingSize: getComputedStyle(heading).fontSize,
+        leadSize: getComputedStyle(lead).fontSize,
+      }
+    })
+    expect(style).toEqual({
+      borderBottomWidth: '1px',
+      headingSize: '44px',
+      leadSize: '17px',
+    })
+  }
+
+  await page.setViewportSize({ height: 900, width: 1440 })
+  await page.goto('/docs/en')
+  await expect(page.locator('.docs-article-header > h1')).toHaveCSS('font-size', '64px')
+  await expect(page.locator('.docs-lead')).toHaveCSS('font-size', '19px')
 })
 
 test('keeps mobile documentation code sizing consistent', async ({ page }) => {
@@ -1332,9 +1386,84 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
   })
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto('/inspect')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
   const canvas = page.locator('[data-testid="inspector-stage"] canvas')
   await expect(canvas).toBeVisible()
   await canvas.evaluate(element => element.setAttribute('data-stability-probe', 'original'))
+
+  await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
+    const originalCanvas = stage.querySelector<HTMLCanvasElement>('canvas')!
+    const baseline = {
+      backingHeight: originalCanvas.height,
+      backingWidth: originalCanvas.width,
+      canvasHeight: originalCanvas.getBoundingClientRect().height,
+      canvasWidth: originalCanvas.getBoundingClientRect().width,
+      stageHeight: stage.getBoundingClientRect().height,
+      stageWidth: stage.getBoundingClientRect().width,
+    }
+    let backingMutations = 0
+    let frameMismatches = 0
+    let replacements = 0
+    let resizeMismatches = 0
+
+    const geometryChanged = () => {
+      const currentCanvas = stage.querySelector<HTMLCanvasElement>('canvas')
+      if (!currentCanvas)
+        return true
+      const canvasRect = currentCanvas.getBoundingClientRect()
+      const stageRect = stage.getBoundingClientRect()
+      return Math.abs(currentCanvas.height - baseline.backingHeight) >= 1
+        || Math.abs(currentCanvas.width - baseline.backingWidth) >= 1
+        || Math.abs(canvasRect.height - baseline.canvasHeight) >= 0.5
+        || Math.abs(canvasRect.width - baseline.canvasWidth) >= 0.5
+        || Math.abs(stageRect.height - baseline.stageHeight) >= 0.5
+        || Math.abs(stageRect.width - baseline.stageWidth) >= 0.5
+    }
+    const publish = () => {
+      stage.dataset.stabilityBackingMutations = String(backingMutations)
+      stage.dataset.stabilityFrameMismatches = String(frameMismatches)
+      stage.dataset.stabilityReplacements = String(replacements)
+      stage.dataset.stabilityResizeMismatches = String(resizeMismatches)
+    }
+    const resizeObserver = new ResizeObserver(() => {
+      if (geometryChanged())
+        resizeMismatches += 1
+      publish()
+    })
+    resizeObserver.observe(stage)
+    resizeObserver.observe(originalCanvas)
+    const mutationObserver = new MutationObserver((records) => {
+      if (stage.querySelector('canvas') !== originalCanvas)
+        replacements += 1
+      for (const record of records) {
+        if (record.type !== 'attributes')
+          continue
+        const baselineValue = record.attributeName === 'width'
+          ? String(baseline.backingWidth)
+          : String(baseline.backingHeight)
+        if (record.oldValue !== baselineValue || originalCanvas.getAttribute(record.attributeName!) !== baselineValue)
+          backingMutations += 1
+      }
+      publish()
+    })
+    mutationObserver.observe(stage, { childList: true, subtree: true })
+    mutationObserver.observe(originalCanvas, {
+      attributeFilter: ['height', 'width'],
+      attributeOldValue: true,
+      attributes: true,
+    })
+    const sampleFrame = () => {
+      if (stage.querySelector('canvas') !== originalCanvas)
+        replacements += 1
+      if (geometryChanged())
+        frameMismatches += 1
+      publish()
+      requestAnimationFrame(sampleFrame)
+    }
+    publish()
+    requestAnimationFrame(sampleFrame)
+  })
 
   const readDimensions = () => page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
@@ -1347,9 +1476,20 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
     }
   })
   const baseline = await readDimensions()
+  expect(baseline.stageHeight).toBeCloseTo(555, 0)
   for (const height of [780, 720, 844]) {
     await page.setViewportSize({ height, width: 390 })
-    await page.waitForTimeout(250)
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      let frames = 0
+      const waitForFrames = () => {
+        frames += 1
+        if (frames >= 4)
+          resolve()
+        else
+          requestAnimationFrame(waitForFrames)
+      }
+      requestAnimationFrame(waitForFrames)
+    }))
     const current = await readDimensions()
     expect(current.stageHeight).toBeCloseTo(baseline.stageHeight, 0)
     expect(current.canvasHeight).toBeCloseTo(baseline.canvasHeight, 0)
@@ -1359,13 +1499,45 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
   }
 
   const beforeScroll = await readDimensions()
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     const stage = document.querySelector<HTMLElement>('[data-testid="inspector-stage"]')!
-    window.scrollTo(0, stage.offsetTop + stage.offsetHeight)
+    const target = Math.min(
+      stage.offsetTop + stage.offsetHeight,
+      document.documentElement.scrollHeight - innerHeight,
+    )
+    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    for (let step = 1; step <= 20; step += 1) {
+      window.scrollTo(0, target * step / 20)
+      await nextFrame()
+    }
+    await nextFrame()
+    await nextFrame()
   })
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
-  const afterScroll = await readDimensions()
-  expect(afterScroll).toEqual(beforeScroll)
+  expect(await readDimensions()).toEqual(beforeScroll)
+  await page.evaluate(async () => {
+    const start = window.scrollY
+    const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    for (let step = 19; step >= 0; step -= 1) {
+      window.scrollTo(0, start * step / 20)
+      await nextFrame()
+    }
+    await nextFrame()
+    await nextFrame()
+  })
+  expect(await readDimensions()).toEqual(beforeScroll)
+  const stability = await page.getByTestId('inspector-stage').evaluate(element => ({
+    backingMutations: Number((element as HTMLElement).dataset.stabilityBackingMutations),
+    frameMismatches: Number((element as HTMLElement).dataset.stabilityFrameMismatches),
+    replacements: Number((element as HTMLElement).dataset.stabilityReplacements),
+    resizeMismatches: Number((element as HTMLElement).dataset.stabilityResizeMismatches),
+  }))
+  expect(stability).toEqual({
+    backingMutations: 0,
+    frameMismatches: 0,
+    replacements: 0,
+    resizeMismatches: 0,
+  })
   const interactionStyle = await canvas.evaluate((element) => {
     const style = getComputedStyle(element)
     return {
@@ -1374,6 +1546,12 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
     }
   })
   expect(interactionStyle).toEqual({ touchAction: 'pan-y', userSelect: 'none' })
+  const stageStyle = await page.getByTestId('inspector-stage').evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { borderRadius: style.borderRadius, boxShadow: style.boxShadow }
+  })
+  expect(stageStyle.borderRadius).toBe('22px')
+  expect(stageStyle.boxShadow).not.toBe('none')
   expect(consoleErrors).toEqual([])
   expect(pageErrors).toEqual([])
   await context.close()

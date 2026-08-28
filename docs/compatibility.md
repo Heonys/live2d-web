@@ -84,6 +84,22 @@ Canvas 0개와 console error 0개를 확인했다. 이 실행은 설치 경계 �
 SSR evaluation, parameter driver 격리·정리, motion/sequence/expression 호출,
 target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소비자가 제공한다.
 
+### 2026-08-28 모바일 Inspector Stage 높이 결정
+
+- **결정:** 공개 데모의 760px 이하 Inspector Stage 높이는 화면 너비만으로
+  계산한다. 주소창·하단 도구 모음이 바꾸는 viewport 높이는 Stage와 Canvas
+  backing buffer 크기에 반영하지 않는다.
+- **근거:** 같은 방식인 Playground는 iPhone에서 안정적이지만 `svh` 상한이
+  남아 있던 Inspector는 카카오톡 인앱 브라우저의 도구 모음 전환 순간에만
+  모델이 흔들렸다. 카카오 인앱 브라우저의 상·하단 바가 height를 바꾼다는
+  [별도 사례](https://devtalk.kakao.com/t/topic/116428)도 있다.
+- **포기와 대체:** `visualViewport` 값을 계속 반영하는 방식과 카드의 둥근
+  모서리·그림자를 제거하는 방식은 쓰지 않는다. 너비 기반 고정 높이와 기존
+  카드 외형을 함께 유지한다.
+- **재검토 조건:** 실제 기기에서 Stage·Canvas·backing buffer 크기가 모두
+  고정인데도 깜빡임이 재현되거나, 가로 화면에서 너비 기반 높이가 Inspector
+  사용을 방해하면 별도의 인앱 브라우저 합성 대책을 검토한다.
+
 ## MediaPipe 선택 기능
 
 | 대상 | 상태 | 현재 실제 검증 |

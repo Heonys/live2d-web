@@ -355,24 +355,26 @@
   margin: 0 auto;
   padding: 72px 0 110px;
 }
-.docs-article .eyebrow {
-  margin: 0 0 14px;
-  color: var(--text-3);
-  font-size: 12px;
-  letter-spacing: 0.08em;
+.docs-article-header {
+  margin-bottom: 52px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--line);
 }
-.docs-article > h1 {
+.docs-article-header > h1 {
   margin: 0;
   color: var(--text-1);
-  font-size: clamp(40px, 5vw, 56px);
-  line-height: 1.05;
+  font-size: clamp(44px, 7vw, 64px);
+  line-height: 1;
   letter-spacing: -0.045em;
 }
-.docs-lead {
-  margin: 18px 0 52px;
+.docs-article .docs-lead {
+  margin: 18px 0 0;
   color: var(--text-2);
   font-size: 19px;
   line-height: 1.7;
+}
+.docs-article > .docs-article-header + h2 {
+  margin-top: 0;
 }
 .docs-article h2 {
   margin: 52px 0 16px;
@@ -828,12 +830,12 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   .docs-main {
     padding-inline: 18px;
   }
-  .docs-article > h1 {
-    font-size: 38px;
-  }
-  .docs-lead {
+  .docs-article-header {
     margin-bottom: 38px;
-    font-size: 16px;
+    padding-bottom: 24px;
+  }
+  .docs-article .docs-lead {
+    font-size: 17px;
   }
   .docs-article h2 {
     margin-top: 42px;
