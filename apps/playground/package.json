@@ -5,7 +5,7 @@
     "node": "24.x"
   },
   "scripts": {
-    "prebuild": "pnpm docs:generate",
+    "prebuild": "node ../../scripts/check-tracking-assets.mjs && pnpm docs:generate",
     "predev": "pnpm docs:generate",
     "docs:generate": "node ../../scripts/generate-api-reference.mjs && tsx ../../scripts/generate-doc-search.ts",
     "dev": "next dev",

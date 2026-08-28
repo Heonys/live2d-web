@@ -52,6 +52,9 @@ jobs:
       - run: pnpm docs:check
       - run: pnpm verify:package
       - run: pnpm verify:packed-consumers
+      # The playground build asserts the tracking assets exist, because a deploy
+      # without them serves 404s and face tracking dies in every browser.
+      - run: pnpm fetch-mediapipe-assets
       - run: pnpm -F @live2d-web/playground build
 
   # Hiyori and Cubism Core are licensed downloads: fetched fresh each run

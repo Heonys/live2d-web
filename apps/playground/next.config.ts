@@ -9,9 +9,14 @@ const nextConfig: NextConfig = {
     // Cubism Core·모델 에셋은 불변 파일 — 재방문·재시도를 즉시로 만든다
     return [
       {
+        // immutable을 붙이지 않는다. 이 규칙은 파일 존재와 무관하게 적용되어
+        // 404 응답에도 그대로 실리는데, immutable이면 브라우저가 새로고침에도
+        // 재검증을 건너뛴다. 자산이 잠깐이라도 빠지면 그것을 받은 방문자가
+        // 1년간 복구되지 않는다. 2026-08-28 실기기 검증이 그 상태에 빠졌다.
+        // max-age만으로도 재방문은 그대로 캐시에서 오고, 새로고침은 살아난다.
         source: '/assets/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000' },
         ],
       },
       {
