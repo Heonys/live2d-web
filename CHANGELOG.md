@@ -12,6 +12,13 @@
   without it. The tracker still refuses to switch execution modes on its own,
   because that is the application's choice: catch the error and recreate with
   `execution: 'main'`.
+- The Playground exposes eye sensitivity alongside pose sensitivity and reports
+  the eye openness the tracker actually reaches, including the lowest value
+  since calibration. A blink is over before a 100ms readout samples it, so the
+  instant value never showed how far the lid got, and the eye channel had no
+  control at all. Measuring with it is what established that MediaPipe reports
+  about 0.8 for a fully closed eye, and that raising the gain to compensate
+  makes ordinary blinking twitchy. The default stays at 1.
 - A tracking failure renders above the panel controls with its error code and
   the asset URL, instead of as grey small print below every checkbox. On a
   phone the old placement was a screen or two down, and the message it carried

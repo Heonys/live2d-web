@@ -377,9 +377,18 @@ export default function PlaygroundPage() {
   const [faceEffectiveFps, setFaceEffectiveFps] = useState(0)
   const [faceSkippedRatio, setFaceSkippedRatio] = useState(0)
   const [faceStartupTiming, setFaceStartupTiming] = useState<FaceStartupTiming | null>(null)
-  const [faceExecution, setFaceExecution] = useState<FaceTrackingExecution>('worker')
+  // Worker fails outright on iOS Chrome and the Google app: the MediaPipe
+  // loader reaches for `document` while fetching its WASM. Main runs
+  // everywhere, so the demo starts where it works.
+  const [faceExecution, setFaceExecution] = useState<FaceTrackingExecution>('main')
   const [faceMapping, setFaceMapping] = useState<MediaPipeMappingMode>('auto')
   const [facePoseSensitivity, setFacePoseSensitivity] = useState(3)
+  const [faceEyeSensitivity, setFaceEyeSensitivity] = useState(1)
+  // The mapping sends `1 - blink` to an inverted parameter, so a wearer who
+  // closes their eyes fully and still sees them open cannot tell whether
+  // MediaPipe under-reports the blink or the gain is too low. Show the value.
+  const [faceEyes, setFaceEyes] = useState({ left: 1, low: 1, right: 1 })
+  const faceEyeLowRef = useRef(Number.POSITIVE_INFINITY)
   const [faceLostMode, setFaceLostMode] = useState<MediaPipeFaceLostBehaviour>('hold')
   const [facePose, setFacePose] = useState({ x: 0, y: 0, z: 0 })
   const [facePeak, setFacePeak] = useState({ x: 0, y: 0, z: 0 })
@@ -468,6 +477,7 @@ export default function PlaygroundPage() {
 
   const resetFacePeak = useCallback(() => {
     facePeakRef.current = { x: 0, y: 0, z: 0 }
+    faceEyeLowRef.current = Number.POSITIVE_INFINITY
     setFacePeak({ x: 0, y: 0, z: 0 })
   }, [])
 
@@ -548,7 +558,7 @@ export default function PlaygroundPage() {
       const attachOptions: MediaPipeAttachOptions = {
         channels: faceChannels,
         mapping: faceMapping,
-        sensitivity: { pose: facePoseSensitivity },
+        sensitivity: { eyes: faceEyeSensitivity, pose: facePoseSensitivity },
       }
       const tracking = {
         detach: createdTracker.attach(controller, attachOptions),
@@ -617,10 +627,22 @@ export default function PlaygroundPage() {
             peak.x = Math.max(peak.x, Math.abs(pose.x))
             peak.y = Math.max(peak.y, Math.abs(pose.y))
             peak.z = Math.max(peak.z, Math.abs(pose.z))
+            // Lowest, not latest: a blink is over before the readout samples,
+            // so the instant value never shows how far the lid actually got.
+            const eyes = {
+              left: activeController.getParameter('ParamEyeLOpen'),
+              right: activeController.getParameter('ParamEyeROpen'),
+            }
+            faceEyeLowRef.current = Math.min(
+              faceEyeLowRef.current,
+              eyes.left,
+              eyes.right,
+            )
             if (timestamp - facePoseSampledAtRef.current >= 100) {
               facePoseSampledAtRef.current = timestamp
               setFacePose(pose)
               setFacePeak({ ...peak })
+              setFaceEyes({ ...eyes, low: faceEyeLowRef.current })
               setFaceBody({
                 x: activeController.getParameter('ParamBodyAngleX'),
                 y: activeController.getParameter('ParamBodyAngleY'),
@@ -656,6 +678,7 @@ export default function PlaygroundPage() {
     faceChannels,
     faceLostMode,
     faceMapping,
+    faceEyeSensitivity,
     facePoseSensitivity,
     faceExecution,
     messages.playground.cameraUnavailable,
@@ -850,7 +873,7 @@ export default function PlaygroundPage() {
       tracking.detach = tracking.tracker.attach(controller, {
         channels: faceChannels,
         mapping: faceMapping,
-        sensitivity: { pose: facePoseSensitivity },
+        sensitivity: { eyes: faceEyeSensitivity, pose: facePoseSensitivity },
       })
     }
     catch (error) {
@@ -859,7 +882,7 @@ export default function PlaygroundPage() {
         stopFaceTracking()
       })
     }
-  }, [controller, faceChannels, faceMapping, facePoseSensitivity, stopFaceTracking])
+  }, [controller, faceChannels, faceEyeSensitivity, faceMapping, facePoseSensitivity, stopFaceTracking])
 
   // onFaceLost is fixed when the Face Landmarker is built, so re-attaching
   // cannot pick it up: the whole tracker has to come back.
@@ -1341,6 +1364,17 @@ export default function PlaygroundPage() {
                   </output>
                 )}
                 {faceTrackingActive && (
+                  <output className="note" data-testid="face-eye-readout">
+                    {messages.playground.eyeReadout}
+                    {' L '}
+                    {faceEyes.left.toFixed(2)}
+                    {' · R '}
+                    {faceEyes.right.toFixed(2)}
+                    {' · min '}
+                    {Number.isFinite(faceEyes.low) ? faceEyes.low.toFixed(2) : '—'}
+                  </output>
+                )}
+                {faceTrackingActive && (
                   <table className="pose-readout" data-testid="face-pose-readout">
                     <thead>
                       <tr>
@@ -1423,6 +1457,20 @@ export default function PlaygroundPage() {
                     value={facePoseSensitivity}
                     onChange={event =>
                       setFacePoseSensitivity(Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  {messages.playground.eyeSensitivity}
+                  <output>{faceEyeSensitivity.toFixed(2)}</output>
+                  <input
+                    aria-label={messages.playground.eyeSensitivity}
+                    max={5}
+                    min={0.1}
+                    step={0.05}
+                    type="range"
+                    value={faceEyeSensitivity}
+                    onChange={event =>
+                      setFaceEyeSensitivity(Number(event.target.value))}
                   />
                 </label>
                 <label>
