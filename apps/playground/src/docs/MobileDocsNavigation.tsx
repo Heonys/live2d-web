@@ -3,6 +3,7 @@
 import type { DocLocale } from './manifest'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
+import { lockPageScroll } from '../components/pageScrollLock'
 import { useSiteMessages } from '../i18n/SiteLocale'
 import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
@@ -27,7 +28,8 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
     if (!details)
       return
 
-    let restoreBodyScroll = () => {}
+    let releaseScrollLock = () => {}
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!details.open)
         return
@@ -57,17 +59,13 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
       }
     }
     const handleToggle = () => {
-      restoreBodyScroll()
+      releaseScrollLock()
+      releaseScrollLock = () => {}
       if (!details.open)
         return
 
+      releaseScrollLock = lockPageScroll()
       window.dispatchEvent(new CustomEvent('live2d-web:mobile-menu-open', { detail: 'docs' }))
-      const previousOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-      restoreBodyScroll = () => {
-        document.body.style.overflow = previousOverflow
-        restoreBodyScroll = () => {}
-      }
     }
     const closeForOtherMenu = (event: Event) => {
       if ((event as CustomEvent<string>).detail !== 'docs')
@@ -78,7 +76,7 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
     document.addEventListener('keydown', handleKeyDown)
     window.addEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
     return () => {
-      restoreBodyScroll()
+      releaseScrollLock()
       details.removeEventListener('toggle', handleToggle)
       document.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
@@ -93,14 +91,22 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
   return (
     <details ref={detailsRef} className="docs-mobile-navigation">
       <summary ref={summaryRef} aria-label={messages.menu} className="docs-mobile-summary">
-        <span>{messages.menu}</span>
+        <span>{messages.label}</span>
         <strong>{currentPage?.title[locale]}</strong>
         <svg aria-hidden="true" viewBox="0 0 16 16">
           <path d="m4 6 4 4 4-4" />
         </svg>
       </summary>
-      <div className="docs-mobile-panel">
-        <DocsSearchTrigger />
+      <div
+        aria-label={messages.menu}
+        aria-modal="true"
+        className="docs-mobile-panel"
+        data-page-scroll-region
+        role="dialog"
+      >
+        <div className="docs-mobile-search">
+          <DocsSearchTrigger />
+        </div>
         <nav aria-label={messages.navigation}>
           {DOC_GROUPS.map(group => (
             <section key={group}>

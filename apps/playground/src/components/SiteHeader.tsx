@@ -17,6 +17,7 @@ import {
   switchLocalePath,
 } from '../i18n/site'
 import { useSiteLocale, useSiteMessages } from '../i18n/SiteLocale'
+import { lockPageScroll } from './pageScrollLock'
 
 function subscribeToLocation(callback: () => void) {
   window.addEventListener('popstate', callback)
@@ -61,14 +62,16 @@ export function SiteHeader() {
     const details = mobileMenuRef.current
     if (!details)
       return
-    let restoreOpenState = () => {}
+    let removeOpenListeners = () => {}
+    let releaseScrollLock = () => {}
     const handleToggle = () => {
-      restoreOpenState()
+      removeOpenListeners()
+      releaseScrollLock()
+      releaseScrollLock = () => {}
       if (!details.open)
         return
+      releaseScrollLock = lockPageScroll()
       window.dispatchEvent(new CustomEvent('live2d-web:mobile-menu-open', { detail: 'site' }))
-      const previousOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
       const handleKeyDown = (event: KeyboardEvent) => {
         if (event.key === 'Escape') {
           event.preventDefault()
@@ -95,10 +98,9 @@ export function SiteHeader() {
         }
       }
       document.addEventListener('keydown', handleKeyDown)
-      restoreOpenState = () => {
-        document.body.style.overflow = previousOverflow
+      removeOpenListeners = () => {
         document.removeEventListener('keydown', handleKeyDown)
-        restoreOpenState = () => {}
+        removeOpenListeners = () => {}
       }
     }
     const closeForOtherMenu = (event: Event) => {
@@ -108,7 +110,8 @@ export function SiteHeader() {
     details.addEventListener('toggle', handleToggle)
     window.addEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
     return () => {
-      restoreOpenState()
+      removeOpenListeners()
+      releaseScrollLock()
       details.removeEventListener('toggle', handleToggle)
       window.removeEventListener('live2d-web:mobile-menu-open', closeForOtherMenu)
     }
@@ -211,139 +214,142 @@ export function SiteHeader() {
     return null
 
   return (
-    <header className="site-header">
-      <div className="site-header-inner">
-        <DocsIntentLink className="site-wordmark" href={localizedPath(currentLocale, '/')} onClick={closeNavigation}>
-          <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
-          <span>live2d-web</span>
-        </DocsIntentLink>
-        <details ref={mobileMenuRef} className="site-mobile-menu">
-          <summary ref={mobileSummaryRef} aria-label={messages.header.toggle} className="site-menu-button">
-            <span />
-            <span />
-          </summary>
-          <div className="site-mobile-panel">
-            <nav aria-label={messages.header.navigation} className="site-mobile-global-links">
-              <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
-              <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
-              <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
-              <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
-              <a href="https://github.com/Heonys/live2d-web">GitHub</a>
-            </nav>
-            <div className="site-mobile-languages" aria-label={messages.header.language}>
-              {SITE_LOCALES.map(language => (
-                <Link
-                  key={language}
-                  aria-current={language === currentLocale ? 'page' : undefined}
-                  href={`${switchLocalePath(pathname, language)}${search}`}
-                  hrefLang={language}
-                  lang={language}
-                  prefetch={false}
-                  onClick={closeNavigation}
-                >
-                  {languageNames[language]}
-                </Link>
-              ))}
+    <>
+      <header className="site-header">
+        <div className="site-header-inner">
+          <DocsIntentLink className="site-wordmark" href={localizedPath(currentLocale, '/')} onClick={closeNavigation}>
+            <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
+            <span>live2d-web</span>
+          </DocsIntentLink>
+          <details ref={mobileMenuRef} className="site-mobile-menu">
+            <summary ref={mobileSummaryRef} aria-label={messages.header.toggle} className="site-menu-button">
+              <span />
+              <span />
+            </summary>
+            <div className="site-mobile-panel" data-page-scroll-region>
+              <nav aria-label={messages.header.navigation} className="site-mobile-global-links">
+                <DocsIntentLink aria-current={documentationCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale)} onClick={closeNavigation}>{messages.docs.label}</DocsIntentLink>
+                <DocsIntentLink aria-current={isCurrent('/playground') ? 'page' : undefined} href={localizedPath(currentLocale, '/playground')} onClick={closeNavigation}>{messages.header.playground}</DocsIntentLink>
+                <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
+                <DocsIntentLink aria-current={examplesCurrent ? 'page' : undefined} href={localizedDocPath(currentLocale, 'examples')} onClick={closeNavigation}>{messages.header.examples}</DocsIntentLink>
+                <a href="https://github.com/Heonys/live2d-web">GitHub</a>
+              </nav>
+              <div className="site-mobile-languages" aria-label={messages.header.language}>
+                {SITE_LOCALES.map(language => (
+                  <Link
+                    key={language}
+                    aria-current={language === currentLocale ? 'page' : undefined}
+                    href={`${switchLocalePath(pathname, language)}${search}`}
+                    hrefLang={language}
+                    lang={language}
+                    prefetch={false}
+                    onClick={closeNavigation}
+                  >
+                    {languageNames[language]}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        </details>
-        <nav aria-label={messages.header.navigation} className="site-nav">
-          <div className="site-nav-links">
-            <DocsIntentLink
-              aria-current={documentationCurrent ? 'page' : undefined}
-              href={localizedDocPath(currentLocale)}
-              onClick={closeNavigation}
-            >
-              {messages.docs.label}
-            </DocsIntentLink>
-            <DocsIntentLink
-              aria-current={isCurrent('/playground') ? 'page' : undefined}
-              href={localizedPath(currentLocale, '/playground')}
-              onClick={closeNavigation}
-            >
-              {messages.header.playground}
-            </DocsIntentLink>
-            <DocsIntentLink
-              aria-current={isCurrent('/inspect') ? 'page' : undefined}
-              href={localizedPath(currentLocale, '/inspect')}
-              onClick={closeNavigation}
-            >
-              {messages.header.inspector}
-            </DocsIntentLink>
-            <DocsIntentLink
-              aria-current={examplesCurrent ? 'page' : undefined}
-              href={localizedDocPath(currentLocale, 'examples')}
-              onClick={closeNavigation}
-            >
-              {messages.header.examples}
-            </DocsIntentLink>
-          </div>
-          <div className="site-utilities">
-            <a
-              aria-label={messages.header.github}
-              className="site-github"
-              href="https://github.com/Heonys/live2d-web"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.55 9.55 0 0 1 12 6.82c.85 0 1.71.12 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
-              </svg>
-              <span>GitHub</span>
-            </a>
-            <div ref={languageRootRef} className="site-language">
-              <button
-                ref={languageTriggerRef}
-                aria-expanded={languageOpen}
-                aria-haspopup="menu"
-                aria-label={messages.header.language}
-                className="site-language-trigger"
-                type="button"
-                onClick={() => languageOpen ? setLanguageOpen(false) : openLanguageMenu()}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowDown') {
-                    event.preventDefault()
-                    openLanguageMenu()
-                  }
-                }}
+          </details>
+          <nav aria-label={messages.header.navigation} className="site-nav">
+            <div className="site-nav-links">
+              <DocsIntentLink
+                aria-current={documentationCurrent ? 'page' : undefined}
+                href={localizedDocPath(currentLocale)}
+                onClick={closeNavigation}
+              >
+                {messages.docs.label}
+              </DocsIntentLink>
+              <DocsIntentLink
+                aria-current={isCurrent('/playground') ? 'page' : undefined}
+                href={localizedPath(currentLocale, '/playground')}
+                onClick={closeNavigation}
+              >
+                {messages.header.playground}
+              </DocsIntentLink>
+              <DocsIntentLink
+                aria-current={isCurrent('/inspect') ? 'page' : undefined}
+                href={localizedPath(currentLocale, '/inspect')}
+                onClick={closeNavigation}
+              >
+                {messages.header.inspector}
+              </DocsIntentLink>
+              <DocsIntentLink
+                aria-current={examplesCurrent ? 'page' : undefined}
+                href={localizedDocPath(currentLocale, 'examples')}
+                onClick={closeNavigation}
+              >
+                {messages.header.examples}
+              </DocsIntentLink>
+            </div>
+            <div className="site-utilities">
+              <a
+                aria-label={messages.header.github}
+                className="site-github"
+                href="https://github.com/Heonys/live2d-web"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M3 12h18M12 3c2.3 2.46 3.5 5.46 3.5 9s-1.2 6.54-3.5 9c-2.3-2.46-3.5-5.46-3.5-9S9.7 5.46 12 3Z" />
+                  <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.55 9.55 0 0 1 12 6.82c.85 0 1.71.12 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
                 </svg>
-                <span lang={currentLocale}>{languageNames[currentLocale]}</span>
-                <span aria-hidden="true" className="site-language-chevron">⌄</span>
-              </button>
-              {languageOpen && (
-                <div
+                <span>GitHub</span>
+              </a>
+              <div ref={languageRootRef} className="site-language">
+                <button
+                  ref={languageTriggerRef}
+                  aria-expanded={languageOpen}
+                  aria-haspopup="menu"
                   aria-label={messages.header.language}
-                  className="site-language-menu"
-                  role="menu"
-                  onKeyDown={handleLanguageKeyDown}
+                  className="site-language-trigger"
+                  type="button"
+                  onClick={() => languageOpen ? setLanguageOpen(false) : openLanguageMenu()}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowDown') {
+                      event.preventDefault()
+                      openLanguageMenu()
+                    }
+                  }}
                 >
-                  {SITE_LOCALES.map(language => (
-                    <Link
-                      key={language}
-                      aria-current={language === currentLocale ? 'page' : undefined}
-                      href={`${switchLocalePath(pathname, language)}${search}`}
-                      hrefLang={language}
-                      lang={language}
-                      prefetch={false}
-                      role="menuitem"
-                      onClick={event => void handleLanguageClick(event, language)}
-                      onFocus={() => handleLanguageFocus(language)}
-                      onPointerEnter={() => void prepareLanguage(language)}
-                    >
-                      <span>{languageNames[language]}</span>
-                      <span aria-hidden="true" className="site-language-check">
-                        {language === currentLocale ? '✓' : ''}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18M12 3c2.3 2.46 3.5 5.46 3.5 9s-1.2 6.54-3.5 9c-2.3-2.46-3.5-5.46-3.5-9S9.7 5.46 12 3Z" />
+                  </svg>
+                  <span lang={currentLocale}>{languageNames[currentLocale]}</span>
+                  <span aria-hidden="true" className="site-language-chevron">⌄</span>
+                </button>
+                {languageOpen && (
+                  <div
+                    aria-label={messages.header.language}
+                    className="site-language-menu"
+                    role="menu"
+                    onKeyDown={handleLanguageKeyDown}
+                  >
+                    {SITE_LOCALES.map(language => (
+                      <Link
+                        key={language}
+                        aria-current={language === currentLocale ? 'page' : undefined}
+                        href={`${switchLocalePath(pathname, language)}${search}`}
+                        hrefLang={language}
+                        lang={language}
+                        prefetch={false}
+                        role="menuitem"
+                        onClick={event => void handleLanguageClick(event, language)}
+                        onFocus={() => handleLanguageFocus(language)}
+                        onPointerEnter={() => void prepareLanguage(language)}
+                      >
+                        <span>{languageNames[language]}</span>
+                        <span aria-hidden="true" className="site-language-check">
+                          {language === currentLocale ? '✓' : ''}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </nav>
-      </div>
-    </header>
+          </nav>
+        </div>
+      </header>
+      <div aria-hidden="true" className="site-header-spacer" />
+    </>
   )
 }

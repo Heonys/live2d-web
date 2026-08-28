@@ -675,13 +675,20 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
 
 @media (max-width: 900px) {
   .docs-mobile-navigation {
-    position: sticky;
+    position: fixed;
     z-index: 35;
     top: var(--site-header-height);
+    right: 0;
+    left: 0;
     display: block;
     height: 52px;
     border-bottom: 1px solid var(--line);
     background: var(--surface-0);
+  }
+  .docs-mobile-navigation[open] {
+    z-index: 39;
+    background: var(--surface-1);
+    box-shadow: 0 12px 28px rgb(0 0 0 / 24%);
   }
   .docs-mobile-summary {
     display: grid;
@@ -698,8 +705,9 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
     display: none;
   }
   .docs-mobile-summary > span {
-    color: var(--text-3);
-    font-size: 12px;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 600;
   }
   .docs-mobile-summary > strong {
     overflow: hidden;
@@ -724,20 +732,30 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   }
   .docs-mobile-panel {
     position: fixed;
-    z-index: 34;
+    z-index: 38;
     inset: calc(var(--site-header-height) + 52px) 0 0;
-    padding: 18px max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+    min-height: 0;
+    padding: 0 max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
       max(18px, env(safe-area-inset-left));
     overflow-y: auto;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    background: var(--surface-1);
+    isolation: isolate;
+    scrollbar-gutter: stable;
+  }
+  .docs-mobile-search {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    padding: 18px 0 14px;
     border-bottom: 1px solid var(--line);
     background: var(--surface-1);
-    scrollbar-gutter: stable;
   }
   .docs-mobile-panel nav {
     display: grid;
-    margin-top: 20px;
-    gap: 22px;
+    padding-top: 18px;
+    gap: 18px;
   }
   .docs-mobile-panel section {
     display: grid;
@@ -752,8 +770,8 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   }
   .docs-mobile-panel nav a {
     position: relative;
-    min-height: 42px;
-    padding: 10px;
+    min-height: 44px;
+    padding: 11px 12px;
     border-radius: 6px;
     color: var(--text-2);
     font-size: 14px;
@@ -772,6 +790,7 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   }
   .docs-layout {
     display: block;
+    padding-top: 52px;
   }
   .docs-sidebar {
     display: none;

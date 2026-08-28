@@ -983,6 +983,11 @@ test('keeps the mobile documentation menu and search inside supported viewports'
     await page.setViewportSize(viewport)
     await page.goto('/docs/en')
     if (viewport.width <= 900) {
+      await page.evaluate(() => window.scrollTo(0, Math.min(420, document.documentElement.scrollHeight - innerHeight)))
+      const scrollBeforeMenu = await page.evaluate(() => window.scrollY)
+      const headerBeforeMenu = await page.locator('.site-header').boundingBox()
+      expect(headerBeforeMenu).not.toBeNull()
+      expect(headerBeforeMenu?.y ?? -1).toBeCloseTo(0, 0)
       const siteMenu = page.locator('details.site-mobile-menu')
       const siteSummary = siteMenu.locator('summary.site-menu-button')
       await siteSummary.click()
@@ -994,26 +999,58 @@ test('keeps the mobile documentation menu and search inside supported viewports'
       ])
       expect(header).not.toBeNull()
       expect(panel).not.toBeNull()
+      expect(header?.y ?? -1).toBeCloseTo(0, 0)
       expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0)))).toBeLessThanOrEqual(1)
-      expect(panel?.height ?? 0).toBeLessThan(viewport.height - (header?.height ?? 0))
-      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
+      expect(Math.abs((panel?.height ?? 0) - (viewport.height - (header?.height ?? 0)))).toBeLessThanOrEqual(1)
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
 
       await siteSummary.press('Shift+Tab')
       await expect(siteMenu.locator('.site-mobile-languages a').last()).toBeFocused()
       await page.keyboard.press('Escape')
       await expect(siteMenu).not.toHaveAttribute('open', '')
       await expect(siteSummary).toBeFocused()
-      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden')
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
 
       const docsMenu = page.locator('details.docs-mobile-navigation')
       const docsSummary = docsMenu.locator('summary.docs-mobile-summary')
       await docsSummary.click()
       await expect(docsMenu).toHaveAttribute('open', '')
       await expect(siteMenu).not.toHaveAttribute('open', '')
-      await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
+      await expect.poll(() => page.evaluate(
+        () => document.documentElement.dataset.pageScrollLocked,
+      )).toBe('true')
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
+      const [docsNavigationBounds, docsSummaryBounds, docsPanelBounds] = await Promise.all([
+        docsMenu.boundingBox(),
+        docsSummary.boundingBox(),
+        docsMenu.locator('.docs-mobile-panel').boundingBox(),
+      ])
+      expect(docsNavigationBounds).not.toBeNull()
+      expect(docsSummaryBounds).not.toBeNull()
+      expect(docsPanelBounds).not.toBeNull()
+      expect(docsNavigationBounds?.y ?? -1).toBeCloseTo(header?.height ?? 0, 0)
+      expect(docsNavigationBounds?.height ?? 0).toBeCloseTo(docsSummaryBounds?.height ?? 52, 0)
+      expect(docsPanelBounds?.y ?? -1).toBeCloseTo(
+        (docsSummaryBounds?.y ?? 0) + (docsSummaryBounds?.height ?? 0),
+        0,
+      )
+      expect(docsPanelBounds?.height ?? 0).toBeCloseTo(
+        viewport.height - (header?.height ?? 0) - (docsSummaryBounds?.height ?? 0),
+        0,
+      )
+      const docsPanel = docsMenu.locator('.docs-mobile-panel')
+      const backgroundScrollBeforePanel = await page.evaluate(() => window.scrollY)
+      await docsPanel.evaluate((panel) => {
+        panel.scrollTop = 300
+      })
+      expect(await docsPanel.evaluate(panel => panel.scrollTop)).toBeGreaterThan(0)
+      expect(await page.evaluate(() => window.scrollY)).toBe(backgroundScrollBeforePanel)
       await docsMenu.locator('a[href="/docs/en/react"]').click()
       await expect(page).toHaveURL(/\/docs\/en\/react$/)
       await expect(docsMenu).not.toHaveAttribute('open', '')
+      await expect.poll(() => page.evaluate(
+        () => document.documentElement.dataset.pageScrollLocked,
+      )).toBeUndefined()
       await page.goto('/docs/en')
       await page.locator('summary.docs-mobile-summary').click()
     }
