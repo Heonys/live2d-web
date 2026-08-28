@@ -53,6 +53,14 @@ export function SiteHeader() {
     if (!details)
       return
     const closeForRoute = () => {
+      const activeElement = document.activeElement
+      if (
+        activeElement instanceof HTMLElement
+        && activeElement !== mobileSummaryRef.current
+        && details.contains(activeElement)
+      ) {
+        activeElement.blur()
+      }
       details.open = false
     }
     closeForRoute()
@@ -66,8 +74,12 @@ export function SiteHeader() {
     const handleToggle = () => {
       releaseScrollLock()
       releaseScrollLock = () => {}
-      if (!details.open)
+      if (!details.open) {
+        const languageDetails = details.querySelector<HTMLDetailsElement>('.site-mobile-language')
+        if (languageDetails)
+          languageDetails.open = false
         return
+      }
       releaseScrollLock = lockPageScroll()
       window.dispatchEvent(new CustomEvent('live2d-web:mobile-menu-open', { detail: 'site' }))
     }
@@ -112,8 +124,17 @@ export function SiteHeader() {
   }, [languageOpen])
 
   const closeNavigation = () => {
-    if (mobileMenuRef.current)
+    if (mobileMenuRef.current) {
+      const activeElement = document.activeElement
+      if (
+        activeElement instanceof HTMLElement
+        && activeElement !== mobileSummaryRef.current
+        && mobileMenuRef.current.contains(activeElement)
+      ) {
+        activeElement.blur()
+      }
       mobileMenuRef.current.open = false
+    }
     setLanguageOpen(false)
   }
   const handleMobileMenuKeyDown = (event: ReactKeyboardEvent<HTMLDetailsElement>) => {
@@ -236,22 +257,34 @@ export function SiteHeader() {
                 <DocsIntentLink aria-current={isCurrent('/inspect') ? 'page' : undefined} href={localizedPath(currentLocale, '/inspect')} tabIndex={0} onClick={closeNavigation}>{messages.header.inspector}</DocsIntentLink>
                 <a href="https://github.com/Heonys/live2d-web" tabIndex={0} onClick={closeNavigation}>GitHub</a>
               </nav>
-              <div className="site-mobile-languages" aria-label={messages.header.language}>
-                {SITE_LOCALES.map(language => (
-                  <Link
-                    key={language}
-                    aria-current={language === currentLocale ? 'page' : undefined}
-                    href={`${switchLocalePath(pathname, language)}${search}`}
-                    hrefLang={language}
-                    lang={language}
-                    prefetch={false}
-                    tabIndex={0}
-                    onClick={closeNavigation}
-                  >
-                    {languageNames[language]}
-                  </Link>
-                ))}
-              </div>
+              <details className="site-mobile-language">
+                <summary aria-label={messages.header.language} className="site-mobile-language-summary">
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18M12 3c2.3 2.46 3.5 5.46 3.5 9s-1.2 6.54-3.5 9c-2.3-2.46-3.5-5.46-3.5-9S9.7 5.46 12 3Z" />
+                  </svg>
+                  <span lang={currentLocale}>{languageNames[currentLocale]}</span>
+                  <svg aria-hidden="true" className="site-mobile-language-chevron" viewBox="0 0 16 16">
+                    <path d="m4 6 4 4 4-4" />
+                  </svg>
+                </summary>
+                <div className="site-mobile-languages" aria-label={messages.header.language}>
+                  {SITE_LOCALES.map(language => (
+                    <Link
+                      key={language}
+                      aria-current={language === currentLocale ? 'page' : undefined}
+                      href={`${switchLocalePath(pathname, language)}${search}`}
+                      hrefLang={language}
+                      lang={language}
+                      prefetch={false}
+                      tabIndex={0}
+                      onClick={closeNavigation}
+                    >
+                      {languageNames[language]}
+                    </Link>
+                  ))}
+                </div>
+              </details>
             </div>
           </details>
           <nav aria-label={messages.header.navigation} className="site-nav">

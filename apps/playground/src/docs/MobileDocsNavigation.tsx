@@ -19,8 +19,17 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
 
   useEffect(() => {
     const details = detailsRef.current
-    if (details)
+    if (details) {
+      const activeElement = document.activeElement
+      if (
+        activeElement instanceof HTMLElement
+        && activeElement !== summaryRef.current
+        && details.contains(activeElement)
+      ) {
+        activeElement.blur()
+      }
       details.open = false
+    }
   }, [pathname])
 
   useEffect(() => {
@@ -84,8 +93,17 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
   }, [])
 
   const close = () => {
-    if (detailsRef.current)
+    if (detailsRef.current) {
+      const activeElement = document.activeElement
+      if (
+        activeElement instanceof HTMLElement
+        && activeElement !== summaryRef.current
+        && detailsRef.current.contains(activeElement)
+      ) {
+        activeElement.blur()
+      }
       detailsRef.current.open = false
+    }
   }
 
   return (

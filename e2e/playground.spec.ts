@@ -1001,10 +1001,10 @@ test('keeps the mobile documentation menu and search inside supported viewports'
       expect(header).not.toBeNull()
       expect(panel).not.toBeNull()
       expect(header?.y ?? -1).toBeCloseTo(0, 0)
-      expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0) + 8))).toBeLessThanOrEqual(1)
-      expect(panel?.width ?? 0).toBeLessThanOrEqual(340)
-      expect(panel?.width ?? 0).toBeCloseTo(Math.min(340, viewport.width - 24), 0)
-      expect(panel?.height ?? 0).toBeLessThanOrEqual(480)
+      expect(Math.abs((panel?.y ?? 0) - ((header?.y ?? 0) + (header?.height ?? 0)))).toBeLessThanOrEqual(1)
+      expect(panel?.width ?? 0).toBeLessThanOrEqual(400)
+      expect(panel?.width ?? 0).toBeCloseTo(Math.min(400, viewport.width), 0)
+      expect(panel?.height ?? 0).toBeLessThanOrEqual(viewport.height - (header?.height ?? 0))
       await expect(siteMenu.locator('.site-mobile-link-group')).toHaveCount(0)
       const mobileLinks = siteMenu.locator('.site-mobile-global-links > a')
       await expect(mobileLinks).toHaveText([
@@ -1020,35 +1020,47 @@ test('keeps the mobile documentation menu and search inside supported viewports'
         const style = getComputedStyle(element)
         return {
           background: style.backgroundColor,
-          borderLeft: style.borderLeftWidth,
+          color: style.color,
           fontWeight: style.fontWeight,
-          marker: getComputedStyle(element, '::before').content,
+          tapHighlight: style.getPropertyValue('-webkit-tap-highlight-color'),
         }
       })).toEqual({
-        background: 'rgba(0, 0, 0, 0)',
-        borderLeft: '0px',
-        fontWeight: '600',
-        marker: 'none',
+        background: 'rgb(29, 33, 40)',
+        color: 'rgb(245, 245, 246)',
+        fontWeight: '700',
+        tapHighlight: 'rgba(0, 0, 0, 0)',
       })
+      expect(await siteSummary.evaluate(element => getComputedStyle(element)
+        .getPropertyValue('-webkit-tap-highlight-color'))).toBe('rgba(0, 0, 0, 0)')
       await expect.poll(() => page.evaluate(
         () => document.documentElement.dataset.pageScrollLocked,
       )).toBe('true')
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
 
-      await siteMenu.locator('.site-mobile-backdrop').click({ position: { x: 4, y: 4 } })
+      await siteMenu.locator('.site-mobile-backdrop').click({
+        position: { x: 4, y: Math.min((panel?.height ?? 0) + 4, viewport.height - (header?.height ?? 0) - 4) },
+      })
       await expect(siteMenu).not.toHaveAttribute('open', '')
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeMenu)
       await siteSummary.click()
       await expect(siteSummary).toBeFocused()
+      const languageMenu = siteMenu.locator('details.site-mobile-language')
+      const languageSummary = languageMenu.locator('summary.site-mobile-language-summary')
       const languageLinks = siteMenu.locator('.site-mobile-languages > a')
       const focusOrder = [
         siteSummary,
         ...Array.from({ length: 5 }, (_, index) => mobileLinks.nth(index)),
-        ...Array.from({ length: 3 }, (_, index) => languageLinks.nth(index)),
+        languageSummary,
       ]
       for (const focusTarget of focusOrder.slice(1)) {
         await page.keyboard.press('Tab')
         await expect(focusTarget).toBeFocused()
+      }
+      await languageSummary.click()
+      await expect(languageMenu).toHaveAttribute('open', '')
+      for (const languageLink of Array.from({ length: 3 }, (_, index) => languageLinks.nth(index))) {
+        await page.keyboard.press('Tab')
+        await expect(languageLink).toBeFocused()
       }
       await expect(languageLinks.last()).toBeInViewport()
       await page.keyboard.press('Tab')
@@ -1088,6 +1100,24 @@ test('keeps the mobile documentation menu and search inside supported viewports'
         0,
       )
       const docsPanel = docsMenu.locator('.docs-mobile-panel')
+      const currentDocsLink = docsPanel.locator('a[aria-current="page"]')
+      await expect(currentDocsLink).toHaveCount(1)
+      expect(await currentDocsLink.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return {
+          background: style.backgroundColor,
+          color: style.color,
+          fontWeight: style.fontWeight,
+          tapHighlight: style.getPropertyValue('-webkit-tap-highlight-color'),
+        }
+      })).toEqual({
+        background: 'rgb(29, 33, 40)',
+        color: 'rgb(245, 245, 246)',
+        fontWeight: '700',
+        tapHighlight: 'rgba(0, 0, 0, 0)',
+      })
+      expect(await docsSummary.evaluate(element => getComputedStyle(element)
+        .getPropertyValue('-webkit-tap-highlight-color'))).toBe('rgba(0, 0, 0, 0)')
       const backgroundScrollBeforePanel = await page.evaluate(() => window.scrollY)
       await docsPanel.evaluate((panel) => {
         panel.scrollTop = 300
@@ -1097,6 +1127,7 @@ test('keeps the mobile documentation menu and search inside supported viewports'
       await docsMenu.locator('a[href="/docs/en/react"]').click()
       await expect(page).toHaveURL(/\/docs\/en\/react$/)
       await expect(docsMenu).not.toHaveAttribute('open', '')
+      await expect.poll(() => docsMenu.evaluate(element => !element.contains(document.activeElement))).toBe(true)
       await expect.poll(() => page.evaluate(
         () => document.documentElement.dataset.pageScrollLocked,
       )).toBeUndefined()
@@ -1121,11 +1152,16 @@ test('keeps the last mobile menu language reachable in a short viewport', async 
   await page.goto('/docs/en')
   const siteMenu = page.locator('details.site-mobile-menu')
   const siteSummary = siteMenu.locator('summary.site-menu-button')
+  const languageMenu = siteMenu.locator('details.site-mobile-language')
+  const languageSummary = languageMenu.locator('summary.site-mobile-language-summary')
   const panel = siteMenu.locator('.site-mobile-panel')
   const lastLanguage = siteMenu.locator('.site-mobile-languages > a').last()
   await siteSummary.click()
   await expect(siteMenu).toHaveAttribute('open', '')
   expect(await panel.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
+  await languageSummary.click()
+  await expect(languageMenu).toHaveAttribute('open', '')
+  await siteSummary.focus()
   await page.keyboard.press('Shift+Tab')
   await expect(lastLanguage).toBeFocused()
   await expect(lastLanguage).toBeInViewport()
@@ -1145,6 +1181,10 @@ test('keeps the native mobile documentation menu usable without JavaScript', asy
   await siteMenu.locator('summary.site-menu-button').click()
   await expect(siteMenu).toHaveAttribute('open', '')
   await expect(siteMenu.locator('a[href="/playground"]')).toBeVisible()
+  const languageMenu = siteMenu.locator('details.site-mobile-language')
+  await languageMenu.locator('summary.site-mobile-language-summary').click()
+  await expect(languageMenu).toHaveAttribute('open', '')
+  await expect(languageMenu.locator('a[lang="ja"]')).toBeVisible()
   await siteMenu.locator('summary.site-menu-button').click()
   const details = page.locator('details.docs-mobile-navigation')
   await details.locator('summary.docs-mobile-summary').click()
@@ -1496,6 +1536,12 @@ test('keeps the mobile inspector canvas stable while viewport chrome and scroll 
   })
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto('/inspect')
+  await expect(page.getByTestId('inspector-status')).toContainText('ready')
+  // Keep adaptive quality out of this viewport-geometry test. Slow CI workers can
+  // legitimately downshift auto quality while the scripted scroll is running.
+  const resolution = page.getByRole('combobox', { name: 'Resolution' })
+  await resolution.selectOption('1')
+  await expect(resolution).toHaveValue('1')
   await expect(page.getByTestId('inspector-status')).toContainText('ready')
   const canvas = page.locator('[data-testid="inspector-stage"] canvas')
   await expect(canvas).toBeVisible()
