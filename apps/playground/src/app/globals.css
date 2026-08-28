@@ -625,14 +625,6 @@ label output {
   border-top: 1px solid #272b32;
 }
 
-.tracking-tools video {
-  width: 100%;
-  max-height: 160px;
-  border-radius: 8px;
-  background: #111318;
-  object-fit: cover;
-}
-
 .pose-readout {
   width: 100%;
   border-collapse: collapse;

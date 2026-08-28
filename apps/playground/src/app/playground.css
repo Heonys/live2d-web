@@ -190,12 +190,17 @@
     animation: none;
   }
 }
+/*
+ * `contain`, not `cover`: this preview exists so the wearer can see what the
+ * tracker sees. A phone hands back a portrait stream, which `cover` cropped to
+ * a sliver of the face inside a landscape box.
+ */
 .tracking-tools video {
   width: 100%;
   aspect-ratio: 4 / 3;
   border-radius: 10px;
   background: #07080a;
-  object-fit: cover;
+  object-fit: contain;
 }
 .tracking-tools video.tracking-preview-pending {
   min-height: 118px;
