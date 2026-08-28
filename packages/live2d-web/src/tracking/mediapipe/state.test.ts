@@ -199,6 +199,101 @@ describe('mediaPipe face tracking state', () => {
     expect(poseFromMatrix(scaled).x).toBeCloseTo(30)
   })
 
+  // Pitch is the only axis whose atan2 operands come from two different basis
+  // columns, so it is the only one whose value survives normalization scaled by
+  // the ratio between them. A uniformly scaled fixture cannot show that.
+  it.each([0.6, 1, 1.5])('recovers pitch from a basis scaled by %s', (scale) => {
+    const c = Math.cos(Math.PI / 9)
+    const s = Math.sin(Math.PI / 9)
+    const scaled = [
+      scale,
+      0,
+      0,
+      0,
+      0,
+      c * scale,
+      s * scale,
+      0,
+      0,
+      -s * scale,
+      c * scale,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ]
+
+    expect(poseFromMatrix(scaled).y).toBeCloseTo(-20)
+  })
+
+  // Pitch divides its two operands by two different column lengths, so a basis
+  // whose columns are scaled unequally is the case that would distort it while
+  // leaving yaw and roll intact. Normalizing per column recovers the rotation
+  // exactly, which is what this pins.
+  it('recovers pitch from a basis whose columns are scaled unequally', () => {
+    const c = Math.cos(Math.PI / 9)
+    const s = Math.sin(Math.PI / 9)
+    const [sx, sy, sz] = [0.7, 1.3, 0.9]
+    const skewed = [
+      sx,
+      0,
+      0,
+      0,
+      0,
+      c * sy,
+      s * sy,
+      0,
+      0,
+      -s * sz,
+      c * sz,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ]
+
+    expect(poseFromMatrix(skewed).y).toBeCloseTo(-20)
+    expect(poseFromMatrix(skewed).x).toBeCloseTo(0)
+    expect(poseFromMatrix(skewed).z).toBeCloseTo(0)
+  })
+
+  // Two axes at once. Every earlier fixture rotates about a single axis, which
+  // cannot catch a decomposition that mixes them.
+  it('separates yaw and pitch applied together', () => {
+    const cy = Math.cos(Math.PI / 12)
+    const sy = Math.sin(Math.PI / 12)
+    const cp = Math.cos(Math.PI / 9)
+    const sp = Math.sin(Math.PI / 9)
+    // Ry(15)·Rx(20) stored column-major, matching the ZYX convention the
+    // extraction assumes. Written out rather than multiplied so the fixture
+    // cannot inherit a mistake from the code under test.
+    const combined = [
+      cy,
+      0,
+      -sy,
+      0,
+      sy * sp,
+      cp,
+      cy * sp,
+      0,
+      sy * cp,
+      -sp,
+      cy * cp,
+      0,
+      0,
+      0,
+      0,
+      1,
+    ]
+
+    const pose = poseFromMatrix(combined)
+    expect(pose.x).toBeCloseTo(15)
+    expect(pose.y).toBeCloseTo(-20)
+    expect(pose.z).toBeCloseTo(0)
+  })
+
   it('rejects a degenerate basis instead of returning NaN', () => {
     expect(poseFromMatrix(Array.from<number>({ length: 16 }).fill(0)))
       .toEqual({ x: 0, y: 0, z: 0 })

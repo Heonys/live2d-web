@@ -114,10 +114,36 @@ target 교체와 반복 dispose를 검증한다. 위치·크기·scroll은 소�
 | warm tracker 생성 | 데스크톱 검증 | 로컬 자산과 warm HTTP cache에서 모드별 3회 중앙값이 Chromium main/Worker 339/373ms, WebKit 367/383ms, Firefox 270/340ms로 모두 5초 기준 이내다. Playground는 카메라·tracker·첫 inference·보정·tracked와 JS/WASM/task Resource Timing을 분리해 cold 지연 위치를 표시한다. |
 | Worker 안정성 | 데스크톱 검증 | Chromium 15분 soak에서 두 차례 재생성, pending 요청 정착, 최종 dispose, console/page error와 heap 증가 한계를 통과(2026-08-25) |
 | 물리 카메라 | **부분 검증** | 2026-08-25 실측에서 세 결함을 찾아 고쳤다. 얼굴을 너무 일찍 놓침(임계값 기본 0.5), 놓치면 0.55초 만에 정면 복귀, 경계 프레임의 자세 튐. 여기에 물리보다 뒤에 적용되어 머리카락이 따라오지 않던 문제까지 넷이다. |
-| iOS Safari 실기 | **미검증·0.7 차단 항목** | 실제 iPhone에서 Main/Worker 각 5분, 회전·백그라운드 복귀·정리와 실제 전면 카메라 지표가 필요하다. 데스크톱 WebKit이나 자동화로 대체하지 않는다. **2026-08-27 첫 시도는 무효다.** 그 시점 배포에 MediaPipe 자산이 없어(전부 404) 어느 브라우저로 접속해도 tracker 생성이 실패했다. iOS 호환성에 대해 아무것도 말해주지 않으므로 결과로 세지 않는다. |
+| iOS Safari 실기 | **검증 (2026-08-28)** | 실제 iPhone Safari에서 Main·Worker 모두 동작. 각 5분, 화면 회전, 백그라운드 복귀 뒤 카메라 재개, 중지 후 재시작과 정리를 확인했다. 발열은 5분에서 "살짝, 심하지 않음". 지표는 아래 절. **2026-08-27 첫 시도는 무효다.** 그 시점 배포에 MediaPipe 자산이 없어(전부 404) 어느 브라우저로 접속해도 tracker 생성이 실패했다. 결과로 세지 않는다. |
+| iOS 인앱 브라우저 | **미검증·비차단** | 카카오톡·Chrome 앱·Google 앱은 앞선 404가 `immutable`로 1년 캐시돼 실패가 이어졌다. 캐시 탓인지 실제 비호환인지 구분하지 못했다. 재시도하려면 웹사이트 데이터를 지우고 해야 한다. |
 | Android Chrome 실기 | **미검증·비차단** | 실제 Android 기기에서 Main/Worker 동작, 회전·백그라운드 복귀·정리와 **실제 후면/전면 카메라 지표**가 필요하다. 데스크톱 Chromium이나 device emulation으로 대체하지 않는다. 이 상태를 공개한 채 0.7을 발행할 수 있지만 지원 근거로 사용하지 않는다. |
 | 리그 파라미터 범위 | 실측 | 트래킹은 파라미터의 중립을 `defaultValue`로 읽는다. 공식 샘플 8종 중 5종이 `ParamEyeLOpen` 최대값을 1.0 초과로 선언한다(Hiyori·Mao 1.2, Natori 1.3, **Haru 2.0**). 2026-08-28까지는 `minimum`을 중립으로 읽어 그 다섯에서 눈이 과하게 떠지고 깜빡임 앞부분이 낭비됐다. `hiyori_free`는 `ParamCheek` 여유를 기본값 아래에만 두어 **볼 채널이 이 리그에서는 무동작**이다. 같은 캐릭터의 다른 배포판은 `-1..1`이라 극성을 추론하지 않는다. |
 | 감도 기본값 | 1대 측정 | `sensitivity.pose` 기본은 **3**이다. 2026-08-25에 눈높이보다 낮은 노트북 카메라 한 대에서 자연스럽게 느껴진 값이며, 표본이 하나다. 카메라 위치에 좌우되므로 소비자는 사용자에게 노출하는 편이 낫다. |
+
+### iOS Safari 실기 지표 (2026-08-28)
+
+iPhone Safari, Worker 모드 2회. 단위는 ms.
+
+| | 세션 A | 세션 B |
+| --- | ---: | ---: |
+| inference | 11.0 | 13.0 |
+| round trip | 12.0 | 15.0 |
+| effective fps | 30 | 30 |
+| skipped | 57% | 51% |
+| camera | 1323 | 323 |
+| tracker 생성 | 174 | 170 |
+| first inference | 178 | 71 |
+| calibration | 838 | 949 |
+| tracked까지 | 2513 | 1513 |
+
+**데스크톱보다 빠르다.** 데스크톱 WebKit은 추론 18ms, tracker 생성 367~383ms다.
+적응형 상한도 내려가지 않아 30fps를 유지했다.
+
+**warm 측정이다.** 세션 A의 자원 시간이 `vision_wasm_internal.wasm 18ms`인데
+11MB를 그 시간에 받을 수 없으므로 캐시 적중이다. 데스크톱 수치도 모두 warm이라
+기준은 일관되지만, **모바일 첫 방문의 cold 다운로드(약 15MB)는 미측정이다.**
+
+Main 모드도 동작을 확인했으나 수치를 기록하지 않았다. 위 표는 Worker 기준이다.
 
 트래킹 전용 브라우저 게이트는 공식 모델·portrait와 npm 패키지의 WASM을
 SHA-256으로 고정해 push·PR CI에서 세 엔진을 브라우저별 잡으로 실행한다.
