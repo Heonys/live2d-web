@@ -406,6 +406,60 @@ test('allows vertical page scrolling over the landing Live2D stage on touch scre
   await expect.poll(() => canvas.evaluate(element => getComputedStyle(element).touchAction)).toBe('pan-y')
 })
 
+test('uses the compact landing hierarchy without reloading the model on resize', async ({ browserName, page }) => {
+  test.skip(browserName !== 'chromium', 'The responsive landing geometry only needs one browser engine.')
+
+  let manifestRequests = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/assets/live2d/hiyori/manifest.json')
+      manifestRequests += 1
+  })
+
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.goto('/')
+  await expect(page.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
+  await expect(page.locator('.landing-demo-meta')).toContainText('WebGL2 · Cubism 4/5')
+
+  const layout = await page.evaluate(() => {
+    const actions = [...document.querySelectorAll<HTMLElement>('.landing-actions a')]
+      .map(element => element.getBoundingClientRect())
+    const copy = document.querySelector<HTMLElement>('.landing-copy')!.getBoundingClientRect()
+    const demo = document.querySelector<HTMLElement>('.landing-demo')!.getBoundingClientRect()
+    const stage = document.querySelector<HTMLElement>('.landing-stage')!.getBoundingClientRect()
+    const controls = [...document.querySelectorAll<HTMLElement>('.landing-demo-controls button')]
+      .map(element => element.getBoundingClientRect())
+    return {
+      actionsTop: actions.map(action => action.top),
+      actionWidths: actions.map(action => action.width),
+      controlsTop: controls.map(control => control.top),
+      copyBottom: copy.bottom,
+      demoTop: demo.top,
+      documentWidth: document.documentElement.clientWidth,
+      installDisplay: getComputedStyle(document.querySelector<HTMLElement>('.landing-install')!).display,
+      scrollWidth: document.documentElement.scrollWidth,
+      stageHeight: stage.height,
+    }
+  })
+
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.documentWidth)
+  expect(layout.installDisplay).toBe('none')
+  expect(Math.abs(layout.actionsTop[0]! - layout.actionsTop[1]!)).toBeLessThan(1)
+  expect(Math.abs(layout.actionWidths[0]! - layout.actionWidths[1]!)).toBeLessThan(1)
+  expect(layout.copyBottom).toBeLessThan(layout.demoTop)
+  expect(layout.stageHeight).toBeGreaterThanOrEqual(340)
+  expect(layout.stageHeight).toBeLessThanOrEqual(400)
+  expect(Math.abs(layout.controlsTop[0]! - layout.controlsTop[1]!)).toBeLessThan(1)
+  expect(manifestRequests).toBe(1)
+
+  await page.setViewportSize({ height: 844, width: 700 })
+  await page.setViewportSize({ height: 844, width: 390 })
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  }))
+  await expect(page.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
+  expect(manifestRequests).toBe(1)
+})
+
 test('runs and cleans up the source AudioWorklet smoke test', async ({ browserName, page }) => {
   test.skip(
     browserName === 'firefox',

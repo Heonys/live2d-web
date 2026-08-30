@@ -4,7 +4,7 @@ import type { Live2DModelController } from 'live2d-web/react'
 import type { AssetManifest } from '../lib/assetManifest'
 import { LipSync, Live2DCanvas, Live2DModel } from 'live2d-web/react'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { localizedDocPath, localizedPath } from '../i18n/site'
 import { useSiteLocale, useSiteMessages } from '../i18n/SiteLocale'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../lib/assetManifest'
@@ -14,6 +14,22 @@ import { StageLoading } from './StageLoading'
 const SPEECH_ATTACK_MS = 90
 const SPEECH_RELEASE_MS = 150
 const LANDING_MODEL_FIT = { offsetY: 16, scale: 1.12 } as const
+const MOBILE_LANDING_MODEL_FIT = { offsetY: 8, scale: 1.22 } as const
+const MOBILE_LANDING_QUERY = '(max-width: 620px)'
+
+function subscribeMobileLayout(onStoreChange: () => void) {
+  const query = window.matchMedia(MOBILE_LANDING_QUERY)
+  query.addEventListener('change', onStoreChange)
+  return () => query.removeEventListener('change', onStoreChange)
+}
+
+function getMobileLayoutSnapshot() {
+  return window.matchMedia(MOBILE_LANDING_QUERY).matches
+}
+
+function getServerMobileLayoutSnapshot() {
+  return false
+}
 
 function smoothstep(value: number) {
   return value * value * (3 - 2 * value)
@@ -38,6 +54,11 @@ export function LandingDemo() {
   const [error, setError] = useState('')
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [loadPhase, setLoadPhase] = useState<'waiting' | 'assets' | 'model'>('waiting')
+  const isMobileLayout = useSyncExternalStore(
+    subscribeMobileLayout,
+    getMobileLayoutSnapshot,
+    getServerMobileLayoutSnapshot,
+  )
   const animationFrameRef = useRef<number | null>(null)
   const holdingSpeechRef = useRef(false)
   const mouthRef = useRef(0)
@@ -208,6 +229,10 @@ export function LandingDemo() {
 
   return (
     <div className="landing-demo" data-load-phase={controller ? 'ready' : error ? 'error' : loadPhase}>
+      <div className="landing-demo-meta">
+        <span>Live demo</span>
+        <span>WebGL2 · Cubism 4/5</span>
+      </div>
       <div className="landing-stage" data-model-visible={Boolean(controller)}>
         {!controller && (
           <output className="landing-stage-status" aria-live="polite">
@@ -227,7 +252,7 @@ export function LandingDemo() {
                 fallback={() => <StageLoading />}
               >
                 <Live2DModel
-                  fit={LANDING_MODEL_FIT}
+                  fit={isMobileLayout ? MOBILE_LANDING_MODEL_FIT : LANDING_MODEL_FIT}
                   followPointer
                   idleMotion="Idle"
                   src={manifest.model3}
