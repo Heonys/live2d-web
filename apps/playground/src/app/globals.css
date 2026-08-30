@@ -621,8 +621,6 @@ label output {
 .tracking-tools {
   display: grid;
   gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid #272b32;
 }
 
 .pose-readout {

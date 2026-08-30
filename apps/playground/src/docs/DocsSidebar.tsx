@@ -110,7 +110,9 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
       <DocsIntentLink className="docs-sidebar-brand" href={docHref(locale, '')}>
         {messages.label}
       </DocsIntentLink>
-      <DocsSearchTrigger />
+      <div className="docs-sidebar-search">
+        <DocsSearchTrigger />
+      </div>
       <nav aria-label={messages.label}>
         {DOC_GROUPS.map(group => (
           <section key={group}>

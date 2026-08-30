@@ -89,10 +89,13 @@ describe('live2D Devtools', () => {
     expect(container.firstElementChild).toBe(existing)
     expect(shadow(container).textContent).toContain('Live2D Devtools')
     expect(shadow(container).textContent).toContain('800×400')
+    expect(shadow(container).querySelector<HTMLOutputElement>('[data-status]')?.hidden).toBe(true)
     ;(shadow(container).querySelector('[data-action="copy-diagnostic"]') as HTMLButtonElement).click()
     await Promise.resolve()
     expect(writeText).toHaveBeenCalledOnce()
     expect(writeText.mock.calls[0]?.[0]).toContain('ParamAngleX')
+    expect(shadow(container).querySelector<HTMLOutputElement>('[data-status]')?.hidden).toBe(false)
+    expect(shadow(container).querySelector<HTMLOutputElement>('[data-status]')?.textContent).toBe('Diagnostic JSON copied')
 
     devtools.dispose()
     expect(container.children).toHaveLength(1)

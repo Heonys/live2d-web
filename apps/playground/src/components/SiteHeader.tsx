@@ -5,6 +5,7 @@ import type { SiteLocale } from '../i18n/site'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { DocsSearchTrigger } from '../docs/DocSearch'
 import { DocsIntentLink } from '../docs/DocsNavigation'
 import { useDocsNavigation } from '../docs/docsNavigationContext'
 import { warmLocaleFonts } from '../docs/searchClient'
@@ -234,9 +235,12 @@ export function SiteHeader() {
       <header className="site-header">
         <div className="site-header-inner">
           <DocsIntentLink className="site-wordmark" href={localizedPath(currentLocale, '/')} onClick={closeNavigation}>
-            <img alt="" height="28" src="/brand/live2d-web-avatar.png" width="28" />
+            <img alt="" height="34" src="/brand/live2d-web-avatar.png" width="34" />
             <span>live2d-web</span>
           </DocsIntentLink>
+          <div className="site-docs-search">
+            <DocsSearchTrigger />
+          </div>
           <details ref={mobileMenuRef} className="site-mobile-menu" onKeyDown={handleMobileMenuKeyDown}>
             <summary ref={mobileSummaryRef} aria-label={messages.header.toggle} className="site-menu-button">
               <span />
@@ -319,16 +323,6 @@ export function SiteHeader() {
               </DocsIntentLink>
             </div>
             <div className="site-utilities">
-              <a
-                aria-label={messages.header.github}
-                className="site-github"
-                href="https://github.com/Heonys/live2d-web"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.55 9.55 0 0 1 12 6.82c.85 0 1.71.12 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
-                </svg>
-                <span>GitHub</span>
-              </a>
               <div ref={languageRootRef} className="site-language">
                 <button
                   ref={languageTriggerRef}
@@ -350,7 +344,9 @@ export function SiteHeader() {
                     <path d="M3 12h18M12 3c2.3 2.46 3.5 5.46 3.5 9s-1.2 6.54-3.5 9c-2.3-2.46-3.5-5.46-3.5-9S9.7 5.46 12 3Z" />
                   </svg>
                   <span lang={currentLocale}>{languageNames[currentLocale]}</span>
-                  <span aria-hidden="true" className="site-language-chevron">⌄</span>
+                  <svg aria-hidden="true" className="site-language-chevron" viewBox="0 0 16 16">
+                    <path d="m4 6 4 4 4-4" />
+                  </svg>
                 </button>
                 {languageOpen && (
                   <div
@@ -373,14 +369,21 @@ export function SiteHeader() {
                         onPointerEnter={() => void prepareLanguage(language)}
                       >
                         <span>{languageNames[language]}</span>
-                        <span aria-hidden="true" className="site-language-check">
-                          {language === currentLocale ? '✓' : ''}
-                        </span>
                       </Link>
                     ))}
                   </div>
                 )}
               </div>
+              <a
+                aria-label={messages.header.github}
+                className="site-github"
+                href="https://github.com/Heonys/live2d-web"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.55 9.55 0 0 1 12 6.82c.85 0 1.71.12 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86V21c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+                </svg>
+                <span>GitHub</span>
+              </a>
             </div>
           </nav>
         </div>

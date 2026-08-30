@@ -13,6 +13,7 @@ import { StageLoading } from './StageLoading'
 
 const SPEECH_ATTACK_MS = 90
 const SPEECH_RELEASE_MS = 150
+const LANDING_MODEL_FIT = { offsetY: 16, scale: 1.12 } as const
 
 function smoothstep(value: number) {
   return value * value * (3 - 2 * value)
@@ -226,7 +227,7 @@ export function LandingDemo() {
                 fallback={() => <StageLoading />}
               >
                 <Live2DModel
-                  fit="upper-body"
+                  fit={LANDING_MODEL_FIT}
                   followPointer
                   idleMotion="Idle"
                   src={manifest.model3}
@@ -250,11 +251,9 @@ export function LandingDemo() {
       </div>
       <div className="landing-demo-controls">
         <div className="landing-demo-action">
-          <span>{messages.motion}</span>
           <button disabled={!controller} type="button" onClick={playTap}>{messages.playMotion}</button>
         </div>
         <div className="landing-demo-action">
-          <span>{messages.lipSync}</span>
           <button
             aria-describedby="landing-lip-sync-description"
             aria-pressed={holdingSpeech}

@@ -1,12 +1,3 @@
-.reading-progress {
-  position: fixed;
-  z-index: 60;
-  inset: 0 0 auto;
-  height: 2px;
-  background: var(--accent);
-  transform: scaleX(var(--docs-reading-progress, 0));
-  transform-origin: left;
-}
 .docs-navigation-progress {
   position: fixed;
   z-index: 61;
@@ -113,6 +104,12 @@
   text-align: left;
   align-items: center;
   gap: 9px;
+}
+
+@media (min-width: 1121px) {
+  .docs-sidebar-search {
+    display: none;
+  }
 }
 .docs-search-trigger:hover {
   border-color: var(--line-strong);
@@ -270,20 +267,11 @@
 .docs-search-results > a + a {
   border-top: 1px solid var(--line);
 }
-.docs-search-results a:hover,
-.docs-search-results a[aria-selected='true'] {
+.docs-search-results a:hover {
   background: rgb(255 255 255 / 4%);
 }
-.docs-search-results a[aria-selected='true']::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 7px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  transform: translateY(-50%);
+.docs-search-results a[aria-selected='true'] {
+  background: var(--surface-2);
 }
 .docs-search-results a > span {
   margin-top: 2px;
@@ -646,14 +634,30 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   text-transform: uppercase;
 }
 .docs-toc nav {
+  position: relative;
   display: grid;
   margin-top: 10px;
   border-left: 1px solid var(--line);
 }
+.docs-toc-indicator {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: -1px;
+  width: 2px;
+  height: 0;
+  border-radius: 999px;
+  opacity: 0;
+  background: var(--accent);
+  pointer-events: none;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 180ms ease,
+    opacity 120ms ease;
+}
 .docs-toc a {
-  margin-left: -1px;
+  position: relative;
   padding: 6px 11px;
-  border-left: 1px solid transparent;
   color: var(--text-2);
   font-size: 12px;
   line-height: 1.4;
@@ -664,8 +668,12 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
   font-size: 12px;
 }
 .docs-toc a[aria-current='location'] {
-  border-color: var(--accent);
   color: var(--text-1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-toc-indicator {
+    transition: none;
+  }
 }
 @media (max-width: 1120px) {
   .docs-layout {

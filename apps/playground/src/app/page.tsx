@@ -39,7 +39,8 @@ export const metadata: Metadata = localizedMetadata(
 )
 
 export function LandingPageContent({ locale }: { locale: SiteLocale }) {
-  const messages = getSiteMessages(locale).landing
+  const siteMessages = getSiteMessages(locale)
+  const messages = siteMessages.landing
   const capabilities = [
     {
       description: messages.runtimeCapabilityDescription,
@@ -150,12 +151,18 @@ export function LandingPageContent({ locale }: { locale: SiteLocale }) {
         </div>
       </section>
 
-      <section className="landing-final-cta">
-        <p>{messages.finalNote}</p>
-        <div>
-          <DocsIntentLink href={localizedPath(locale, '/inspect')}>{messages.inspectModel}</DocsIntentLink>
+      <footer className="landing-footer">
+        <div className="landing-footer-main">
+          <p>© 2026 Jiheon Kim</p>
+          <nav aria-label={messages.footerNavigation}>
+            <DocsIntentLink href={localizedDocPath(locale)}>Documentation</DocsIntentLink>
+            <a href="https://www.npmjs.com/package/live2d-web">npm</a>
+            <a href="https://github.com/Heonys/live2d-web">GitHub</a>
+            <a href="https://github.com/Heonys/live2d-web/blob/main/LICENSE">MIT License</a>
+          </nav>
         </div>
-      </section>
+        <p className="landing-footer-note">{messages.finalNote}</p>
+      </footer>
     </main>
   )
 }

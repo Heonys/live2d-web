@@ -142,7 +142,7 @@ export function mountLive2DDevtools(
   let unsubscribe: (() => void) | undefined
   let parameterFrame: number | undefined
   let lastParameterSample = 0
-  let status = 'Ready'
+  let status = ''
   let statusError = false
   let sequence: MotionSequenceStep[] = []
   const overrides = new Map<string, { cleanup: () => void, value: number }>()
@@ -164,6 +164,7 @@ export function mountLive2DDevtools(
       return
     output.textContent = status
     output.dataset.error = String(statusError)
+    output.hidden = !status
   }
   const showError = (error: unknown) => {
     status = error instanceof Error ? error.message : String(error)
@@ -303,7 +304,7 @@ export function mountLive2DDevtools(
       shell.innerHTML = `<div class="top"><strong>Live2D Devtools</strong><span>Runtime controls and diagnostics</span></div>
         <div class="tabs" role="tablist">${TABS.map(value => `<button aria-selected="${tab === value}" data-tab="${value}" role="tab" type="button">${value[0]!.toUpperCase()}${value.slice(1)}</button>`).join('')}</div>
         <div class="panel" role="tabpanel">${panel}</div>
-        <output class="status" data-error="${statusError}" data-status>${escape(status)}</output>`
+        <output class="status" data-error="${statusError}" data-status${status ? '' : ' hidden'}>${escape(status)}</output>`
       startSampling()
     }
     catch (error) {

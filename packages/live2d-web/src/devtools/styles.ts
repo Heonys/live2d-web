@@ -28,7 +28,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 input[type='text'], input[type='number'] { width: 100%; padding: 7px 9px; }
 input[type='range'] { width: 100%; accent-color: var(--devtools-accent); }
 
-.shell { display: flex; min-height: 100%; flex-direction: column; }
+.shell { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 .top { padding: 14px; border-bottom: 1px solid #292d34; }
 .top strong { display: block; font-size: 14px; }
 .top span { color: #868c96; font-size: 11px; }

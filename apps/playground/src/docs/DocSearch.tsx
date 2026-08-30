@@ -12,9 +12,9 @@ const SearchDialog = dynamic(
 )
 
 const triggerLabels = {
-  en: 'Search documentation',
-  ja: 'ドキュメントを検索',
-  ko: '문서 검색',
+  en: 'Search',
+  ja: '検索',
+  ko: '검색',
 } as const
 
 interface DocsSearchContextValue {
@@ -54,8 +54,6 @@ export function DocsSearchProvider({ children }: { children: ReactNode }) {
   }, [pathname])
 
   useEffect(() => {
-    if (!pathname.startsWith('/docs/'))
-      return
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       const editable = target?.matches('input, textarea, select, [contenteditable="true"]')
@@ -68,7 +66,7 @@ export function DocsSearchProvider({ children }: { children: ReactNode }) {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [openSearch, pathname])
+  }, [openSearch])
 
   const value = useMemo(() => ({ open, openSearch, triggerLabel: triggerLabels[locale] }), [locale, open, openSearch])
   return (

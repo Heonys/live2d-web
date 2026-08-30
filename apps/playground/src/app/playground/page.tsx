@@ -1057,7 +1057,7 @@ export default function PlaygroundPage() {
             <p className="eyebrow">{messages.playground.eyebrow}</p>
             <h1>{messages.playground.title}</h1>
           </div>
-          <p id="playground-stage-description">
+          <p className="playground-description" id="playground-stage-description">
             {messages.playground.description}
           </p>
         </div>
@@ -1089,8 +1089,12 @@ export default function PlaygroundPage() {
                 id="playground-panel-model"
                 role="tabpanel"
               >
+                <div className="panel-heading">
+                  <span>{messages.playground.model}</span>
+                  <h2>{messages.playground.modelControls}</h2>
+                  <p>{messages.playground.modelControlsDescription}</p>
+                </div>
                 <div className="playground-fieldset">
-                  <strong>{messages.playground.demoPresets}</strong>
                   <label>
                     {messages.playground.motion}
                     <select
