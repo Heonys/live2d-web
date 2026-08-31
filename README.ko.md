@@ -20,12 +20,11 @@
 
 ## 주요 기능
 
-- Framework 5-r.5 WebGL2 어댑터를 통한 Cubism 4·5 모델 로드
-- React 없는 루트 API와 선택형 React binding
-- 모션·시퀀스·fade·가중 Idle·표정·포인터 상호작용
-- 볼륨/wLipSync와 선택형 MediaPipe main/Worker 얼굴 추적(모바일·소비자 검증 전까지 experimental)
-- 명확한 자원 정리, 안정적인 오류 코드, tarball·브라우저 검증
-- 선택형 `live2d-web/inspect` 모델 검사와 `live2d-web/devtools` 제어 패널(소비자·호환성 검증 전까지 experimental)
+- Framework 5-r.5 어댑터로 Cubism 4·5 모델을 불러와 WebGL2로 직접 렌더링
+- 바닐라 JavaScript 런타임과 React 컴포넌트, 훅
+- 모션, 시퀀스, 페이드, 가중 Idle, 표정, 포인터 상호작용
+- 볼륨과 wLipSync 립싱크, MediaPipe 얼굴 트래킹(experimental)
+- 모델 리포트와 디버깅 패널(experimental)
 
 ## 빠른 시작
 

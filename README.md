@@ -18,14 +18,14 @@
   <strong>English</strong> · <a href="README.ko.md">한국어</a> · <a href="README.ja.md">日本語</a>
 </p>
 
-## Why live2d-web
+## Features
 
-- Cubism 4/5 model loading with a bundled Framework 5-r.5 WebGL2 adapter
-- One React-free root API plus an optional React binding
+- Cubism 4 and 5 models loaded through a bundled Framework 5-r.5 adapter and
+  drawn on WebGL2
+- A plain JavaScript runtime, with React components and hooks included
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
-- Volume/wLipSync inputs and optional MediaPipe main/Worker face tracking (experimental until mobile and consumer validation)
-- Explicit lifecycle cleanup, stable errors and real tarball/browser gates
-- Optional `live2d-web/inspect` model reports and `live2d-web/devtools` controls (experimental until consumer and compatibility validation)
+- Lip sync from volume or wLipSync, and MediaPipe face tracking (experimental)
+- Model reports and a debugging panel (experimental)
 
 ## Quick start
 
