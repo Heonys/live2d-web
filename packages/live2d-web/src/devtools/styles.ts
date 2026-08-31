@@ -29,12 +29,13 @@ input[type='text'], input[type='number'] { width: 100%; padding: 7px 9px; }
 input[type='range'] { width: 100%; accent-color: var(--devtools-accent); }
 
 .shell { display: flex; height: 100%; min-height: 0; flex-direction: column; }
-.top { padding: 14px; border-bottom: 1px solid #292d34; }
-.top strong { display: block; font-size: 14px; }
-.top span { color: #868c96; font-size: 11px; }
+/* 패널은 자기 제목을 그리지 않는다. 호스트가 이미 이 영역에 라벨을 붙이므로
+   제목이 두 번 쌓이고, 무엇을 부를지는 붙이는 쪽이 정하는 편이 낫다. */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 탭이 늘어도 한 줄을 유지한다. 개수를 박아두면 다섯 번째가 줄바꿈된다. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 4px;
   padding: 8px;
   border-bottom: 1px solid #292d34;
@@ -48,10 +49,10 @@ input[type='range'] { width: 100%; accent-color: var(--devtools-accent); }
 .panel::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: #343942; background-clip: padding-box; }
 .panel::-webkit-scrollbar-thumb:hover { background: #505762; background-clip: padding-box; }
 .stack { display: grid; gap: 10px; }
-.card { padding: 11px; border: 1px solid #292d34; border-radius: 7px; background: #171a20; }
-.card-title { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.row + .row { margin-top: 7px; }
+.card { padding: 12px; border: 1px solid #30353e; border-radius: 8px; background: #1a1e25; }
+.card-title { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #292d34; color: #b9bdc6; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.row + .row { margin-top: 6px; }
 .muted { color: #868c96; }
 .value { color: #d7dbe3; font-family: ui-monospace, monospace; font-size: 11px; }
 .field { display: grid; gap: 5px; }

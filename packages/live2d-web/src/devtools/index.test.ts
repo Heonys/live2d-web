@@ -87,7 +87,10 @@ describe('live2D Devtools', () => {
 
     const devtools = mountLive2DDevtools({ container, target })
     expect(container.firstElementChild).toBe(existing)
-    expect(shadow(container).textContent).toContain('Live2D Devtools')
+    // The panel draws no title of its own: the host already labels the region
+    // it was given, and two stacked titles is what that produced.
+    expect(shadow(container).textContent).not.toContain('Live2D Devtools')
+    expect(shadow(container).querySelector('[role="tab"]')).not.toBeNull()
     expect(shadow(container).textContent).toContain('800×400')
     expect(shadow(container).querySelector<HTMLOutputElement>('[data-status]')?.hidden).toBe(true)
     ;(shadow(container).querySelector('[data-action="copy-diagnostic"]') as HTMLButtonElement).click()

@@ -201,17 +201,21 @@ export function mountLive2DDevtools(
     return `<div class="stack">
       <section aria-label="Runtime" class="card" role="group">
         <p class="card-title">Runtime</p>
-        <div class="row"><span class="muted">Status</span><span class="value">${escape(state?.status ?? 'model controller')}</span></div>
+        ${state
+          ? `<div class="row"><span class="muted">Stage</span><span class="value">${escape(state.status)}</span></div>`
+          // A controller passed on its own has no stage to report. Saying
+          // "model controller" in a status row read as a state the runtime was in.
+          : '<div class="row"><span class="muted">Stage</span><span class="value muted">not attached</span></div>'}
         <div class="row"><span class="muted">Motion</span><span class="value">${target.isMotionPlaying() ? 'playing' : 'idle'}</span></div>
         ${state?.render ? `<div class="row"><span class="muted">Buffer</span><span class="value">${state.render.width}×${state.render.height} @ ${state.render.resolution.toFixed(2)}</span></div>` : ''}
       </section>
       <section aria-label="Model" class="card" role="group">
         <p class="card-title">Model</p>
-        <div class="row"><span class="muted">model3 / moc</span><span class="value">${escape(info.model3Version ?? 'unknown')} / ${escape(info.mocVersion ?? 'unknown')}</span></div>
+        <div class="row"><span class="muted">Format</span><span class="value">model3 v${escape(info.model3Version ?? '?')} · moc v${escape(info.mocVersion ?? '?')}</span></div>
         <div class="row"><span class="muted">Parameters</span><span class="value">${info.parameters?.length ?? 0}</span></div>
         <div class="row"><span class="muted">Motion groups</span><span class="value">${Object.keys(info.motions).length}</span></div>
-        <div class="row"><span class="muted">Expressions</span><span class="value">${info.expressions.length}</span></div>
-        <div class="row"><span class="muted">Hit areas</span><span class="value">${info.hitAreas.length}</span></div>
+        <div class="row"><span class="muted">Expressions</span><span class="value${info.expressions.length ? '' : ' muted'}">${info.expressions.length || 'none'}</span></div>
+        <div class="row"><span class="muted">Hit areas</span><span class="value${info.hitAreas.length ? '' : ' muted'}">${info.hitAreas.length || 'none'}</span></div>
       </section>
       <button data-action="copy-diagnostic" type="button">Copy diagnostic JSON</button>
     </div>`
@@ -301,14 +305,14 @@ export function mountLive2DDevtools(
           : tab === 'motion'
             ? motionPanel(info)
             : expressionPanel(info)
-      shell.innerHTML = `<div class="top"><strong>Live2D Devtools</strong><span>Runtime controls and diagnostics</span></div>
+      shell.innerHTML = `
         <div class="tabs" role="tablist">${TABS.map(value => `<button aria-selected="${tab === value}" data-tab="${value}" role="tab" type="button">${value[0]!.toUpperCase()}${value.slice(1)}</button>`).join('')}</div>
         <div class="panel" role="tabpanel">${panel}</div>
         <output class="status" data-error="${statusError}" data-status${status ? '' : ' hidden'}>${escape(status)}</output>`
       startSampling()
     }
     catch (error) {
-      shell.innerHTML = `<div class="top"><strong>Live2D Devtools</strong><span>Target unavailable</span></div><p class="empty">${escape(error instanceof Error ? error.message : error)}</p><output class="status" data-error="true" data-status>${escape(error instanceof Error ? error.message : error)}</output>`
+      shell.innerHTML = `<p class="empty">${escape(error instanceof Error ? error.message : error)}</p><output class="status" data-error="true" data-status>${escape(error instanceof Error ? error.message : error)}</output>`
     }
   }
 
