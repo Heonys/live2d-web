@@ -31,3 +31,18 @@ export function warmUpModelAssets(manifest: AssetManifest) {
       .catch(() => {})
   }
 }
+
+/**
+ * Sample models `fetch-assets` already downloads for the benchmarks.
+ *
+ * The demo has only ever loaded Hiyori, so the compatibility matrix has only
+ * ever had one entry. The files are on disk; nothing but a picker was missing.
+ * Development only: the public demo keeps its single model.
+ */
+export interface SampleModel {
+  id: string
+  name: string
+  model3: string
+  /** Why the sample is in the set: masking, expressions, a Cubism version. */
+  role: string
+}

@@ -32,6 +32,12 @@ select {
   font-size: max(13px, 1em);
 }
 
+/* 기본 화살표는 오른쪽 끝에 그려진다. 좌우 패딩이 같으면 긴 값이 화살표
+   바로 옆까지 붙어 서로 겹쳐 보인다. */
+select {
+  padding-right: 2rem;
+}
+
 input[type='text'],
 input[type='number'] {
   min-width: 0;

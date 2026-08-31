@@ -75,11 +75,13 @@
   display: grid;
   padding: 8px;
   border-bottom: 1px solid var(--line);
-  grid-template-columns: repeat(4, 1fr);
+  /* 개수가 늘면 열 수를 함께 늘린다. 고정 4열이면 다섯 번째가 줄바꿈된다. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 4px;
 }
 .playground-tabs button {
-  padding: 8px 4px;
+  padding: 8px 2px;
   border: 0;
   border-radius: 6px;
   position: relative;
@@ -236,51 +238,6 @@
   font-size: 10px;
 }
 
-.code-drawer-backdrop {
-  position: fixed;
-  z-index: 90;
-  inset: 0;
-  display: flex;
-  background: rgb(0 0 0 / 66%);
-  justify-content: flex-end;
-  backdrop-filter: blur(5px);
-}
-.code-drawer {
-  width: min(680px, 92vw);
-  height: 100dvh;
-  overflow: auto;
-  border-left: 1px solid var(--line-strong);
-  background: var(--surface-0);
-  box-shadow: -30px 0 90px rgb(0 0 0 / 45%);
-}
-.code-drawer-header {
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  display: flex;
-  padding: 17px 20px;
-  border-bottom: 1px solid var(--line);
-  background: rgb(11 12 15 / 94%);
-  align-items: center;
-  justify-content: space-between;
-  backdrop-filter: blur(14px);
-}
-.code-drawer-header > div {
-  display: grid;
-  gap: 4px;
-}
-.code-drawer-header span {
-  color: var(--accent);
-  font: 650 9px/1 var(--font-mono);
-  text-transform: uppercase;
-}
-.code-drawer-header strong {
-  font-size: 15px;
-}
-.code-drawer-code figure[data-rehype-pretty-code-figure] {
-  margin: 20px;
-  box-shadow: none;
-}
 body.drawer-open {
   overflow: hidden;
 }

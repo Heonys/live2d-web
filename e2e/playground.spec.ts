@@ -1029,3 +1029,52 @@ test('covers the integrated Framework adapter lifecycle and lazy assets', async 
 
   expect(actionableWebGLErrors(browserName, unexpectedErrors)).toEqual([])
 })
+
+// The demo had only ever loaded Hiyori, so every rig-shaped defect was invisible
+// and the compatibility matrix had one entry. fetch-assets downloads four more
+// and the deploy runs the same script, so the picker is public.
+test('loads every official sample the asset script downloads', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+
+  const picker = page.getByTestId('sample-model-picker').locator('select')
+  await expect(picker).toBeVisible()
+  const ids = await picker.locator('option').evaluateAll(
+    options => options.map(option => (option as HTMLOptionElement).value),
+  )
+  expect(ids.length).toBeGreaterThanOrEqual(5)
+
+  for (const id of ids) {
+    await picker.selectOption(id)
+    await expect(page.getByTestId('stage-status')).toContainText('ready')
+    // Swapping models must dispose the previous one rather than stacking canvases.
+    await expect(page.locator('canvas')).toHaveCount(1)
+  }
+  expect(pageErrors).toEqual([])
+})
+
+// The `/devtools` entry is experimental and its exit criterion is one real
+// consumer. The demo is that consumer, and showing it here also demonstrates the
+// entry to anyone evaluating the library.
+test('mounts the devtools panel on the loaded model and cleans it up', async ({ page }) => {
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+
+  // The panel belongs to its own tab. Leaking it into the Model tab makes that
+  // tab unreadably long, and it did while the tab was being wired up.
+  await expect(page.getByTestId('devtools-host')).toBeHidden()
+
+  await page.getByRole('tab', { name: 'Devtools' }).click()
+  const host = page.getByTestId('devtools-host')
+  await expect(host).toBeVisible()
+
+  // The panel lives in an open shadow root, so Playwright pierces it by default.
+  const labels = await host.locator('button').allTextContents()
+  for (const tab of ['Overview', 'Parameters', 'Motion', 'Expression'])
+    expect(labels.some(label => label.includes(tab))).toBe(true)
+
+  await page.goto('/')
+  await expect(page.getByTestId('devtools-host')).toHaveCount(0)
+})

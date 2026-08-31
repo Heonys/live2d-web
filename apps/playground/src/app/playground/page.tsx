@@ -18,7 +18,7 @@ import type {
   MediaPipeMappingMode,
   MediaPipeWorkerFaceTracker,
 } from 'live2d-web/tracking/mediapipe'
-import type { AssetManifest } from '../../lib/assetManifest'
+import type { AssetManifest, SampleModel } from '../../lib/assetManifest'
 import { createVolumeLipSync, Live2DError } from 'live2d-web'
 import { mountLive2DDevtools } from 'live2d-web/devtools'
 import {
@@ -30,12 +30,13 @@ import {
 import { createMediaPipeFaceTracker } from 'live2d-web/tracking/mediapipe'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { preload } from 'react-dom'
+import { DevtoolsPanel } from '../../components/DevtoolsPanel'
 import { StageLoading } from '../../components/StageLoading'
 import { localizedDocPath } from '../../i18n/site'
 import { useSiteLocale, useSiteMessages } from '../../i18n/SiteLocale'
 import { CUBISM_CORE_URL, warmUpModelAssets } from '../../lib/assetManifest'
+import { loadSampleModels } from '../../lib/sampleModels'
 import { SYNTHETIC_LIPSYNC_PROFILE } from '../../lib/syntheticLipSyncProfile'
-import PlaygroundCode from './PlaygroundCode.mdx'
 
 const POSE_PARAMETER_IDS = [
   'ParamAngleX',
@@ -64,7 +65,14 @@ type MotionFadePreset = '500' | 'instant' | 'model'
 type IdlePreset = 'first' | 'uniform'
 type FaceTracker = MediaPipeFaceTracker | MediaPipeWorkerFaceTracker
 type FaceTrackingExecution = 'main' | 'worker'
-type PlaygroundTab = 'audio' | 'code' | 'model' | 'tracking'
+type PlaygroundTab = 'audio' | 'devtools' | 'model' | 'tracking'
+
+const PLAYGROUND_TABS: readonly PlaygroundTab[] = [
+  'model',
+  'audio',
+  'tracking',
+  'devtools',
+]
 
 function optionsForFadePreset(preset: MotionFadePreset): MotionOptions | undefined {
   if (preset === 'model')
@@ -151,83 +159,6 @@ function RuntimeDevtools({ target }: { target: Live2DModelController | null }) {
           <p>{messages.modelControlsPending}</p>
         </div>
       )}
-    </div>
-  )
-}
-
-function CodeDrawer({
-  close,
-  open,
-  returnFocusRef,
-}: {
-  close: () => void
-  open: boolean
-  returnFocusRef: { readonly current: HTMLElement | null }
-}) {
-  const messages = useSiteMessages()
-  const dialogRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open)
-      return
-    const dialog = dialogRef.current
-    const returnFocus = returnFocusRef.current
-    dialog?.querySelector<HTMLElement>('button')?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        close()
-        return
-      }
-      if (event.key !== 'Tab' || !dialog)
-        return
-      const focusable = [...dialog.querySelectorAll<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])')]
-      if (focusable.length === 0)
-        return
-      const first = focusable[0]
-      const last = focusable.at(-1)!
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      }
-      else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    document.body.classList.add('drawer-open')
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.body.classList.remove('drawer-open')
-      document.removeEventListener('keydown', handleKeyDown)
-      if (returnFocus?.isConnected)
-        returnFocus.focus()
-    }
-  }, [close, open, returnFocusRef])
-
-  if (!open)
-    return null
-  return (
-    <div className="code-drawer-backdrop" role="presentation" onClick={close}>
-      <div
-        ref={dialogRef}
-        aria-label={messages.playground.codeDialog}
-        aria-modal="true"
-        className="code-drawer"
-        role="dialog"
-        onClick={event => event.stopPropagation()}
-      >
-        <div className="code-drawer-header">
-          <div>
-            <span>React</span>
-            <strong>{messages.playground.buildScene}</strong>
-          </div>
-          <button type="button" onClick={close}>{messages.common.close}</button>
-        </div>
-        <div className="code-drawer-code">
-          <PlaygroundCode />
-        </div>
-      </div>
     </div>
   )
 }
@@ -342,7 +273,13 @@ export default function PlaygroundPage() {
   const messages = useSiteMessages()
   const [manifest, setManifest] = useState<AssetManifest | null>(null)
   const [assetError, setAssetError] = useState('')
-  const [fit, setFit] = useState<ModelFit>('upper-body')
+  // 개발에서만 채운다. 공개 데모는 지금까지처럼 Hiyori 하나만 띄운다.
+  const [samples, setSamples] = useState<SampleModel[]>([])
+  const [sampleId, setSampleId] = useState('')
+  // 공식 샘플마다 캔버스 안에서 캐릭터가 차지하는 크기가 달라, upper-body의
+  // 2배 확대가 Mark처럼 이미 상반신만 그려진 리그에서는 화면을 넘긴다.
+  // 데모 기본값은 어느 리그에서나 안전한 full로 둔다.
+  const [fit, setFit] = useState<ModelFit>('full')
   const [controller, setController] = useState<Live2DModelController | null>(null)
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
   const [motionValue, setMotionValue] = useState('')
@@ -351,8 +288,6 @@ export default function PlaygroundPage() {
   const [motionResult, setMotionResult] = useState('')
   const playGenerationRef = useRef(0)
   const [activeTab, setActiveTab] = useState<PlaygroundTab>('model')
-  const [codeDrawerOpen, setCodeDrawerOpen] = useState(false)
-  const codeDrawerTriggerRef = useRef<HTMLButtonElement>(null)
   const [expression, setExpression] = useState('')
   const [expressionFadePreset, setExpressionFadePreset]
     = useState<MotionFadePreset>('model')
@@ -873,6 +808,15 @@ export default function PlaygroundPage() {
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+    void loadSampleModels(controller.signal)
+      .then(setSamples)
+      // 목록이 없어도 데모는 Hiyori로 계속 동작해야 한다.
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
     const micGeneration = micGenerationRef
     const faceGeneration = faceGenerationRef
     return () => {
@@ -1053,6 +997,9 @@ export default function PlaygroundPage() {
     })
   }, [controller, motionFadePreset, motionOptions])
 
+  const selectedSample = samples.find(sample => sample.id === sampleId)
+  // 고르지 않았으면 지금까지와 완전히 같은 경로다. 공개 데모는 이 분기에만 닿는다.
+  const modelSrc = selectedSample?.model3 ?? manifest?.model3
   const stage = manifest && mounted
     ? (
         <Live2DCanvas
@@ -1073,7 +1020,10 @@ export default function PlaygroundPage() {
             // pointer wins nothing but confusion while a face is attached.
             followPointer={!faceTrackingActive}
             idleMotion={idleMotion}
-            src={manifest.model3}
+            // 모델을 바꾸면 이전 것을 정리하고 새로 만든다. key가 없으면
+            // 같은 인스턴스가 src만 갈아끼워 생명주기 경로를 지나가지 않는다.
+            key={modelSrc}
+            src={modelSrc ?? manifest.model3}
             onLoad={handleLoad}
             onTap={handleTap}
           >
@@ -1126,7 +1076,7 @@ export default function PlaygroundPage() {
 
           <aside className="playground-panel">
             <div aria-label={messages.playground.tabs} className="playground-tabs" role="tablist">
-              {(['model', 'audio', 'tracking', 'code'] as const).map(tab => (
+              {PLAYGROUND_TABS.map(tab => (
                 <button
                   key={tab}
                   aria-controls={`playground-panel-${tab}`}
@@ -1152,6 +1102,22 @@ export default function PlaygroundPage() {
                   <p>{messages.playground.modelControlsDescription}</p>
                 </div>
                 <div className="playground-fieldset">
+                  {samples.length > 1 && (
+                    <label data-testid="sample-model-picker">
+                      {messages.playground.sampleModel}
+                      <select
+                        aria-label={messages.playground.sampleModel}
+                        value={sampleId}
+                        onChange={event => setSampleId(event.target.value)}
+                      >
+                        {samples.map(sample => (
+                          <option key={sample.id} value={sample.id}>
+                            {`${sample.name} · ${sample.role}`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <label>
                     {messages.playground.motion}
                     <select
@@ -1608,32 +1574,21 @@ export default function PlaygroundPage() {
               </section>
 
               <section
-                hidden={activeTab !== 'code'}
-                id="playground-panel-code"
+                hidden={activeTab !== 'devtools'}
+                id="playground-panel-devtools"
                 role="tabpanel"
               >
                 <div className="panel-heading">
-                  <span>{messages.playground.code}</span>
-                  <h2>{messages.playground.buildScene}</h2>
-                  <p>{messages.playground.codeDescription}</p>
+                  <span>{messages.playground.devtools}</span>
+                  <h2>{messages.playground.devtoolsTitle}</h2>
+                  <p>{messages.playground.devtoolsDescription}</p>
                 </div>
-                <button
-                  ref={codeDrawerTriggerRef}
-                  type="button"
-                  onClick={() => setCodeDrawerOpen(true)}
-                >
-                  {messages.playground.viewCode}
-                </button>
+                <DevtoolsPanel target={controller} />
               </section>
             </div>
           </aside>
         </section>
       </main>
-      <CodeDrawer
-        close={() => setCodeDrawerOpen(false)}
-        open={codeDrawerOpen}
-        returnFocusRef={codeDrawerTriggerRef}
-      />
     </>
   )
 }
