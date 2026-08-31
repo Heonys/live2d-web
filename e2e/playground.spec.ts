@@ -1063,7 +1063,19 @@ test('mounts the devtools panel on the loaded model and cleans it up', async ({ 
   await expect(page.getByTestId('stage-status')).toContainText('ready')
 
   // The panel belongs to its own tab. Leaking it into the Model tab makes that
-  // tab unreadably long, and it did while the tab was being wired up.
+  // tab unreadably long, and it did through a deploy: a second mount lived at
+  // the bottom of the Model tab without the testid, so asserting on the testid
+  // alone saw only the tab that was already correct. Count what devtools itself
+  // leaves behind instead, a shadow host, so any mount is visible to this test
+  // whatever markers it carries.
+  const shadowHosts = (scope: string) => page.evaluate(
+    selector => [...document.querySelectorAll(selector)]
+      .filter(element => element.shadowRoot)
+      .length,
+    scope,
+  )
+  expect(await shadowHosts('#playground-panel-model *')).toBe(0)
+  expect(await shadowHosts('[role="tabpanel"] *')).toBe(1)
   await expect(page.getByTestId('devtools-host')).toBeHidden()
 
   await page.getByRole('tab', { name: 'Devtools' }).click()

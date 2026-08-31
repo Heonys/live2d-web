@@ -3,13 +3,10 @@
 import type { Live2DDevtools } from 'live2d-web/devtools'
 import type { Live2DModelController } from 'live2d-web/react'
 import { useEffect, useRef } from 'react'
+import { useSiteMessages } from '../i18n/SiteLocale'
 
 /**
  * Mounts the devtools panel on the loaded model.
- *
- * Development only. A debugging surface has no place on the public demo, but
- * the graduation condition for the `/devtools` entry is one real consumer, and
- * judging it without ever using it would be guesswork.
  *
  * The panel fills its container rather than floating, so it needs a sized host;
  * an unsized div renders it at zero height and it looks like nothing happened.
@@ -18,6 +15,7 @@ import { useEffect, useRef } from 'react'
  * `<Live2DModel>`.
  */
 export function DevtoolsPanel({ target }: { target: Live2DModelController | null }) {
+  const messages = useSiteMessages().playground
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -26,8 +24,6 @@ export function DevtoolsPanel({ target }: { target: Live2DModelController | null
       return
     let devtools: Live2DDevtools | undefined
     let cancelled = false
-    // Static import would put the entry in the bundle even though the render
-    // gate never runs in production.
     void import('live2d-web/devtools').then(({ mountLive2DDevtools }) => {
       if (cancelled)
         return
@@ -39,11 +35,14 @@ export function DevtoolsPanel({ target }: { target: Live2DModelController | null
     }
   }, [target])
 
-  return (
-    <div
-      ref={hostRef}
-      data-testid="devtools-host"
-      style={{ display: 'flex', minHeight: 420 }}
-    />
-  )
+  if (!target) {
+    return (
+      <div className="devtools-pending" role="status">
+        <span aria-hidden="true" className="devtools-pending-dot" />
+        <p>{messages.modelControlsPending}</p>
+      </div>
+    )
+  }
+
+  return <div className="devtools-host" data-testid="devtools-host" ref={hostRef} />
 }

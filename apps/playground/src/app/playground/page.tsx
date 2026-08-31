@@ -8,7 +8,6 @@ import type {
   MotionOptions,
   VolumeLipSyncDriver,
 } from 'live2d-web'
-import type { Live2DDevtools } from 'live2d-web/devtools'
 import type { Live2DModelController } from 'live2d-web/react'
 import type {
   MediaPipeAttachOptions,
@@ -20,7 +19,6 @@ import type {
 } from 'live2d-web/tracking/mediapipe'
 import type { AssetManifest, SampleModel } from '../../lib/assetManifest'
 import { createVolumeLipSync, Live2DError } from 'live2d-web'
-import { mountLive2DDevtools } from 'live2d-web/devtools'
 import {
   LipSync,
   Live2DCanvas,
@@ -128,39 +126,6 @@ function formatFaceStartupTiming(timing: FaceStartupTiming) {
     `calibration ${timing.calibrationMs?.toFixed(0) ?? '…'}ms`,
     `tracked ${timing.totalTrackedMs?.toFixed(0) ?? '…'}ms`,
   ].join(' · ')
-}
-
-function RuntimeDevtools({ target }: { target: Live2DModelController | null }) {
-  const messages = useSiteMessages().playground
-  const containerRef = useRef<HTMLDivElement>(null)
-  const devtoolsRef = useRef<Live2DDevtools | null>(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container || !target)
-      return
-    const devtools = mountLive2DDevtools({ container, target })
-    devtoolsRef.current = devtools
-    return () => {
-      devtools.dispose()
-      if (devtoolsRef.current === devtools)
-        devtoolsRef.current = null
-    }
-  }, [target])
-
-  return (
-    <div className="runtime-devtools-host" ref={containerRef}>
-      {!target && (
-        <div className="runtime-devtools-pending" role="status">
-          <div className="runtime-devtools-pending-heading">
-            <span aria-hidden="true" className="runtime-devtools-pending-dot" />
-            <strong>Live2D Devtools</strong>
-          </div>
-          <p>{messages.modelControlsPending}</p>
-        </div>
-      )}
-    </div>
-  )
 }
 
 function Diagnostics() {
@@ -1272,7 +1237,6 @@ export default function PlaygroundPage() {
                       : messages.playground.canvasMounted}
                   </button>
                 </div>
-                <RuntimeDevtools target={controller} />
               </section>
 
               <section

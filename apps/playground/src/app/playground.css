@@ -147,48 +147,42 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.runtime-devtools-host {
+.devtools-host {
+  display: flex;
   height: 33rem;
   min-height: 33rem;
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
   overflow: hidden;
 }
-.runtime-devtools-pending {
+.devtools-pending {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   padding: 15px 16px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-1);
 }
-.runtime-devtools-pending-heading {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--text-1);
-  font-size: 13px;
-}
-.runtime-devtools-pending-dot {
+.devtools-pending-dot {
+  flex: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
-  animation: runtime-devtools-pending 1.5s ease-in-out infinite;
+  animation: devtools-pending 1.5s ease-in-out infinite;
 }
-.runtime-devtools-pending p {
+.devtools-pending p {
   margin: 0;
-  padding: 7px 0 0 16px;
   color: var(--text-3);
   font-size: 12px;
   line-height: 1.55;
 }
-@keyframes runtime-devtools-pending {
+@keyframes devtools-pending {
   50% {
     opacity: 0.35;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .runtime-devtools-pending-dot {
+  .devtools-pending-dot {
     animation: none;
   }
 }
