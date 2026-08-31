@@ -25,6 +25,7 @@ backend uses WebGL2 without Pixi. Cubism Core and model files are never bundled.
 - /docs/en/next-ssr
 - /docs/en/mobile
 - /docs/en/model-inspection
+- /docs/en/debug
 - /docs/en/devtools
 - /docs/en/troubleshooting
 - /docs/en/security-and-license

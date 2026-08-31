@@ -1,0 +1,56 @@
+## 언제 필요한가
+
+> 배치 오버레이는 **experimental**입니다. 실제 소비자 사용, 공개 API 스냅샷, 다음 호환 minor 발행이 확인될 때까지 유지됩니다.
+
+`fit: 'upper-body'`는 캐릭터가 캔버스 세로를 채우는 전신 리그를 가정합니다. 이미 상반신만 그려진 리그는 두 배 확대에서 화면을 넘고, 캔버스 중앙에서 벗어나 그려진 리그는 한쪽으로 치우칩니다. `model3.json`에는 캔버스 크기만 있고 그 안 어디에 캐릭터가 그려졌는지는 없어서, 어떤 기본값도 이걸 알아서 보정하지 못합니다.
+
+오버레이가 그 답입니다. 모델을 원하는 자리로 끌어다 놓고 그 값을 코드에 옮기면 됩니다.
+
+## 켜기
+
+```tsx title="Avatar.tsx" showLineNumbers
+<Live2DModel src="/models/model.model3.json" debug fit="upper-body" />
+```
+
+이게 전부입니다. 오버레이가 떠 있는 동안은 배치를 오버레이가 갖고, 실제로 바뀌지 않은 `fit` prop은 그 위에 다시 적용되지 않습니다.
+
+값을 앱에서도 쓰고 싶을 때만, 그러니까 저장하거나 자기 UI에 보여줄 때만 `onFitChange`를 붙이면 됩니다.
+
+```tsx title="Avatar.tsx" showLineNumbers
+const [fit, setFit] = useState<ModelFit>('upper-body')
+
+<Live2DModel src="/models/model.model3.json" debug fit={fit} onFitChange={setFit} />
+```
+
+바닐라도 같은 플래그를 받습니다.
+
+```ts title="avatar.ts" showLineNumbers
+const live2d = await createLive2D({
+  container: document.querySelector('#avatar')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+  debug: true,
+})
+
+live2d.setDebug(false)
+```
+
+오버레이는 필요할 때 불러오므로 `debug`를 꺼두면 루트 번들에 아무 비용도 들지 않습니다. 다른 자리에 직접 붙이려면 `live2d-web/debug`의 `mountLive2DDebugOverlay()`를 쓰세요.
+
+## 끌고, 굴리고, 미세조정
+
+끌어서 옮기고, 휠을 굴려 커서를 기준으로 확대하고, 방향키로 미세조정합니다(Shift를 누르면 더 잘게). `+`와 `-`는 기준점에서 확대·축소합니다. **Full**과 **Upper body**는 프리셋으로 이동하고, 지금 배치가 어느 프리셋에 있는지 표시됩니다. **Reset**은 오버레이를 켰을 때의 배치, 또는 앱이 마지막으로 적용한 배치로 돌아갑니다. 되돌릴 것이 없으면 비활성화됩니다.
+
+바에는 값이 아니라 배율이 나옵니다. 값은 결과물이라 한 번만 필요하고 그건 **Copy**가 합니다. 안전하지 않은 컨텍스트처럼 클립보드가 막히는 곳에서는 리터럴이 바 위에 나타나서 직접 선택할 수 있습니다.
+
+포인터 이벤트는 오버레이에서 멈춥니다. 누를 때 따라 생기는 click도 같이 막습니다. 그러지 않으면 `followPointer`가 커서를 쫓아가면서 모델이 커서 밑에서 끌려다니고, 손을 떼는 순간 `onTap`으로 모션까지 재생됩니다.
+
+## 나오는 값
+
+```ts
+fit={{ scale: 1.4, offsetX: -0.12, offsetY: -0.24, units: 'stage' }}
+```
+
+`units: 'stage'`는 오프셋을 스테이지 너비·높이의 비율로 읽습니다. 그래서 캔버스 크기가 바뀌어도 배치가 유지됩니다. 오프셋의 기본값은 `units: 'px'`인데, 이건 값을 잰 그 크기에 묶입니다. 크기가 고정된 오버레이에는 괜찮지만 크기가 변하는 화면에서는 어긋납니다.
+
+`scale`은 어느 쪽이든 `upper-body` 배치에 곱해지는 값이라 단위가 필요 없습니다.

@@ -25,11 +25,13 @@ interface BaseCreateLive2DOptions {
     backend?: Live2DBackend;
     container: HTMLElement;
     coreUrl?: string;
+    debug?: boolean;
     fit?: ModelFit;
     followPointer?: boolean;
     idleMotion?: IdleMotion;
     maxFps?: number;
     onError?: (error: Live2DError) => void;
+    onFitChange?: (fit: ModelFit) => void;
     pauseWhenOffscreen?: boolean;
     resolveAsset?: Live2DAssetResolver;
     retries?: number;
@@ -186,6 +188,7 @@ export interface Live2DInstance {
     expression: (id?: string, options?: ExpressionOptions) => Promise<void>;
     focus: (x: number, y: number) => void;
     focusAt: (clientX: number, clientY: number) => void;
+    getFit: () => ModelFit;
     getModelInfo: () => ModelInfo;
     getParameter: (id: string) => number;
     readonly getState: () => Live2DRuntimeState;
@@ -198,6 +201,7 @@ export interface Live2DInstance {
     retry: () => Promise<void>;
     sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>;
     setAccessibility: (accessibility: Live2DCanvasAccessibility | undefined) => void;
+    setDebug: (enabled: boolean) => void;
     setFit: (fit: ModelFit) => void;
     setParameter: (id: string, value: number) => void;
     readonly subscribe: (listener: () => void) => () => void;
@@ -228,6 +232,7 @@ export type ModelFit = 'upper-body' | 'full' | {
     scale: number;
     offsetX?: number;
     offsetY?: number;
+    units?: 'px' | 'stage';
 };
 
 // @public (undocumented)

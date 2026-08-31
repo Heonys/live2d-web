@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A placement overlay, mounted over the canvas by `debug: true` on
+  `createLive2D()` or `<Live2DModel debug />`, or by
+  `mountLive2DDebugOverlay()` from the new `live2d-web/debug` entry. Drag to
+  move, scroll to zoom around the cursor, arrow keys to nudge, and it prints the
+  `fit` value to paste back. Reset returns to where the placement stood when the
+  overlay opened.
+
+  `upper-body` assumes a full-body rig that fills its canvas, and two of the
+  five official Cubism samples are not one: one overflows at twice the size, the
+  other is drawn off center and leans. `model3.json` carries the canvas size but
+  not where the character sits inside it, so no default can correct for that.
+  Rather than guess for every rig, let the value be found by hand.
+
+  Pointer events stop at the overlay, including the click a press synthesizes,
+  or `followPointer` would chase the cursor while the model slides under it and
+  letting go would play a motion through `onTap`. The entry is loaded on demand,
+  so leaving `debug` off adds nothing to the root bundle.
+- `fit` offsets can be read as a fraction of the stage with
+  `{ ..., units: 'stage' }`. Pixel offsets, still the default, are fixed to the
+  stage size they were measured at: the layout is recomputed on every resize
+  with the same stored value, so a placement found in one window is wrong in
+  another. The overlay writes stage-relative values for that reason.
+- `getFit()` reports the layout in effect, and `setDebug()` shows or hides the
+  overlay without reloading the model.
+
+### Fixed
+
+- A `fit` prop is compared by value before it is reapplied. An inline
+  `fit={{ ... }}` is a new object on every render, so React was pushing the same
+  placement into the runtime on every parent render. That was wasted work on its
+  own, and it would have wiped whatever the debug overlay had been dragged to,
+  which is why the overlay needs nothing but `debug` to be useful.
+
 ## 0.8.0 - 2026-08-31
 
 ### Fixed

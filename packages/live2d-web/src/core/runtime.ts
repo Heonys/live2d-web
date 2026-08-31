@@ -75,6 +75,14 @@ interface BaseCreateLive2DOptions {
   backend?: Live2DBackend
   /** URL of the official live2dcubismcore.min.js. Omit only when the Core global is already loaded. */
   coreUrl?: string
+  /**
+   * Mounts the placement overlay over the container so `fit` can be found by
+   * dragging instead of guessing. The entry is loaded on demand, so leaving
+   * this off costs nothing. Default false.
+   */
+  debug?: boolean
+  /** Receives every placement the debug overlay applies. */
+  onFitChange?: (fit: ModelFit) => void
   /** Layout preset or custom scale/offset. Default 'upper-body'. */
   fit?: ModelFit
   /** Make the model look toward the pointer while it is over the container. Default false. */
@@ -165,6 +173,10 @@ export interface Live2DInstance {
   clearParameter: (id: string) => void
   /** Changes the layout preset without reloading the model. */
   setFit: (fit: ModelFit) => void
+  /** Shows or hides the placement overlay without reloading the model. */
+  setDebug: (enabled: boolean) => void
+  /** The layout currently applied, whether it came from options or setFit(). */
+  getFit: () => ModelFit
   /**
    * Re-describes the canvas for assistive technologies without reloading the
    * model. Backends that cannot re-describe their canvas keep the value given
@@ -327,6 +339,8 @@ function assertOptions(options: CreateLive2DOptions) {
       'followPointer must be a boolean.',
     )
   }
+  if (options.debug !== undefined && typeof options.debug !== 'boolean')
+    throw new Live2DError('invalid-props', 'debug must be a boolean.')
   validateIdleMotion(options.idleMotion)
 }
 
@@ -355,6 +369,8 @@ export class Live2DRuntime implements Live2DInstance {
   private features: RuntimeFeature[] = []
   private accessibility: Live2DCanvasAccessibility | undefined
   private fit: ModelFit
+  private debug: boolean
+  private debugOverlay: { dispose: () => void, refresh: () => void } | undefined
   private intersectionObserver: IntersectionObserver | undefined
   private listeners = new Set<Listener>()
   private model: ModelHandle | undefined
@@ -371,6 +387,7 @@ export class Live2DRuntime implements Live2DInstance {
 
   constructor(private readonly options: CreateLive2DOptions) {
     this.fit = options.fit ?? 'upper-body'
+    this.debug = options.debug ?? false
     this.accessibility = options.accessibility
   }
 
@@ -654,6 +671,8 @@ export class Live2DRuntime implements Live2DInstance {
           container.removeEventListener('pointerleave', onPointerLeave)
         })
       }
+      if (this.debug)
+        await this.mountDebugOverlay(stage)
       this.updateState({
         error: undefined,
         loadingStage: undefined,
@@ -729,6 +748,41 @@ export class Live2DRuntime implements Live2DInstance {
       )
     }
     return this.model
+  }
+
+  private async mountDebugOverlay(stage: StageHandle) {
+    // Kept out of the root bundle: the overlay is a development tool and most
+    // pages never turn it on.
+    const { mountLive2DDebugOverlay } = await import('../debug')
+    if (this.disposed || this.stage !== stage || !this.debug || this.debugOverlay)
+      return
+    const overlay = mountLive2DDebugOverlay({
+      container: this.options.container,
+      onChange: fit => this.options.onFitChange?.(fit),
+      target: {
+        getFit: () => this.getFit(),
+        setFit: fit => this.setFit(fit),
+      },
+    })
+    this.debugOverlay = overlay
+    this.stageCleanup.push(() => {
+      overlay.dispose()
+      if (this.debugOverlay === overlay)
+        this.debugOverlay = undefined
+    })
+  }
+
+  setDebug(enabled: boolean) {
+    if (typeof enabled !== 'boolean')
+      throw new Live2DError('invalid-props', 'debug must be a boolean.')
+    this.debug = enabled
+    if (!enabled) {
+      this.debugOverlay?.dispose()
+      this.debugOverlay = undefined
+      return
+    }
+    if (this.model && this.stage)
+      void this.mountDebugOverlay(this.stage)
   }
 
   private applyFit() {
@@ -821,6 +875,13 @@ export class Live2DRuntime implements Live2DInstance {
   setFit(fit: ModelFit) {
     this.fit = fit
     this.applyFit()
+    // The overlay shows the placement it is editing, so a change from anywhere
+    // else has to reach its readout.
+    this.debugOverlay?.refresh()
+  }
+
+  getFit(): ModelFit {
+    return typeof this.fit === 'object' ? { ...this.fit } : this.fit
   }
 
   setAccessibility(accessibility: Live2DCanvasAccessibility | undefined) {

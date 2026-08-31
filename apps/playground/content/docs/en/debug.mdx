@@ -1,0 +1,56 @@
+## When you need it
+
+> The placement overlay is **experimental** until consumer use, an API snapshot and a subsequent compatible minor release have been verified.
+
+`fit: 'upper-body'` assumes a full-body rig that fills its canvas. A rig drawn from the waist up overflows at twice the size, and one drawn off center in its canvas leans to one side. `model3.json` records the canvas size but not where the character sits inside it, so no default can correct for that.
+
+The overlay is the answer: drag the model where you want it and copy the value back into your code.
+
+## Turn it on
+
+```tsx title="Avatar.tsx" showLineNumbers
+<Live2DModel src="/models/model.model3.json" debug fit="upper-body" />
+```
+
+That is the whole setup. The overlay owns the placement while it is up, and a `fit` prop that has not actually changed is not reapplied over it.
+
+Add `onFitChange` only when your app wants the value too, to store it or show it in your own UI:
+
+```tsx title="Avatar.tsx" showLineNumbers
+const [fit, setFit] = useState<ModelFit>('upper-body')
+
+<Live2DModel src="/models/model.model3.json" debug fit={fit} onFitChange={setFit} />
+```
+
+Vanilla takes the same flag:
+
+```ts title="avatar.ts" showLineNumbers
+const live2d = await createLive2D({
+  container: document.querySelector('#avatar')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/model.model3.json',
+  debug: true,
+})
+
+live2d.setDebug(false)
+```
+
+The overlay entry loads on demand, so leaving `debug` off costs nothing in the root bundle. Mount it yourself with `mountLive2DDebugOverlay()` from `live2d-web/debug` if you want it somewhere else.
+
+## Drag, scroll, nudge
+
+Drag to move, scroll to zoom around the cursor, arrow keys to nudge (hold Shift for finer steps), `+` and `-` to zoom from the anchor. **Full** and **Upper body** jump to the presets, and the one the placement is currently on is marked. **Reset** returns to where the placement stood when the overlay opened, or to the last one the app applied, and is disabled when there is nothing to undo.
+
+The bar shows the scale, not the value. That value is the output, needed once, and **Copy** delivers it. If the clipboard refuses, as it can outside a secure context, the literal appears above the bar so it can be selected by hand.
+
+Pointer events stop at the overlay, including the click a press synthesizes. Without that, `followPointer` would chase the cursor while the model slides under it, and letting go would play a motion through `onTap`.
+
+## The value it gives you
+
+```ts
+fit={{ scale: 1.4, offsetX: -0.12, offsetY: -0.24, units: 'stage' }}
+```
+
+`units: 'stage'` reads the offsets as a fraction of the stage width and height, so the placement holds when the canvas resizes. Offsets default to `units: 'px'`, which is fixed to the size they were measured at: fine for an overlay of a known size, wrong for a page that reflows.
+
+`scale` multiplies the `upper-body` fit either way, so it needs no unit.

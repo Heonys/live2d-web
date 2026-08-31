@@ -25,7 +25,7 @@
 - バニラ JavaScript のランタイムと、React コンポーネントおよびフック
 - モーション、シーケンス、フェード、重み付き Idle、表情、ポインター操作
 - 音量と wLipSync のリップシンク、MediaPipe の顔トラッキング（experimental）
-- モデルレポートとデバッグパネル（experimental）
+- devtools パネル、およびモデルレポートと配置オーバーレイ（どちらも experimental）
 
 ## クイックスタート
 

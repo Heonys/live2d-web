@@ -11,6 +11,7 @@ const update = process.argv.includes('--update')
 
 const entries = {
   'cubism-webgl': 'dist/backends/cubism-webgl.d.mts',
+  'debug': 'dist/debug.d.mts',
   'devtools': 'dist/devtools.d.mts',
   'inspect': 'dist/inspect.d.mts',
   'mediapipe': 'dist/tracking/mediapipe.d.mts',

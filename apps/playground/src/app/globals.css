@@ -359,12 +359,14 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
   }
 }
 
+/* Under the diagnostics chip rather than opposite it: runtime state belongs
+   together, and the right corner is where the canvas tools go. */
 .hit-readout {
   pointer-events: none;
   position: absolute;
   z-index: 3;
-  top: 14px;
-  right: 14px;
+  top: 51px;
+  left: 14px;
   padding: 6px 10px;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 8px;
@@ -372,6 +374,52 @@ main:not(.landing-page):not(.docs-main):not(.playground-page) {
   background: #171a20;
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
+}
+
+.stage-tool {
+  position: absolute;
+  /* Above the debug overlay, which covers the whole container to take the
+     pointer. Without this the button that opened the tool is buried under it
+     and there is no way back out. */
+  z-index: 2147483001;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  min-height: 31px;
+  padding: 6px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 8px;
+  color: #d7dae0;
+  /* A step brighter than the diagnostics chip opposite it. That one is a
+     readout; this one is the only thing on the canvas you can press. */
+  background: #1d2128;
+  font-size: 0.72rem;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.stage-tool svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+.stage-tool:hover {
+  color: #f5f5f6;
+  border-color: rgb(255 255 255 / 24%);
+  background: #262b33;
+}
+.stage-tool:focus-visible {
+  outline: 2px solid var(--accent, #ff718f);
+  outline-offset: 2px;
+}
+.stage-tool[aria-pressed='true'] {
+  color: #f5f5f6;
+  border-color: rgb(255 255 255 / 30%);
+  background: #2b313a;
 }
 
 .dev-tools {

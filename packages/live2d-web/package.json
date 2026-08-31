@@ -34,6 +34,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./debug": "./src/debug/index.ts",
     "./devtools": "./src/devtools/index.ts",
     "./inspect": "./src/inspect/index.ts",
     "./react": "./src/react.ts",
@@ -49,6 +50,10 @@
       ".": {
         "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
+      },
+      "./debug": {
+        "types": "./dist/debug.d.mts",
+        "default": "./dist/debug.mjs"
       },
       "./devtools": {
         "types": "./dist/devtools.d.mts",

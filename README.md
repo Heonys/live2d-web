@@ -25,7 +25,8 @@
 - A plain JavaScript runtime, with React components and hooks included
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
 - Lip sync from volume or wLipSync, and MediaPipe face tracking (experimental)
-- Model reports and a debugging panel (experimental)
+- A devtools panel, plus model reports and a placement overlay (both
+  experimental)
 
 ## Quick start
 

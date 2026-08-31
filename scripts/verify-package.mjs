@@ -12,6 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageDirectory = path.join(root, 'packages/live2d-web')
 const dist = path.join(packageDirectory, 'dist')
 const entry = readFileSync(path.join(dist, 'index.mjs'), 'utf8')
+const debugEntry = readFileSync(path.join(dist, 'debug.mjs'), 'utf8')
 const devtoolsEntry = readFileSync(path.join(dist, 'devtools.mjs'), 'utf8')
 const inspectEntry = readFileSync(path.join(dist, 'inspect.mjs'), 'utf8')
 const react = readFileSync(path.join(dist, 'react.mjs'), 'utf8')
@@ -50,6 +51,7 @@ function collectGraph(entryFile, includeDynamic) {
 }
 
 const rootBundle = collectGraph('index.mjs', false)
+const debugBundle = collectGraph('debug.mjs', false)
 const devtoolsBundle = collectGraph('devtools.mjs', false)
 const inspectBundle = collectGraph('inspect.mjs', false)
 const cubismBundle = collectGraph('backends/cubism-webgl.mjs', true)
@@ -93,6 +95,10 @@ if (rootBundle.includes('inspectModelSource') || react.includes('inspectModelSou
   failures.push('root/react bundle contains optional model inspection code')
 if (rootBundle.includes('mountLive2DDevtools') || react.includes('mountLive2DDevtools'))
   failures.push('root/react bundle contains optional Devtools code')
+// The identifier alone would match the dynamic import's own destructuring, so
+// this looks for something only the implementation carries.
+if (rootBundle.includes('--debug-accent') || react.includes('--debug-accent'))
+  failures.push('root/react bundle contains optional debug overlay code')
 if (rootBundle.includes('startMediaPipeFaceTrackerWorker'))
   failures.push('root bundle contains MediaPipe Worker code')
 if (react.includes('startMediaPipeFaceTrackerWorker'))
@@ -100,12 +106,15 @@ if (react.includes('startMediaPipeFaceTrackerWorker'))
 if (Buffer.byteLength(rootBundle) > 100_000)
   failures.push('root bundle unexpectedly exceeds 100 kB')
 enforceEntryBudget('React', react, 30_000, 8_000)
+enforceEntryBudget('Debug overlay', debugEntry, 20_000, 6_000)
 enforceEntryBudget('Devtools', devtoolsEntry, 45_000, 12_000)
 enforceEntryBudget('Inspector', inspectEntry, 25_000, 7_000)
 enforceEntryBudget('MediaPipe main', mediaPipeEntry, 45_000, 12_000)
 enforceEntryBudget('MediaPipe Worker', mediaPipeWorkerEntry, 20_000, 6_000)
 if (!rootBundle.includes('import("./backends/cubism-webgl.mjs")'))
   failures.push('root runtime does not dynamically import the default cubism-webgl adapter')
+if (!rootBundle.includes('import("./debug.mjs")'))
+  failures.push('root runtime does not load the debug overlay dynamically')
 if (!cubismBundle.includes('CubismFramework') || !cubismBundle.includes('Live2DCubismCore'))
   failures.push('cubism-webgl adapter does not contain the bundled Framework runtime')
 if (cubismBundle.includes('@pixi/') || cubismBundle.includes('pixi-live2d-display'))
@@ -131,6 +140,14 @@ if (
 }
 if (devtoolsBundle.includes('jszip'))
   failures.push('Devtools entry contains an archive dependency')
+if (
+  debugBundle.includes('@mediapipe/tasks-vision')
+  || debugBundle.includes('CubismFramework')
+  || debugBundle.includes('from "react"')
+  || debugBundle.includes('from \'react\'')
+) {
+  failures.push('Debug overlay entry contains Framework, MediaPipe or React runtime code')
+}
 if (
   inspectBundle.includes('jszip')
   || inspectBundle.includes('CubismFramework')
@@ -171,10 +188,12 @@ const packResult = JSON.parse(execFileSync(
 const tarballFiles = packResult.files.map(file => file.path)
 if (packResult.size > 175_000)
   failures.push(`npm tarball exceeds its 175 kB compressed budget (${packResult.size} bytes)`)
-if (packResult.unpackedSize > 800_000)
-  failures.push(`npm tarball exceeds its 800 kB unpacked budget (${packResult.unpackedSize} bytes)`)
-if (tarballFiles.length > 42)
-  failures.push(`npm tarball exceeds its 42-file budget (${tarballFiles.length} files)`)
+// Raised from 800 kB in 0.9 for the debug entry, which is 16 kB of the total.
+// The compressed budget above is what consumers download and it did not move.
+if (packResult.unpackedSize > 820_000)
+  failures.push(`npm tarball exceeds its 820 kB unpacked budget (${packResult.unpackedSize} bytes)`)
+if (tarballFiles.length > 45)
+  failures.push(`npm tarball exceeds its 45-file budget (${tarballFiles.length} files)`)
 const forbiddenTarballFiles = tarballFiles.filter(file =>
   /benchmark|live2dcubismcore|core-compat|hiyori|profile|fixture/i.test(file),
 )
@@ -229,6 +248,7 @@ catch (error) {
 }
 
 try {
+  await import(pathToFileURL(path.join(dist, 'debug.mjs')).href)
   await import(pathToFileURL(path.join(dist, 'devtools.mjs')).href)
 }
 catch (error) {
@@ -255,5 +275,5 @@ if (failures.length) {
   process.exitCode = 1
 }
 else {
-  console.log('[package] vanilla/react/devtools/inspect/cubism/mediapipe/worker boundaries and budgets verified')
+  console.log('[package] vanilla/react/debug/devtools/inspect/cubism/mediapipe/worker boundaries and budgets verified')
 }

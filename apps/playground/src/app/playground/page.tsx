@@ -245,6 +245,7 @@ export default function PlaygroundPage() {
   // 2배 확대가 Mark처럼 이미 상반신만 그려진 리그에서는 화면을 넘긴다.
   // 데모 기본값은 어느 리그에서나 안전한 full로 둔다.
   const [fit, setFit] = useState<ModelFit>('full')
+  const [adjustFraming, setAdjustFraming] = useState(false)
   const [controller, setController] = useState<Live2DModelController | null>(null)
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
   const [motionValue, setMotionValue] = useState('')
@@ -980,7 +981,12 @@ export default function PlaygroundPage() {
           )}
         >
           <Live2DModel
+            debug={adjustFraming}
             fit={fit}
+            // The overlay writes through this, not straight to the runtime.
+            // `fit` is controlled here, so a value it only applied internally
+            // would be reverted by the next render.
+            onFitChange={setFit}
             // Pointer follow and face tracking both drive ParamAngle*, and the
             // pointer wins nothing but confusion while a face is attached.
             followPointer={!faceTrackingActive}
@@ -1007,7 +1013,24 @@ export default function PlaygroundPage() {
           </Live2DModel>
           <Diagnostics />
           {hitReadout && <output className="hit-readout">{hitReadout}</output>}
-          <StageHint />
+          {/* The tool acts on the canvas, so its switch lives here. In the panel
+              it sat below the fold and had to be scrolled for. */}
+          <button
+            aria-pressed={adjustFraming}
+            className="stage-tool"
+            type="button"
+            onClick={() => setAdjustFraming(value => !value)}
+          >
+            {/* Crop marks: the same idea as the dashed frame the overlay draws. */}
+            <svg aria-hidden="true" viewBox="0 0 16 16">
+              <path d="M4.2 1.2v10.6h10.6" />
+              <path d="M1.2 4.2h10.6v10.6" />
+            </svg>
+            {messages.playground.adjustFraming}
+          </button>
+          {/* While the overlay owns the pointer, clicking plays no motion and
+              the gaze does not follow, so this would be telling a lie. */}
+          {!adjustFraming && <StageHint />}
         </Live2DCanvas>
       )
     : assetError
@@ -1150,11 +1173,16 @@ export default function PlaygroundPage() {
                   <label>
                     {messages.playground.framing}
                     <select
-                      value={typeof fit === 'string' ? fit : 'upper-body'}
+                      value={typeof fit === 'string' ? fit : 'custom'}
                       onChange={event => setFit(event.target.value as 'upper-body' | 'full')}
                     >
                       <option value="upper-body">{messages.common.upperBody}</option>
                       <option value="full">{messages.common.fullModel}</option>
+                      {typeof fit !== 'string' && (
+                        <option value="custom" disabled>
+                          {messages.playground.customFraming}
+                        </option>
+                      )}
                     </select>
                   </label>
                   <label>

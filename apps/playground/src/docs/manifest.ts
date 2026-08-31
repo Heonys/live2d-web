@@ -164,6 +164,20 @@ export const DOC_PAGES = [
   },
   {
     group: 'Reference',
+    slug: 'debug',
+    summary: {
+      en: 'Drag the model into place and read the fit value back.',
+      ja: 'モデルをドラッグで配置し、その fit の値を読み取ります。',
+      ko: '모델을 끌어서 배치하고 그 `fit` 값을 그대로 가져옵니다.',
+    },
+    title: {
+      en: 'Placement overlay',
+      ja: '配置オーバーレイ',
+      ko: '배치 오버레이',
+    },
+  },
+  {
+    group: 'Reference',
     slug: 'devtools',
     summary: {
       en: 'Mount optional, framework-free controls for a loaded model.',

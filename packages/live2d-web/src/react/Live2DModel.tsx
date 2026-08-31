@@ -8,6 +8,7 @@ import type { CreateLive2DOptions } from '../core/runtime'
 import type { Live2DModelController } from './controller'
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
+import { sameFit } from '../core/fit'
 import { idleMotionIdentity, validateIdleMotion } from '../core/idle-motion'
 import { LifecycleScope } from '../core/lifecycle'
 import { Live2DRuntime } from '../core/runtime'
@@ -24,6 +25,14 @@ export interface Live2DModelProps {
    */
   resolveAsset?: Live2DAssetResolver
   fit?: ModelFit
+  /**
+   * Shows the placement overlay over the canvas so `fit` can be found by
+   * dragging. The overlay is loaded on demand and reports what it applies
+   * through `onFitChange`, which a controlled `fit` needs to keep the value.
+   */
+  debug?: boolean
+  /** Receives every placement the debug overlay applies. */
+  onFitChange?: (fit: ModelFit) => void
   /** Make the model look toward the pointer while it is over the canvas. */
   followPointer?: boolean
   /** Idle motion group name (default 'Idle'), or false to disable idle playback. */
@@ -61,10 +70,12 @@ function modelError(error: unknown) {
 
 export function Live2DModel({
   children,
+  debug = false,
   fit = 'upper-body',
   followPointer = false,
   idleMotion,
   onError,
+  onFitChange,
   onLoad,
   onTap,
   paused = false,
@@ -94,12 +105,16 @@ export function Live2DModel({
   const onErrorRef = useRef(onError)
   const onTapRef = useRef(onTap)
   const fitRef = useRef(fit)
+  const debugRef = useRef(debug)
+  const onFitChangeRef = useRef(onFitChange)
   const runtimeRef = useRef<Live2DRuntime | null>(null)
   const lastErrorRef = useRef<Live2DError | null>(null)
   onLoadRef.current = onLoad
   onErrorRef.current = onError
   onTapRef.current = onTap
   fitRef.current = fit
+  debugRef.current = debug
+  onFitChangeRef.current = onFitChange
   const hasOnTap = onTap != null
   // Validate before touching the shape: a malformed prop must surface as the
   // same invalid-props error the vanilla API raises, not as a render crash.
@@ -169,7 +184,9 @@ export function Live2DModel({
       backend: currentRuntimeHost.backend,
       container,
       coreUrl: currentRuntimeHost.coreUrl,
+      debug: debugRef.current,
       fit: fitRef.current,
+      onFitChange: (next: ModelFit) => onFitChangeRef.current?.(next),
       idleMotion: stableIdleMotion,
       maxFps: currentRuntimeHost.maxFps,
       // Without this the model never hears about context loss, render errors
@@ -254,9 +271,18 @@ export function Live2DModel({
     src,
   ])
 
+  // Compared by value: an inline object prop has a new identity every render,
+  // and reapplying it would wipe what the debug overlay was dragged to.
   useEffect(() => {
-    runtimeRef.current?.setFit(fit)
+    const runtime = runtimeRef.current
+    if (!runtime || sameFit(runtime.getFit(), fit))
+      return
+    runtime.setFit(fit)
   }, [fit])
+
+  useEffect(() => {
+    runtimeRef.current?.setDebug(debug)
+  }, [debug])
 
   // Re-describing the canvas is a running-state change, like fit: the stage
   // stays, so a label that tracks speaking state does not reload the model.

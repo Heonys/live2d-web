@@ -16,6 +16,7 @@ export default defineConfig({
   // into the published dependency graph for a path almost nobody takes.
   entry: {
     'index': 'src/index.ts',
+    'debug': 'src/debug/index.ts',
     'devtools': 'src/devtools/index.ts',
     'inspect': 'src/inspect/index.ts',
     'react': 'src/react.ts',

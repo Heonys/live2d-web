@@ -1090,3 +1090,59 @@ test('mounts the devtools panel on the loaded model and cleans it up', async ({ 
   await page.goto('/')
   await expect(page.getByTestId('devtools-host')).toHaveCount(0)
 })
+
+// The placement overlay exists because `upper-body` assumes a full-body rig and
+// two of the five official samples are not one. Its value is only worth
+// anything if it survives a resize, which is what the last assertion is for.
+test('finds a placement with the debug overlay and keeps it across a resize', async ({ page }) => {
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+
+  const toggle = page.getByRole('button', { name: 'Adjust framing' })
+  await toggle.click()
+  const host = page.locator('[data-live2d-debug]')
+  const value = host.locator('.value')
+  // The bar shows the scale; the literal is the output, kept for the copy path.
+  await expect(host.locator('.zoom')).toHaveText('50%')
+  await expect(value).toHaveText('{ scale: 0.5, offsetX: 0, offsetY: -0.5, units: \'stage\' }')
+
+  const box = (await host.locator('.surface').boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 6 })
+  await page.mouse.up()
+
+  const dragged = await value.textContent()
+  expect(dragged).not.toBe('{ scale: 0.5, offsetX: 0, offsetY: -0.5, units: \'stage\' }')
+  // The framing select reports that the fit is no longer one of its presets.
+  await expect(page.getByLabel('Framing')).toHaveValue('custom')
+
+  const viewport = page.viewportSize()!
+  await page.setViewportSize({ height: viewport.height - 160, width: viewport.width - 260 })
+  await expect(value).toHaveText(dragged!)
+
+  await toggle.click()
+  await expect(host).toHaveCount(0)
+  await page.setViewportSize(viewport)
+})
+
+// The tool acts on the canvas, and in the panel its button sat below the fold.
+test('offers the placement overlay without scrolling the panel', async ({ page }) => {
+  await page.setViewportSize({ height: 632, width: 1280 })
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+
+  const tool = page.locator('.stage-tool')
+  const box = (await tool.boundingBox())!
+  expect(box.y).toBeGreaterThan(0)
+  expect(box.y + box.height).toBeLessThan(632)
+
+  await tool.click()
+  await expect(page.locator('[data-live2d-debug]')).toHaveCount(1)
+  await expect(tool).toHaveAttribute('aria-pressed', 'true')
+
+  // The overlay covers the container to take the pointer, so the button that
+  // opened it has to stay on top or there is no way back out.
+  await tool.click()
+  await expect(page.locator('[data-live2d-debug]')).toHaveCount(0)
+})

@@ -45,5 +45,6 @@ samples behave this way. `model3.json` records the canvas size but not where
 the character is drawn inside it, so neither value can correct for this on its
 own.
 
-If the model looks wrong, try `'full'` first. When neither is right, pass
-`{ scale, offsetX, offsetY }` and adjust from the `'upper-body'` position.
+If the model looks wrong, try `'full'` first. When neither is right, turn on the
+[placement overlay](/docs/en/debug) and drag the model where you want it; it
+reports the `fit` value to paste back.
