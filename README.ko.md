@@ -20,7 +20,7 @@
 
 ## 주요 기능
 
-- Framework 5-r.5 어댑터로 Cubism 4·5 모델을 불러와 WebGL2로 직접 렌더링
+- Framework 5-r.5 어댑터로 Cubism 4/5 모델을 불러와 WebGL2로 직접 렌더링
 - 바닐라 JavaScript 런타임과 React 컴포넌트, 훅
 - 모션, 시퀀스, 페이드, 가중 Idle, 표정, 포인터 상호작용
 - 볼륨과 wLipSync 립싱크, MediaPipe 얼굴 트래킹(experimental)
@@ -33,7 +33,7 @@ pnpm add live2d-web
 ```
 
 Cubism Core와 모델은 패키지에 포함되지 않습니다. Live2D 약관에 따라 Core를
-받아 직접 호스팅하고, 사용 권한이 있는 Cubism 4·5 모델 디렉터리를 제공하세요.
+받아 직접 호스팅하고, 사용 권한이 있는 Cubism 4/5 모델 디렉터리를 제공하세요.
 
 ```ts
 import { createLive2D } from 'live2d-web'

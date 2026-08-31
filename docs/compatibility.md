@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | Cubism Core 5.3 (`core/06`) | 지원 | 사용자가 공급한다. 패키지에 포함하지 않는다. |
 | Cubism Web Framework 5-r.5 | 지원 | 기본 WebGL2 backend의 고정 버전이다. |
-| Cubism 4·5 `model3.json`/`.moc3` | 지원 | 공식 샘플 5종(Hiyori·Mark·Mao·Rice·Ren)에서 로드·렌더·정리를 확인한다. 모든 Editor 출력이나 리거 도구 조합을 검증했다는 뜻은 아니다. |
+| Cubism 4/5 `model3.json`/`.moc3` | 지원 | 공식 샘플 5종(Hiyori·Mark·Mao·Rice·Ren)에서 로드·렌더·정리를 확인한다. 모든 Editor 출력이나 리거 도구 조합을 검증했다는 뜻은 아니다. |
 | Cubism 3 | 미검증 | 지원 계약에 포함하지 않는다. |
 | Cubism 2.1 `.moc` | 비지원 | 별도 Core와 로더가 필요하다. |
 | Core 5.2 (`core/05`) + Framework 5-r.5 | 비지원 | moc 로드에서 실패한다. |

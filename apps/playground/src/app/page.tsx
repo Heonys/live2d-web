@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import type { SiteLocale } from '../i18n/site'
-import { LandingCodeTabs } from '../components/LandingCodeTabs'
 import { LandingDemo } from '../components/LandingDemo'
 import { LandingInstallCommand } from '../components/LandingInstallCommand'
 import { DocsIntentLink } from '../docs/DocsNavigation'
@@ -47,7 +46,7 @@ export function LandingPageContent({ locale }: { locale: SiteLocale }) {
     },
     {
       description: messages.trackingCapabilityDescription,
-      features: ['Volume lip sync', 'wLipSync', 'MediaPipe Main / Worker'],
+      features: ['Volume lip sync', 'wLipSync', 'MediaPipe Main / Worker', 'Perfect Sync'],
       label: messages.trackingCapabilityLabel,
     },
     {
@@ -98,7 +97,6 @@ export function LandingPageContent({ locale }: { locale: SiteLocale }) {
         <header>
           <p>{messages.capabilitySectionLabel}</p>
           <h2 id="landing-capability-title">{messages.capabilitySectionTitle}</h2>
-          <span>{messages.capabilitySectionDescription}</span>
         </header>
         <div className="landing-capability-list">
           {capabilities.map(capability => (
@@ -120,14 +118,10 @@ export function LandingPageContent({ locale }: { locale: SiteLocale }) {
           <p>{messages.quickStartDescription}</p>
           <DocsIntentLink href={localizedDocPath(locale, 'vanilla')}>{messages.quickStartGuide}</DocsIntentLink>
         </div>
-        <LandingCodeTabs
-          label={messages.codeTabsLabel}
-          panels={[
-            <HighlightedCode code={JAVASCRIPT_QUICK_START} filename="avatar.ts" key="javascript" language="ts" />,
-            <HighlightedCode code={REACT_QUICK_START} filename="Avatar.tsx" key="react" language="tsx" />,
-          ]}
-          tabs={['JavaScript', 'React']}
-        />
+        <div className="landing-code-stack">
+          <HighlightedCode code={JAVASCRIPT_QUICK_START} filename="avatar.ts" language="ts" />
+          <HighlightedCode code={REACT_QUICK_START} filename="Avatar.tsx" language="tsx" />
+        </div>
       </section>
 
       <section className="landing-entry-section" aria-labelledby="landing-entry-title">

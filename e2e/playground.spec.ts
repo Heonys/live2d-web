@@ -1223,3 +1223,86 @@ test('offers the placement overlay without scrolling the panel', async ({ page }
   await tool.click()
   await expect(page.locator('[data-live2d-debug]')).toHaveCount(0)
 })
+
+// The hero was capped at 590px, so the fold landed wherever the window put it:
+// 10px short on one screen, 380px of the next section on another.
+test('fills the first screen with the hero', async ({ page }) => {
+  for (const size of [{ height: 720, width: 1280 }, { height: 900, width: 1440 }]) {
+    await page.setViewportSize(size)
+    await page.goto('/')
+    const height = await page.evaluate(() => {
+      const header = document.querySelector('header')!.getBoundingClientRect().height
+      return header + document.querySelector('.landing-hero')!.getBoundingClientRect().height
+    })
+    expect(Math.abs(height - size.height)).toBeLessThanOrEqual(1)
+  }
+})
+
+// Each capability card used to spell out the chips underneath it, so the
+// section said the same thing twice in two formats.
+test('says each capability once', async ({ page }) => {
+  await page.goto('/')
+  const restated = await page.evaluate(() =>
+    [...document.querySelectorAll('.landing-capability-list article')].map((card) => {
+      const copy = card.querySelector('p')!.textContent!.toLowerCase()
+      return [...card.querySelectorAll('li')]
+        .map(chip => chip.textContent!.trim().toLowerCase())
+        .filter(chip => copy.includes(chip))
+    }))
+  for (const card of restated)
+    expect(card).toEqual([])
+})
+
+// The heading asks "JavaScript or React" and a tab switcher hid half the answer.
+test('shows both quick start samples at once', async ({ page }) => {
+  await page.goto('/')
+  const blocks = await page.evaluate(() =>
+    [...document.querySelectorAll('.landing-code-stack .docs-code')].map((block) => {
+      const pre = block.querySelector('pre')!
+      const box = block.getBoundingClientRect()
+      return { visible: box.width > 0 && box.height > 0, scrolls: pre.scrollWidth > pre.clientWidth }
+    }))
+  expect(blocks).toHaveLength(2)
+  for (const block of blocks) {
+    expect(block.visible).toBe(true)
+    expect(block.scrolls).toBe(false)
+  }
+})
+
+// Body copy ran from 12px to 20px across six sizes while the docs, which read
+// well, use one. Headings and section labels each ran on their own scales too.
+test('keeps the landing on one type scale', async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1280 })
+  await page.goto('/')
+  const scale = await page.evaluate(() => {
+    const body = new Set<string>()
+    const headings = new Set<string>()
+    const labels = new Set<string>()
+    for (const el of document.querySelectorAll('.landing-page *')) {
+      if (el.children.length || !el.textContent!.trim())
+        continue
+      if (el.closest('.docs-code') || el.closest('pre') || el.closest('.landing-demo'))
+        continue
+      const size = getComputedStyle(el).fontSize
+      if (el.matches('h2'))
+        headings.add(size)
+      else if (el.matches('.eyebrow, header > p'))
+        labels.add(size)
+      else if (el.matches('p, li, h3') && Number.parseFloat(size) >= 14)
+        body.add(size)
+    }
+    return { body: body.size, headings: headings.size, labels: labels.size }
+  })
+  expect(scale.headings).toBe(1)
+  expect(scale.labels).toBe(1)
+  expect(scale.body).toBeLessThanOrEqual(4)
+})
+
+// Outside React Server Components the directive does nothing but earn a bundler
+// warning, and neither sample here is Next-specific.
+test('leaves the client directive to the Next guide', async ({ page }) => {
+  await page.goto('/')
+  const react = await page.locator('.landing-code-stack .docs-code').nth(1).textContent()
+  expect(react).toContain('Live2DCanvas')
+  expect(react).not.toContain('use client')
+})

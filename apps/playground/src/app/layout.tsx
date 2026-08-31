@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     'A WebGL2 runtime for Cubism models with optional React, lip sync, face tracking and developer tools.',
   openGraph: {
     description:
-      'Render Cubism 4 and 5 models with WebGL2. Add React, lip sync and face tracking only when your app needs them.',
+      'Render Cubism 4/5 models with WebGL2. Add React, lip sync and face tracking only when your app needs them.',
     locale: 'en_US',
     siteName: 'live2d-web',
     title: 'live2d-web · Live2D for the web',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     description:
-      'Render Cubism 4 and 5 models with WebGL2. Add integrations only when your app needs them.',
+      'Render Cubism 4/5 models with WebGL2. Add integrations only when your app needs them.',
     title: 'live2d-web · Live2D for the web',
   },
 }

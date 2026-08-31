@@ -20,7 +20,7 @@
 
 ## Features
 
-- Cubism 4 and 5 models loaded through a bundled Framework 5-r.5 adapter and
+- Cubism 4/5 models loaded through a bundled Framework 5-r.5 adapter and
   drawn on WebGL2
 - A plain JavaScript runtime, with React components and hooks included
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
