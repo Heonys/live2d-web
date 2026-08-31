@@ -19,6 +19,28 @@ export function Avatar() {
 > [Next と SSR のガイド](/docs/ja/next-ssr)で説明します。Vite、Remix、
 > Create React App では不要で、付けるとバンドラーの警告が出るだけです。
 
+## モデルを複数置く
+
+Canvas 1つに好きなだけモデルを置けます。WebGL コンテキストを共有するので、2体目の
+キャラクターがブラウザーの数少ないコンテキストをもう1つ消費しません。
+
+```tsx title="Duo.tsx" showLineNumbers
+<Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+  <Live2DModel src="/models/host.model3.json" fit="full" />
+  <Live2DModel
+    src="/models/guest.model3.json"
+    fit={{ scale: 0.8, offsetX: 0.3, units: 'stage' }}
+  />
+</Live2DCanvas>
+```
+
+書いた順に描画されるので、あとのモデルが上に来ます。モデルごとに `fit`、
+`followPointer`、`onTap` を持ち、`<LipSync>` やトラッキングの子要素は自分が属する
+モデルに接続します。1つを unmount しても Canvas と残りはそのままです。
+
+`paused` は Canvas のものです。`<Live2DCanvas paused>` が全体を止めます。モデルに
+付けたものも動き、いずれかが paused なら Canvas が止まります。
+
 ## Canvas のアクセシビリティ
 
 意味のあるキャラクターは画像として説明し、装飾だけの Canvas は支援技術から

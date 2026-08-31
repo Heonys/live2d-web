@@ -28,9 +28,32 @@
   another. The overlay writes stage-relative values for that reason.
 - `getFit()` reports the layout in effect, and `setDebug()` shows or hides the
   overlay without reloading the model.
+- More than one model on a canvas. `addModel()` loads another onto the stage
+  that already exists and returns a handle for that model alone; in React a
+  `<Live2DCanvas>` takes as many `<Live2DModel>` children as you give it.
+
+  A stage held one model, so a second character meant a second canvas and a
+  second WebGL context, which browsers cap. That is a limit rather than a cost,
+  and it is where migrating from `pixi-live2d-display`, which puts many models
+  on one stage, lost a feature.
+
+  Models draw in the order they were added, so a later one sits on top. Each
+  carries its own `fit`, motions, expressions, parameters and hit areas, and
+  disposing one leaves the canvas and the others alone. `src` is optional now,
+  so a canvas can open empty. The instance keeps its own `motion()`, `fit` and
+  the rest, acting on the model `src` created.
+
+  `<Live2DCanvas paused>` joins the canvas, where pausing always belonged. It
+  still works on a model, where any paused model pauses the canvas.
 
 ### Fixed
 
+- Disposing one model no longer stops the others on its canvas. The Framework
+  keeps compiled shaders and offscreen buffers in registries keyed by GL
+  context, and every model released them on the way out, so the models still
+  drawing lost their shaders. They are reference counted now, and the last
+  model out does the releasing. Only reachable with more than one model, and
+  only visible in a browser: the unit suite passed while it was broken.
 - A `fit` prop is compared by value before it is reapplied. An inline
   `fit={{ ... }}` is a new object on every render, so React was pushing the same
   placement into the runtime on every parent render. That was wasted work on its

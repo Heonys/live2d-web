@@ -24,6 +24,7 @@
   直接描画
 - バニラ JavaScript のランタイムと、React コンポーネントおよびフック
 - モーション、シーケンス、フェード、重み付き Idle、表情、ポインター操作
+- 1つのキャンバスに複数のモデル、WebGL コンテキストを共有
 - 音量と wLipSync のリップシンク、MediaPipe の顔トラッキング（experimental）
 - devtools パネル、およびモデルレポートと配置オーバーレイ（どちらも experimental）
 

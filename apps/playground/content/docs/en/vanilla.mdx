@@ -1,6 +1,6 @@
 ## Create, load, dispose
 
-The JavaScript runtime owns one Canvas and one model. Await loading before issuing model commands, and always dispose when its host view leaves the page.
+The JavaScript runtime owns one Canvas. Await loading before issuing model commands, and always dispose when its host view leaves the page.
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -16,6 +16,35 @@ await character.motion('TapBody', 0)
 // When the host view is removed:
 character.dispose()
 ```
+
+## More than one model
+
+`addModel()` loads another model onto the same canvas, so a second character
+costs a model rather than a second WebGL context, which browsers cap.
+
+```ts title="two.ts" showLineNumbers
+const stage = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/host.model3.json',
+})
+
+const guest = await stage.addModel({
+  src: '/models/guest.model3.json',
+  fit: { scale: 0.8, offsetX: 0.3, units: 'stage' },
+})
+
+await guest.motion('Tap', 0)
+guest.dispose()
+```
+
+Models draw in the order they were added, so a later one sits on top. Each owns
+its own `fit`, motions, expressions, parameters and hit areas, and disposing one
+leaves the canvas and the others alone. `src` is optional: omit it to open an
+empty canvas and fill it with `addModel()`.
+
+The instance keeps its own `motion()`, `fit` and the rest, which act on the
+model `src` created.
 
 ## Canvas accessibility
 

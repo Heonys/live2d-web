@@ -34,10 +34,11 @@ URL を確認します。**対処:** 公式 Core を自分の環境で配信し�
 
 ### invalid-tree
 
-**原因:** React コンポーネントが必要な Provider の外にあるか、1つの Canvas に
-複数のモデルが接続されています。**確認:** `Live2DCanvas` と `Live2DModel` 周辺の
-コンポーネント構成を確認します。**対処:** Canvas 1つにつきモデルを1つだけ置き、
-Hook は Provider の内側で使ってください。**再試行:** 構成を直すまでは解決しません。
+**原因:** React コンポーネントが必要な Provider の外にあります。**確認:**
+`Live2DCanvas` と `Live2DModel` 周辺のコンポーネント構成を確認します。**対処:**
+Hook は Provider の内側で使ってください。Canvas 1つに複数のモデルを置けるように
+なったため、`Live2DModel` が2つあること自体はこのエラーではありません。
+**再試行:** 構成を直すまでは解決しません。
 
 ### lipsync-error
 

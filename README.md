@@ -24,6 +24,7 @@
   drawn on WebGL2
 - A plain JavaScript runtime, with React components and hooks included
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
+- Several models on one canvas, sharing its WebGL context
 - Lip sync from volume or wLipSync, and MediaPipe face tracking (experimental)
 - A devtools panel, plus model reports and a placement overlay (both
   experimental)

@@ -23,6 +23,7 @@
 - Framework 5-r.5 어댑터로 Cubism 4/5 모델을 불러와 WebGL2로 직접 렌더링
 - 바닐라 JavaScript 런타임과 React 컴포넌트, 훅
 - 모션, 시퀀스, 페이드, 가중 Idle, 표정, 포인터 상호작용
+- 캔버스 하나에 모델 여럿, WebGL 컨텍스트를 공유
 - 볼륨과 wLipSync 립싱크, MediaPipe 얼굴 트래킹(experimental)
 - devtools 패널, 그리고 모델 리포트와 배치 오버레이(둘 다 experimental)
 

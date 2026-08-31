@@ -19,6 +19,29 @@ export function Avatar() {
 > covers. Vite, Remix and Create React App need nothing: a stray directive there
 > only earns a bundler warning.
 
+## More than one model
+
+A canvas takes as many models as you give it. They share its WebGL context, so a
+second character does not spend one of the few a browser allows.
+
+```tsx title="Duo.tsx" showLineNumbers
+<Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+  <Live2DModel src="/models/host.model3.json" fit="full" />
+  <Live2DModel
+    src="/models/guest.model3.json"
+    fit={{ scale: 0.8, offsetX: 0.3, units: 'stage' }}
+  />
+</Live2DCanvas>
+```
+
+They draw in the order they appear, so a later one sits on top. Each carries its
+own `fit`, `followPointer` and `onTap`, and a `<LipSync>` or tracking child
+attaches to the model it sits under. Unmounting one leaves the canvas and the
+others alone.
+
+`paused` belongs to the canvas: `<Live2DCanvas paused>` stops the whole thing.
+It still works on a model, where any paused model pauses the canvas.
+
 ## Canvas accessibility
 
 Describe a meaningful character as an image, or hide a purely decorative one.

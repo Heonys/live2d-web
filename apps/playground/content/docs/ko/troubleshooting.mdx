@@ -33,10 +33,10 @@ Core를 직접 호스팅하고 접근 가능한 URL을 전달합니다. **재시
 
 ### invalid-tree
 
-**원인:** React 컴포넌트가 필요한 Provider 밖에 있거나, 하나의 Canvas에 모델이 둘
-이상 연결되어 있습니다. **확인:** `Live2DCanvas`와 `Live2DModel` 주변의 컴포넌트 구조를
-확인합니다. **수정:** Canvas 하나에 모델 하나만 두고 Hook을 해당 Provider 안에서
-사용합니다. **재시도:** 구조를 바꾸기 전에는 불가능합니다.
+**원인:** React 컴포넌트가 필요한 Provider 밖에 있습니다. **확인:** `Live2DCanvas`와
+`Live2DModel` 주변의 컴포넌트 구조를 확인합니다. **수정:** Hook을 해당 Provider 안에서
+사용합니다. Canvas 하나에 모델은 여럿 올릴 수 있으므로 `Live2DModel`이 둘 이상인 것은
+더 이상 이 오류가 아닙니다. **재시도:** 구조를 바꾸기 전에는 불가능합니다.
 
 ### lipsync-error
 

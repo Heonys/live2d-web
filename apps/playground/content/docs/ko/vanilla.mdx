@@ -1,6 +1,6 @@
 ## 생성·로드·정리
 
-JavaScript API는 하나의 Canvas와 모델을 관리합니다. 모델을 조작하기 전에 로드가 끝날 때까지 기다리고, 화면에서 제거할 때는 반드시 `dispose()`를 호출하세요.
+JavaScript API는 Canvas 하나를 관리합니다. 모델을 조작하기 전에 로드가 끝날 때까지 기다리고, 화면에서 제거할 때는 반드시 `dispose()`를 호출하세요.
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -16,6 +16,35 @@ await character.motion('TapBody', 0)
 // When the host view is removed:
 character.dispose()
 ```
+
+## 모델을 여럿 올리기
+
+`addModel()`은 같은 캔버스에 모델을 하나 더 올립니다. 두 번째 캐릭터가 두 번째
+WebGL 컨텍스트가 아니라 모델 하나로 끝납니다. 브라우저는 컨텍스트 개수에 상한이
+있습니다.
+
+```ts title="two.ts" showLineNumbers
+const stage = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/host.model3.json',
+})
+
+const guest = await stage.addModel({
+  src: '/models/guest.model3.json',
+  fit: { scale: 0.8, offsetX: 0.3, units: 'stage' },
+})
+
+await guest.motion('Tap', 0)
+guest.dispose()
+```
+
+추가한 순서대로 그려지므로 나중에 올린 모델이 위에 옵니다. 모델마다 자기 `fit`,
+모션, 표정, 파라미터, 히트 영역을 갖고, 하나를 지워도 캔버스와 나머지는 그대로
+있습니다. `src`는 선택입니다. 빼면 빈 캔버스로 시작해 `addModel()`로 채웁니다.
+
+인스턴스의 `motion()`이나 `fit` 같은 메서드는 그대로 남아 `src`로 만든 모델을
+가리킵니다.
 
 ## Canvas 접근성
 

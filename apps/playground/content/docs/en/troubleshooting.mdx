@@ -34,10 +34,11 @@ caller value. **Retry:** no with the same value.
 
 ### invalid-tree
 
-**Cause:** a React component is outside its required provider, or more than one
-model owns a Canvas. **Check:** the component hierarchy around
-`Live2DCanvas`/`Live2DModel`. **Fix:** keep one model below one Canvas and hooks
-inside the matching provider. **Retry:** no until the tree changes.
+**Cause:** a React component is outside its required provider. **Check:** the
+component hierarchy around `Live2DCanvas`/`Live2DModel`. **Fix:** keep the hooks
+inside the matching provider. A Canvas takes as many models as you give it, so
+this no longer covers a second `Live2DModel`. **Retry:** no until the tree
+changes.
 
 ### lipsync-error
 

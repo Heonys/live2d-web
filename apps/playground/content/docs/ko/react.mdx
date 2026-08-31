@@ -19,6 +19,28 @@ export function Avatar() {
 > 있습니다. Vite, Remix, Create React App에는 필요 없습니다. 거기에 붙이면 번들러
 > 경고만 생깁니다.
 
+## 모델을 여럿 두기
+
+Canvas 하나에 모델을 원하는 만큼 둘 수 있습니다. WebGL 컨텍스트를 함께 쓰므로 두
+번째 캐릭터가 브라우저가 허용하는 몇 안 되는 컨텍스트를 하나 더 쓰지 않습니다.
+
+```tsx title="Duo.tsx" showLineNumbers
+<Live2DCanvas coreUrl="/live2dcubismcore.min.js">
+  <Live2DModel src="/models/host.model3.json" fit="full" />
+  <Live2DModel
+    src="/models/guest.model3.json"
+    fit={{ scale: 0.8, offsetX: 0.3, units: 'stage' }}
+  />
+</Live2DCanvas>
+```
+
+쓴 순서대로 그려지므로 뒤에 온 모델이 위에 옵니다. 모델마다 자기 `fit`,
+`followPointer`, `onTap`을 갖고, `<LipSync>`나 트래킹 자식은 자기가 속한 모델에
+붙습니다. 하나를 unmount해도 Canvas와 나머지는 그대로입니다.
+
+`paused`는 Canvas의 것입니다. `<Live2DCanvas paused>`가 전체를 멈춥니다. 모델에
+쓰던 것도 그대로 동작하며, 모델 중 하나라도 paused면 Canvas가 멈춥니다.
+
 ## Canvas 접근성
 
 의미 있는 캐릭터는 이미지로 설명하고, 장식뿐인 Canvas는 보조 기술에서

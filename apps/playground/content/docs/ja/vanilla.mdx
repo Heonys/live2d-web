@@ -1,6 +1,6 @@
 ## 作成・読み込み・破棄
 
-JavaScript API は1つの Canvas とモデルを管理します。モデルを操作する前に読み込みの完了を待ち、画面から外すときは必ず `dispose()` を呼んでください。
+JavaScript API は1つの Canvas を管理します。モデルを操作する前に読み込みの完了を待ち、画面から外すときは必ず `dispose()` を呼んでください。
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -16,6 +16,36 @@ await character.motion('TapBody', 0)
 // When the host view is removed:
 character.dispose()
 ```
+
+## モデルを複数置く
+
+`addModel()` は同じキャンバスにもう一つモデルを読み込みます。2体目のキャラクターが
+2つ目の WebGL コンテキストではなくモデル1つで済みます。ブラウザーはコンテキスト数に
+上限があります。
+
+```ts title="two.ts" showLineNumbers
+const stage = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/host.model3.json',
+})
+
+const guest = await stage.addModel({
+  src: '/models/guest.model3.json',
+  fit: { scale: 0.8, offsetX: 0.3, units: 'stage' },
+})
+
+await guest.motion('Tap', 0)
+guest.dispose()
+```
+
+追加した順に描画されるので、あとから足したモデルが上に来ます。モデルごとに `fit`、
+モーション、表情、パラメーター、ヒットエリアを持ち、1つを破棄してもキャンバスと
+残りはそのままです。`src` は任意で、省くと空のキャンバスから始めて `addModel()` で
+埋められます。
+
+インスタンスの `motion()` や `fit` などはそのまま残り、`src` で作ったモデルを
+指します。
 
 ## Canvas のアクセシビリティ
 
