@@ -11,13 +11,20 @@ export function DocsNavigationProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const prefetchedRef = useRef(new Set<string>())
-  const [pendingFrom, setPendingFrom] = useState<string>()
-  const pending = pendingFrom === pathname
+  const [pending, setPending] = useState(false)
 
+  // A path change is the navigation finishing. Comparing against the path the
+  // click started from instead made going back to it read as a new navigation,
+  // and the bar then ran until the timeout below.
+  useEffect(() => {
+    setPending(false)
+  }, [pathname])
+
+  // Nothing else clears this if a navigation never arrives.
   useEffect(() => {
     if (!pending)
       return
-    const timeout = setTimeout(setPendingFrom, 15_000, undefined)
+    const timeout = setTimeout(setPending, 15_000, false)
     return () => clearTimeout(timeout)
   }, [pending])
 
@@ -28,10 +35,10 @@ export function DocsNavigationProvider({ children }: { children: ReactNode }) {
     router.prefetch(href)
   }, [router])
   const value = useMemo<DocsNavigationValue>(() => ({
-    markPending: () => setPendingFrom(pathname),
+    markPending: () => setPending(true),
     pending,
     prefetch,
-  }), [pathname, pending, prefetch])
+  }), [pending, prefetch])
 
   return (
     <DocsNavigationContext value={value}>

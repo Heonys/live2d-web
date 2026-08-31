@@ -1126,6 +1126,83 @@ test('finds a placement with the debug overlay and keeps it across a resize', as
   await page.setViewportSize(viewport)
 })
 
+// rehype-pretty-code leaves a newline text node between every line span, and
+// under white-space: pre each one drew its own empty line box. Every multi-line
+// block on the site was exactly twice as tall. The ratio is the defect.
+test('renders code blocks at their own line height', async ({ page }) => {
+  await page.goto('/docs/en/devtools')
+  const blocks = await page.evaluate(() => {
+    const out: { lines: number, ratio: number }[] = []
+    for (const pre of document.querySelectorAll('pre')) {
+      const code = pre.querySelector('code') ?? pre
+      const lines = code.querySelectorAll('[data-line], .line')
+      if (lines.length < 2)
+        continue
+      const sum = [...lines].reduce((total, line) => total + line.getBoundingClientRect().height, 0)
+      out.push({ lines: lines.length, ratio: code.getBoundingClientRect().height / sum })
+    }
+    return out
+  })
+  expect(blocks.length).toBeGreaterThan(0)
+  for (const block of blocks)
+    expect(block.ratio).toBeLessThan(1.02)
+})
+
+// The button was pinned near the caption's top, which its own height then
+// pushed onto the bottom border; without a caption it sat on the first line and
+// hid it behind its own background.
+test('keeps the code copy button clear of the code', async ({ page }) => {
+  await page.goto('/docs/en/vanilla')
+  const figures = await page.evaluate(() => {
+    const out: { captioned: boolean, offset: number | null, clears: boolean | null }[] = []
+    for (const figure of document.querySelectorAll('figure[data-rehype-pretty-code-figure]')) {
+      const copy = figure.querySelector('.docs-code-copy')
+      const caption = figure.querySelector('figcaption')
+      const line = figure.querySelector('[data-line]')
+      if (!copy || !line)
+        continue
+      const button = copy.getBoundingClientRect()
+      if (caption) {
+        const box = caption.getBoundingClientRect()
+        out.push({
+          captioned: true,
+          clears: null,
+          offset: (button.y + button.height / 2) - (box.y + box.height / 2),
+        })
+      }
+      else {
+        out.push({
+          captioned: false,
+          clears: button.bottom <= line.getBoundingClientRect().top,
+          offset: null,
+        })
+      }
+    }
+    return out
+  })
+  expect(figures.length).toBeGreaterThan(0)
+  for (const figure of figures) {
+    if (figure.captioned)
+      expect(Math.abs(figure.offset!)).toBeLessThanOrEqual(1)
+    else
+      expect(figure.clears).toBe(true)
+  }
+})
+
+// Returning to the page a navigation started from used to read as a new
+// navigation, and the bar then ran until its 15 second safety timeout.
+test('stops the navigation progress bar when history goes back', async ({ page }) => {
+  await page.goto('/docs/en')
+  const bar = page.locator('.docs-navigation-progress')
+  await page.locator('a[href="/docs/en/react"]:visible').first().click()
+  await expect(page).toHaveURL(/\/docs\/en\/react$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/docs\/en$/)
+  await expect(bar).not.toHaveClass(/is-active/)
+  await page.waitForTimeout(500)
+  await expect(bar).not.toHaveClass(/is-active/)
+})
+
 // The tool acts on the canvas, and in the panel its button sat below the fold.
 test('offers the placement overlay without scrolling the panel', async ({ page }) => {
   await page.setViewportSize({ height: 632, width: 1280 })

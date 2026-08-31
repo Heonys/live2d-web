@@ -445,11 +445,15 @@ figure[data-rehype-pretty-code-figure],
   background: #08090c;
   box-shadow: 0 14px 40px rgb(0 0 0 / 18%);
 }
+/* Same metrics as .docs-code-header so the two code paths read as one. */
 figure[data-rehype-pretty-code-figure] figcaption {
-  padding: 9px 66px 9px 14px;
+  display: flex;
+  min-height: 38px;
+  padding: 5px 66px 5px 13px;
   border-bottom: 1px solid var(--line);
   color: var(--text-3);
-  font: 11px/1.4 var(--font-mono);
+  font: 11px/1 var(--font-mono);
+  align-items: center;
 }
 .docs-code-copy {
   position: absolute;
@@ -481,8 +485,22 @@ figure[data-rehype-pretty-code-figure] figcaption {
   stroke-linejoin: round;
   stroke-width: 1.35;
 }
+/* Centred in the caption rather than pinned near its top, where the button's
+   own height left it sitting on the bottom border. Percentages resolve against
+   the figure, not the caption, so this is (38 - 27) / 2 from the two fixed
+   heights above. The e2e assertion holds it to a pixel. */
+figure[data-rehype-pretty-code-figure]:has(figcaption) .docs-code-copy {
+  top: 5.5px;
+}
 figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) .docs-code-copy {
   top: 8px;
+}
+/* Without a caption the button floats over the code. Right padding cannot help
+   because the lines do not wrap, so the block opens far enough for the button
+   to sit above the first line instead of on it. One line on the JavaScript page
+   ran 26px underneath and was hidden by the button's own background. */
+figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) pre {
+  padding-top: 44px;
 }
 figure[data-rehype-pretty-code-figure] pre,
 .docs-code pre {
@@ -508,6 +526,17 @@ figure[data-rehype-pretty-code-figure] [data-line],
   display: block;
   min-height: 1.72em;
 }
+/* rehype-pretty-code leaves a newline text node between every line span, and
+   under white-space: pre each one draws its own empty line box. That made every
+   multi-line block exactly twice as tall. Collapsing the container's leading
+   removes those boxes; the lines carry their own. The API reference renderer
+   emits no such text nodes, which is why only MDX was affected. */
+figure[data-rehype-pretty-code-figure] code {
+  line-height: 0;
+}
+figure[data-rehype-pretty-code-figure] [data-line] {
+  line-height: 1.72;
+}
 figure[data-rehype-pretty-code-figure] pre,
 figure[data-rehype-pretty-code-figure] code,
 figure[data-rehype-pretty-code-figure] [data-line],
@@ -522,8 +551,11 @@ figure[data-rehype-pretty-code-figure] code,
 .docs-code .line {
   font-family: var(--font-mono);
   font-size: 13px !important;
-  line-height: 1.72 !important;
   font-variant-ligatures: none;
+}
+.docs-code code,
+.docs-code .line {
+  line-height: 1.72 !important;
 }
 figure[data-rehype-pretty-code-figure] [data-highlighted-line] {
   margin-inline: -16px;
