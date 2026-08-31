@@ -387,8 +387,20 @@ export default function PlaygroundPage() {
   // The mapping sends `1 - blink` to an inverted parameter, so a wearer who
   // closes their eyes fully and still sees them open cannot tell whether
   // MediaPipe under-reports the blink or the gain is too low. Show the value.
-  const [faceEyes, setFaceEyes] = useState({ left: 1, low: 1, right: 1 })
+  // `spread`는 좌우 차이다. 가만히 있을 때도 0이 아니라는 것이 짝눈의 원인이고,
+  // 데드존과 좌우 결합의 임계를 여기서 읽은 값으로 정한다. Hiyori는
+  // ParamEyeLOpen이 기본값 1에서 0으로 내려가므로 파라미터 차이가 곧
+  // blendshape 점수 차이다.
+  const [faceEyes, setFaceEyes] = useState({ left: 1, low: 1, right: 1, spread: 0, spreadMax: 0 })
   const faceEyeLowRef = useRef(Number.POSITIVE_INFINITY)
+  const faceEyeSpreadRef = useRef(0)
+  // 화면을 봐야 숫자를 읽는데 보는 순간 눈꺼풀이 움직여 값이 바뀐다. 창을 열어
+  // 두고 시선을 정면에 둔 채 재고, 끝난 뒤에 결과를 읽게 한다.
+  const eyeStudyRef = useRef<{ left: number[], right: number[] } | null>(null)
+  const [eyeStudy, setEyeStudy] = useState<
+    { left: number, right: number, spread: number, samples: number } | null
+  >(null)
+  const [eyeStudyLeft, setEyeStudyLeft] = useState(0)
   const [faceLostMode, setFaceLostMode] = useState<MediaPipeFaceLostBehaviour>('hold')
   const [facePose, setFacePose] = useState({ x: 0, y: 0, z: 0 })
   const [facePeak, setFacePeak] = useState({ x: 0, y: 0, z: 0 })
@@ -475,9 +487,43 @@ export default function PlaygroundPage() {
     }
   }, [])
 
+  // 중앙값을 쓴다. 평균은 눈을 깜빡인 몇 프레임에 끌려가고, 우리가 알고 싶은
+  // 것은 "가만히 있을 때 어디에 머무는가"다.
+  const median = (values: number[]) => {
+    const sorted = [...values].sort((left, right) => left - right)
+    return sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)]
+  }
+
+  const startEyeStudy = useCallback(() => {
+    setEyeStudy(null)
+    setEyeStudyLeft(10)
+    eyeStudyRef.current = { left: [], right: [] }
+    const timer = setInterval(() => {
+      setEyeStudyLeft((remaining) => {
+        if (remaining > 1)
+          return remaining - 1
+        clearInterval(timer)
+        const collected = eyeStudyRef.current
+        eyeStudyRef.current = null
+        if (collected && collected.left.length > 0) {
+          const left = median(collected.left)
+          const right = median(collected.right)
+          setEyeStudy({
+            left,
+            right,
+            samples: collected.left.length,
+            spread: Math.abs(left - right),
+          })
+        }
+        return 0
+      })
+    }, 1000)
+  }, [])
+
   const resetFacePeak = useCallback(() => {
     facePeakRef.current = { x: 0, y: 0, z: 0 }
     faceEyeLowRef.current = Number.POSITIVE_INFINITY
+    faceEyeSpreadRef.current = 0
     setFacePeak({ x: 0, y: 0, z: 0 })
   }, [])
 
@@ -638,11 +684,22 @@ export default function PlaygroundPage() {
               eyes.left,
               eyes.right,
             )
+            const spread = Math.abs(eyes.left - eyes.right)
+            faceEyeSpreadRef.current = Math.max(faceEyeSpreadRef.current, spread)
+            if (eyeStudyRef.current) {
+              eyeStudyRef.current.left.push(eyes.left)
+              eyeStudyRef.current.right.push(eyes.right)
+            }
             if (timestamp - facePoseSampledAtRef.current >= 100) {
               facePoseSampledAtRef.current = timestamp
               setFacePose(pose)
               setFacePeak({ ...peak })
-              setFaceEyes({ ...eyes, low: faceEyeLowRef.current })
+              setFaceEyes({
+                ...eyes,
+                low: faceEyeLowRef.current,
+                spread,
+                spreadMax: faceEyeSpreadRef.current,
+              })
               setFaceBody({
                 x: activeController.getParameter('ParamBodyAngleX'),
                 y: activeController.getParameter('ParamBodyAngleY'),
@@ -1376,6 +1433,22 @@ export default function PlaygroundPage() {
                     {faceEyes.right.toFixed(2)}
                     {' · min '}
                     {Number.isFinite(faceEyes.low) ? faceEyes.low.toFixed(2) : '—'}
+                    {' · Δ '}
+                    {faceEyes.spread.toFixed(3)}
+                    {' · Δmax '}
+                    {faceEyes.spreadMax.toFixed(3)}
+                  </output>
+                )}
+                {eyeStudy && (
+                  <output className="note" data-testid="face-eye-study">
+                    {messages.playground.eyeStudyResult}
+                    {' L '}
+                    {eyeStudy.left.toFixed(3)}
+                    {' · R '}
+                    {eyeStudy.right.toFixed(3)}
+                    {' · Δ '}
+                    {eyeStudy.spread.toFixed(3)}
+                    {` (${eyeStudy.samples} frames)`}
                   </output>
                 )}
                 {faceTrackingActive && (
@@ -1434,6 +1507,13 @@ export default function PlaygroundPage() {
                   }}
                 >
                   {messages.playground.recalibrate}
+                </button>
+                <button
+                  type="button"
+                  disabled={!faceTrackingActive || eyeStudyLeft > 0}
+                  onClick={startEyeStudy}
+                >
+                  {eyeStudyLeft > 0 ? `${eyeStudyLeft}s` : messages.playground.eyeStudy}
                 </button>
                 <label>
                   {messages.playground.execution}

@@ -60,6 +60,71 @@ describe('mediaPipe face tracking state', () => {
     expect(Number.isFinite(split.signals?.pose.x)).toBe(true)
   })
 
+  // MediaPipe never reports 1 for a shut eye. Held medians read 0.73 and 0.68 on
+  // the two sides, which normalized against 1 reached the model as a lid a third
+  // open and looked like a squint rather than a blink.
+  it('closes an eye fully on the score a real closure reports', () => {
+    const state = new FaceTrackingState()
+    calibrate(state)
+
+    let update = state.update(input({ eyeBlinkLeft: 0.73 }), 1_054)
+    update = state.update(input({ eyeBlinkLeft: 0.73 }), 1_088)
+    expect(update.signals?.blendshapes.get('eyeBlinkLeft') ?? 0).toBeGreaterThan(0.95)
+  })
+
+  // The wearer's own neutral is the floor, so a face that scores a little while
+  // doing nothing still reaches the model as zero. A fixed floor cannot do this:
+  // the resting score moved between 0.04 and 0.13 as the light and the angle
+  // changed, and only calibration sees the current one.
+  it('reads a calibrated resting face as no blink at all', () => {
+    const state = new FaceTrackingState()
+    calibrate(state, { eyeBlinkLeft: 0.02, eyeBlinkRight: 0.06 })
+
+    const update = state.update(input({ eyeBlinkLeft: 0.02, eyeBlinkRight: 0.06 }), 1_054)
+    expect(update.signals?.blendshapes.get('eyeBlinkLeft') ?? -1).toBeCloseTo(0)
+    expect(update.signals?.blendshapes.get('eyeBlinkRight') ?? -1).toBeCloseTo(0)
+  })
+
+  it('leaves held expressions normalized against the full range', () => {
+    const state = new FaceTrackingState()
+    calibrate(state)
+
+    // Only the blink shapes get the lower ceiling; a squint reaching 0.72 must
+    // not read as fully squinting.
+    let update = state.update(input({ eyeSquintLeft: 0.72 }), 1_054)
+    for (let timestamp = 1_088; timestamp <= 1_400; timestamp += 34)
+      update = state.update(input({ eyeSquintLeft: 0.72 }), timestamp)
+    expect(update.signals?.blendshapes.get('eyeSquintLeft') ?? 0).toBeLessThan(0.8)
+  })
+
+  // A real blink spans three or four frames at 30fps. Smoothing tuned for head
+  // pose averaged the peak away, so the model held its eyes half shut instead of
+  // blinking. Closing now follows the signal; opening keeps the shared constant.
+  it('lands a blink within a few frames and eases the eye back open', () => {
+    const state = new FaceTrackingState()
+    calibrate(state)
+
+    let closing = state.update(input({ eyeBlinkLeft: 0.8 }), 1_054)
+    closing = state.update(input({ eyeBlinkLeft: 0.8 }), 1_088)
+    const closed = closing.signals?.blendshapes.get('eyeBlinkLeft') ?? 0
+    expect(closed).toBeGreaterThan(0.75)
+
+    const opening = state.update(input({ eyeBlinkLeft: 0 }), 1_122)
+    const opened = opening.signals?.blendshapes.get('eyeBlinkLeft') ?? 0
+    // Opening stays smooth, so one frame does not snap the lid all the way up.
+    expect(opened).toBeGreaterThan(0.1)
+    expect(opened).toBeLessThan(closed)
+  })
+
+  it('keeps held expressions on the shared smoothing', () => {
+    const state = new FaceTrackingState()
+    calibrate(state)
+
+    // A squint is not a transient, so it must not inherit the blink attack.
+    const first = state.update(input({ eyeSquintLeft: 1 }), 1_034)
+    expect(first.signals?.blendshapes.get('eyeSquintLeft') ?? 0).toBeLessThan(0.6)
+  })
+
   // Default. Recentring the head the moment a wearer glances off-camera reads
   // as a snap, so the last pose stays until the face comes back.
   it('holds the last pose indefinitely while the face is lost', () => {

@@ -26,6 +26,32 @@ const LOST_HOLD_MS = 1_000
 const LOST_RELEASE_MS = 800
 const POSE_SMOOTHING_MS = 100
 const FACE_SMOOTHING_MS = 60
+// A blink is over in roughly 120ms, three or four frames at 30fps. Smoothing
+// chosen for head pose averages that peak away: the lid only reaches halfway
+// before the eye is already reopening, so the model reads as holding its eyes
+// half shut rather than blinking. Closing therefore follows the signal almost
+// directly while opening keeps the shared constant, the attack-and-release
+// shape createVolumeLipSync already uses on speech. Only the blink shapes get
+// this; a squint is a held expression and should stay smooth.
+const BLINK_CLOSE_SMOOTHING_MS = 12
+const BLINK_BLENDSHAPES = new Set<MediaPipeBlendshape>([
+  'eyeBlinkLeft',
+  'eyeBlinkRight',
+])
+// The highest a shut eye actually scores. MediaPipe never reports 1, so
+// normalizing against 1 left a fully closed eye reaching only two thirds of the
+// way and the model read as squinting rather than blinking. Held medians with
+// the eyes closed measured 0.73 and 0.68 on the two sides, and an earlier
+// session on another camera read about 0.8.
+//
+// This is deliberately not a `sensitivity` change. Gain multiplies the resting
+// offset and the left-right difference along with the movement, which is why
+// raising it was rejected before. Normalizing against the reachable maximum
+// moves the top of the range and leaves a calibrated neutral at zero.
+//
+// One face, two cameras. A camera that scores higher will saturate early, so
+// revisit this with a second face.
+const FULL_BLINK_SCORE = 0.72
 // A head cannot cross 360 degrees in a second. Anything faster is the pose
 // estimate breaking down as the face leaves frame, which reached the model as
 // a one-frame slam to the parameter rail.
@@ -162,9 +188,13 @@ export class FaceTrackingState {
     for (const name of MEDIAPIPE_BLENDSHAPES) {
       const score = clamp(input.blendshapes.get(name) ?? 0)
       const baseline = this.neutralBlendshapes.get(name) ?? 0
+      const reachable = BLINK_BLENDSHAPES.has(name) ? FULL_BLINK_SCORE : 1
       // A near-saturated neutral (`_neutral` sits around 0.98) would otherwise
       // turn frame jitter into full-range swings.
-      targetBlendshapes.set(name, clamp((score - baseline) / Math.max(0.2, 1 - baseline)))
+      targetBlendshapes.set(
+        name,
+        clamp((score - baseline) / Math.max(0.2, reachable - baseline)),
+      )
     }
     const targetPose = {
       x: pose.x - this.neutralPose.x,
@@ -214,11 +244,14 @@ export class FaceTrackingState {
   ) {
     const nextBlendshapes = new Map<MediaPipeBlendshape, number>()
     for (const name of MEDIAPIPE_BLENDSHAPES) {
+      const current = this.smoothed.blendshapes.get(name) ?? 0
+      const target = blendshapes.get(name) ?? 0
+      const closing = target > current && BLINK_BLENDSHAPES.has(name)
       nextBlendshapes.set(name, exponentialStep(
-        this.smoothed.blendshapes.get(name) ?? 0,
-        blendshapes.get(name) ?? 0,
+        current,
+        target,
         deltaMs,
-        FACE_SMOOTHING_MS,
+        closing ? BLINK_CLOSE_SMOOTHING_MS : FACE_SMOOTHING_MS,
       ))
     }
     this.smoothed = {

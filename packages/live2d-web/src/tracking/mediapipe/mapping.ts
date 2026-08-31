@@ -181,6 +181,12 @@ export function createParameterBindings(
 
   // A blink drives the lid down from wherever the rig rests it open, which is
   // not the top of its range.
+  //
+  // Both the resting offset and the reachable range are handled during
+  // calibration, where the wearer's own neutral is known. Coupling the two eyes
+  // was considered here and does not work: a held measurement put an ordinary
+  // blink at 0.300 left-right spread and a deliberate wink at 0.421, because
+  // natural blinks are not simultaneous. No threshold separates them.
   const blink = (
     blinkName: MediaPipeBlendshape,
     squintName: MediaPipeBlendshape,
