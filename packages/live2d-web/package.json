@@ -1,7 +1,7 @@
 {
   "name": "live2d-web",
   "type": "module",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Unofficial Live2D Cubism runtime for JavaScript and React. Brings its own WebGL2 renderer, no Pixi required.",
   "author": "Jiheon Kim (https://github.com/Heonys)",
   "license": "SEE LICENSE IN LICENSES.md",
