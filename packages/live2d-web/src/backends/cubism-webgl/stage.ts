@@ -116,7 +116,8 @@ export function createWebGLStage(
   let firstDrawReported = false
   let lastRenderTime: number | undefined
   let lastTickTime: number | undefined
-  let driver: StageFrameDriver | undefined
+  // Ordered: a model added later draws on top, the way addChild does.
+  const drivers = new Set<StageFrameDriver>()
   const frameCallbacks = new Set<(deltaMs: number) => void>()
   const errorCallbacks = new Set<(error: Live2DError) => void>()
   const minFrameMs = options.maxFps ? 1_000 / options.maxFps : 0
@@ -125,7 +126,8 @@ export function createWebGLStage(
     canvas.width = Math.max(1, Math.round(size.width * resolution))
     canvas.height = Math.max(1, Math.round(size.height * resolution))
     gl.viewport(0, 0, canvas.width, canvas.height)
-    driver?.resize(canvas.width, canvas.height)
+    for (const driver of drivers)
+      driver.resize(canvas.width, canvas.height)
   }
 
   const stopLoop = () => {
@@ -144,6 +146,24 @@ export function createWebGLStage(
     stopLoop()
     for (const callback of errorCallbacks)
       callback(error)
+  }
+
+  const updateDrivers = (deltaMs: number) => {
+    const capped = Math.min(deltaMs, 100)
+    for (const driver of drivers)
+      driver.update(capped)
+  }
+
+  const clearFrame = () => {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+  }
+
+  const drawDrivers = () => {
+    for (const driver of drivers)
+      driver.draw()
   }
 
   const frame = (timestamp: number) => {
@@ -170,35 +190,29 @@ export function createWebGLStage(
       : 0
     try {
       if (!diagnostics) {
-        driver?.update(Math.min(deltaMs, 100))
+        updateDrivers(deltaMs)
         for (const callback of frameCallbacks)
           callback(deltaMs)
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-        gl.viewport(0, 0, canvas.width, canvas.height)
-        gl.clearColor(0, 0, 0, 0)
-        gl.clear(gl.COLOR_BUFFER_BIT)
-        driver?.draw()
+        clearFrame()
+        drawDrivers()
       }
       else {
         diagnostics.framePhase('frameDelta', deltaMs)
         measureSync(diagnostics, 'frame', 'stageFrame', () => {
-          driver?.update(Math.min(deltaMs, 100))
+          updateDrivers(deltaMs)
           for (const callback of frameCallbacks)
             callback(deltaMs)
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-          gl.viewport(0, 0, canvas.width, canvas.height)
-          gl.clearColor(0, 0, 0, 0)
-          gl.clear(gl.COLOR_BUFFER_BIT)
+          clearFrame()
           gpuTimer?.begin()
           try {
-            measureSync(diagnostics, 'frame', 'drawCpu', () => driver?.draw())
+            measureSync(diagnostics, 'frame', 'drawCpu', drawDrivers)
           }
           finally {
             gpuTimer?.end()
           }
         })
       }
-      if (driver && !firstDrawReported) {
+      if (drivers.size > 0 && !firstDrawReported) {
         firstDrawReported = true
         diagnostics?.firstDraw()
       }
@@ -229,18 +243,10 @@ export function createWebGLStage(
   let handle: StageHandle
   const stageInternals: StageInternals = {
     attachDriver(nextDriver) {
-      if (driver) {
-        throw new Live2DError(
-          'invalid-props',
-          'cubism-webgl v0.1 supports one model per Live2D canvas.',
-          { details: { backend: 'cubism-webgl' } },
-        )
-      }
-      driver = nextDriver
-      driver.resize(canvas.width, canvas.height)
+      drivers.add(nextDriver)
+      nextDriver.resize(canvas.width, canvas.height)
       return once(() => {
-        if (driver === nextDriver)
-          driver = undefined
+        drivers.delete(nextDriver)
       })
     },
     canvas,
@@ -254,7 +260,7 @@ export function createWebGLStage(
     disposed = true
     stageInternals.disposed = true
     stopLoop()
-    driver = undefined
+    drivers.clear()
     frameCallbacks.clear()
     errorCallbacks.clear()
     canvas.removeEventListener('webglcontextlost', onContextLost)

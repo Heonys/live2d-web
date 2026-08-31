@@ -1,15 +1,13 @@
 import type {
   ExpressionOptions,
-  ModelHandle,
   ModelInfo,
   MotionOptions,
   MotionPlaybackResult,
   MotionSequenceResult,
   MotionSequenceStep,
 } from '../core/contract'
-import type { ParameterDriver } from '../core/runtime'
+import type { Live2DModelHandle, ParameterDriver } from '../core/runtime'
 import { Live2DError } from '../core/errors'
-import { playMotionSequence } from '../core/motion-sequence'
 
 export interface Live2DModelController {
   /** Plays a motion. Resolves when playback finishes (or is interrupted). */
@@ -33,10 +31,12 @@ export interface Live2DModelController {
   addParameterDriver: (id: string, driver: ParameterDriver) => () => void
 }
 
-export function createLive2DModelController(
-  handle: ModelHandle,
-  addParameterDriver?: (id: string, driver: ParameterDriver) => () => void,
-): {
+/**
+ * Wraps one model's handle for React. The invalidation exists because a
+ * controller handed to `onLoad` outlives the render that produced it, and using
+ * it after unmount has to say so rather than reach a disposed model.
+ */
+export function createLive2DModelController(handle: Live2DModelHandle): {
   controller: Live2DModelController
   invalidate: () => void
 } {
@@ -52,16 +52,8 @@ export function createLive2DModelController(
   }
   return {
     controller: Object.freeze({
-      addParameterDriver: (id: string, driver: ParameterDriver) => {
-        requireActive()
-        if (!addParameterDriver) {
-          throw new Live2DError(
-            'adapter-error',
-            'This React Live2D model controller cannot attach parameter drivers.',
-          )
-        }
-        return addParameterDriver(id, driver)
-      },
+      addParameterDriver: (id: string, driver: ParameterDriver) =>
+        requireActive().addParameterDriver(id, driver),
       clearExpression: () => requireActive().clearExpression(),
       clearParameter: (id: string) => requireActive().clearParameter(id),
       expression: async (id?: string, options?: ExpressionOptions) =>
@@ -72,30 +64,10 @@ export function createLive2DModelController(
       isMotionPlaying: () => requireActive().isMotionPlaying(),
       motion: async (group: string, index?: number, options?: MotionOptions) =>
         requireActive().motion(group, index, options),
-      playMotion: async (group: string, index?: number, options?: MotionOptions) => {
-        const model = requireActive()
-        if (!model.playMotion) {
-          throw new Live2DError(
-            'adapter-error',
-            'The selected Live2D backend does not support detailed motion playback.',
-          )
-        }
-        return model.playMotion(group, index, options)
-      },
-      sequence: async (steps: readonly MotionSequenceStep[]) => {
-        const model = requireActive()
-        if (!model.playMotion) {
-          throw new Live2DError(
-            'adapter-error',
-            'The selected Live2D backend does not support motion sequences.',
-          )
-        }
-        return playMotionSequence(
-          steps,
-          model.getModelInfo(),
-          (group, index, options) => model.playMotion!(group, index, options),
-        )
-      },
+      playMotion: async (group: string, index?: number, options?: MotionOptions) =>
+        requireActive().playMotion(group, index, options),
+      sequence: async (steps: readonly MotionSequenceStep[]) =>
+        requireActive().sequence(steps),
       setParameter: (id: string, value: number) => requireActive().setParameter(id, value),
     }),
     invalidate: () => { active = false },

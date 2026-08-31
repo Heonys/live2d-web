@@ -345,8 +345,7 @@ describe('live2DCanvas lifecycle', () => {
         <Live2DModel paused idleMotion="Idle" src="/hiyori.model3.json" />
       </Live2DCanvas>,
     )
-    await waitFor(() => expect(harness.stages).toHaveLength(1))
-    const pausesBefore = harness.events.filter(event => event === 'stage:pause').length
+    await waitFor(() => expect(harness.models).toHaveLength(1))
 
     view.rerender(
       <Live2DCanvas backend={harness.backend}>
@@ -354,9 +353,12 @@ describe('live2DCanvas lifecycle', () => {
       </Live2DCanvas>,
     )
 
-    await waitFor(() => expect(harness.stages).toHaveLength(2))
-    expect(harness.events.filter(event => event === 'stage:pause').length)
-      .toBeGreaterThan(pausesBefore)
+    // Reloading the model no longer rebuilds the stage, so the pause it is
+    // already under simply holds instead of having to be re-applied.
+    await waitFor(() => expect(harness.models).toHaveLength(2))
+    expect(harness.stages).toHaveLength(1)
+    expect(harness.events).toContain('stage:pause')
+    expect(harness.events).not.toContain('stage:resume')
   })
 
   it('keeps equivalent inline weighted idle options stable', async () => {
@@ -369,7 +371,7 @@ describe('live2DCanvas lifecycle', () => {
         />
       </Live2DCanvas>,
     )
-    await waitFor(() => expect(harness.stages).toHaveLength(1))
+    await waitFor(() => expect(harness.models).toHaveLength(1))
 
     view.rerender(
       <Live2DCanvas backend={harness.backend}>
@@ -380,7 +382,7 @@ describe('live2DCanvas lifecycle', () => {
       </Live2DCanvas>,
     )
     await Promise.resolve()
-    expect(harness.stages).toHaveLength(1)
+    expect(harness.models).toHaveLength(1)
 
     view.rerender(
       <Live2DCanvas backend={harness.backend}>
@@ -390,7 +392,9 @@ describe('live2DCanvas lifecycle', () => {
         />
       </Live2DCanvas>,
     )
-    await waitFor(() => expect(harness.stages).toHaveLength(2))
+    // The model reloads; the canvas and its WebGL context stay.
+    await waitFor(() => expect(harness.models).toHaveLength(2))
+    expect(harness.stages).toHaveLength(1)
   })
 
   it('recenters the gaze when the pointer leaves the canvas', async () => {
@@ -410,7 +414,9 @@ describe('live2DCanvas lifecycle', () => {
     expect(harness.events).toContain('focus:640:360')
   })
 
-  it('returns the canvas to loading when the only model unmounts', async () => {
+  // An empty canvas is a valid state now that models come and go on one stage,
+  // so unmounting the last one leaves the canvas ready rather than loading.
+  it('keeps the canvas when the only model unmounts', async () => {
     const harness = createFakeHarness()
     const view = render(
       <Live2DCanvas backend={harness.backend}>
@@ -425,7 +431,9 @@ describe('live2DCanvas lifecycle', () => {
         <Status />
       </Live2DCanvas>,
     )
-    await waitFor(() => expect(screen.getByText('loading')).toBeTruthy())
+    await waitFor(() => expect(harness.events).toContain('model:dispose'))
+    expect(screen.getByText('ready')).toBeTruthy()
+    expect(harness.events).not.toContain('stage:dispose')
   })
 
   it('shares a lifecycle-safe model controller between the hook and onLoad', async () => {
@@ -497,19 +505,41 @@ describe('live2DCanvas lifecycle', () => {
     await waitFor(() => expect(modelHarness.events).toContain('model:dispose'))
   })
 
-  it('rejects a second model with invalid-tree', async () => {
+  // A second character used to cost a second WebGL context, which browsers cap,
+  // so the tree refused one. Both models now share the canvas the parent owns.
+  it('puts two models on one canvas and keeps the rest when one unmounts', async () => {
     const harness = createFakeHarness()
-    render(
+    const loaded: string[] = []
+    const view = render(
       <Live2DCanvas
         backend={harness.backend}
         errorFallback={error => <div>{error.code}</div>}
       >
-        <Live2DModel src="/first.model3.json" />
-        <Live2DModel src="/second.model3.json" />
+        <Live2DModel src="/first.model3.json" onLoad={() => loaded.push('first')} />
+        <Live2DModel src="/second.model3.json" onLoad={() => loaded.push('second')} />
+        <Status />
       </Live2DCanvas>,
     )
 
-    await waitFor(() => expect(screen.getByText('invalid-tree')).toBeTruthy())
+    await waitFor(() => expect(loaded).toHaveLength(2))
+    expect(screen.getByText('ready')).toBeTruthy()
+    expect(harness.stages).toHaveLength(1)
+    expect(harness.models).toHaveLength(2)
+
+    view.rerender(
+      <Live2DCanvas
+        backend={harness.backend}
+        errorFallback={error => <div>{error.code}</div>}
+      >
+        <Live2DModel src="/first.model3.json" onLoad={() => loaded.push('first')} />
+        <Status />
+      </Live2DCanvas>,
+    )
+
+    await waitFor(() =>
+      expect(harness.events.filter(event => event === 'model:dispose')).toHaveLength(1))
+    expect(screen.getByText('ready')).toBeTruthy()
+    expect(harness.events).not.toContain('stage:dispose')
   })
 
   it('recreates the whole stage when retry is requested', async () => {
@@ -555,12 +585,10 @@ describe('live2DCanvas lifecycle', () => {
       </Live2DCanvas>,
     )
 
+    // The canvas survives a model that fails to load: the others on it, and a
+    // retry, still have a stage to use.
     await waitFor(() => expect(screen.getByText('model-load-failed')).toBeTruthy())
-    expect(harness.events).toEqual([
-      'stage:create',
-      'model:load',
-      'stage:dispose',
-    ])
+    expect(harness.events).toEqual(['stage:create', 'model:load'])
   })
 
   it('coalesces resize observations and pauses while hidden', async () => {

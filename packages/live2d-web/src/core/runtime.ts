@@ -56,6 +56,70 @@ export type RuntimeQualityOptions
   = | { quality?: 'auto' | AutoQualityPolicy, resolution?: never }
     | { quality?: never, resolution: number }
 
+/** A model added to a canvas that already exists. */
+export interface AddModelOptions {
+  /** Same meaning as `src` on createLive2D(). */
+  src: string
+  /** Defaults to the resolver the canvas was created with. */
+  resolveAsset?: Live2DAssetResolver
+  /** Layout for this model alone. Default 'upper-body'. */
+  fit?: ModelFit
+  /** Defaults to the idle motion the canvas was created with. */
+  idleMotion?: IdleMotion
+  /** Defaults to the retry count the canvas was created with. */
+  retries?: number
+  /** Make this model look toward the pointer. Default false. */
+  followPointer?: boolean
+  /** Receives every placement this model's debug overlay applies. */
+  onFitChange?: (fit: ModelFit) => void
+  /** Aborts this load. */
+  signal?: AbortSignal
+}
+
+interface ModelRecord {
+  handle: ModelHandle
+  fit: ModelFit
+  features: RuntimeFeature[]
+  followPointer: boolean
+  onFitChange?: (fit: ModelFit) => void
+}
+
+/**
+ * One model on a shared canvas. It carries what belongs to a model; pausing,
+ * retrying and the canvas description stay on the instance that owns the stage.
+ */
+export interface Live2DModelHandle {
+  motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>
+  playMotion: (
+    group: string,
+    index?: number,
+    options?: MotionOptions,
+  ) => Promise<MotionPlaybackResult>
+  sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>
+  isMotionPlaying: () => boolean
+  expression: (id?: string, options?: ExpressionOptions) => Promise<void>
+  clearExpression: () => void
+  getModelInfo: () => ModelInfo
+  /** Stage-local coordinates, like the instance-level focus(). */
+  focus: (x: number, y: number) => void
+  /** Like focus(), but takes viewport client coordinates. */
+  focusAt: (clientX: number, clientY: number) => void
+  /** Hit areas of this model alone, from viewport client coordinates. */
+  hitTest: (clientX: number, clientY: number) => string[]
+  getParameter: (id: string) => number
+  setParameter: (id: string, value: number) => void
+  clearParameter: (id: string) => void
+  addParameterDriver: (id: string, driver: ParameterDriver) => () => void
+  addLipSync: (options: RuntimeLipSyncOptions) => () => void
+  /** Layout for this model alone. */
+  setFit: (fit: ModelFit) => void
+  /** Shows the placement overlay for this model's layout. */
+  setDebug: (enabled: boolean) => void
+  getFit: () => ModelFit
+  /** Removes this model and leaves the canvas and the others alone. */
+  dispose: () => void
+}
+
 interface BaseCreateLive2DOptions {
   /** Optional accessibility semantics for the backend canvas. */
   accessibility?: Live2DCanvasAccessibility
@@ -64,8 +128,10 @@ interface BaseCreateLive2DOptions {
   /**
    * The model3.json file: a URL by default, or a path inside the source when
    * `resolveAsset` is given. Sibling assets load relative to it either way.
+   *
+   * Omit it to start with an empty canvas and fill it with addModel().
    */
-  src: string
+  src?: string
   /**
    * Supplies the model's files instead of fetching them, for models that live
    * in memory or in browser storage rather than on a server.
@@ -187,6 +253,12 @@ export interface Live2DInstance {
   addParameterDriver: (id: string, driver: ParameterDriver) => () => void
   /** Attaches lip sync. Returns an idempotent cleanup. */
   addLipSync: (options: RuntimeLipSyncOptions) => () => void
+  /**
+   * Loads another model onto this canvas. A second character then costs a
+   * model rather than a second WebGL context, which browsers cap. It draws
+   * over the models already there.
+   */
+  addModel: (options: AddModelOptions) => Promise<Live2DModelHandle>
   /** Pauses rendering until resume(). Hidden-tab/offscreen pauses stack separately. */
   pause: () => void
   /** Releases a pause() call. Rendering resumes when no pause reason remains. */
@@ -278,7 +350,7 @@ function assertOptions(options: CreateLive2DOptions) {
     )
   }
   assertAccessibility(options.accessibility)
-  if (typeof options.src !== 'string' || options.src.trim() === '') {
+  if (options.src !== undefined && (typeof options.src !== 'string' || options.src.trim() === '')) {
     throw new Live2DError(
       'invalid-props',
       'src must be a non-empty model3.json path or URL string.',
@@ -373,7 +445,8 @@ export class Live2DRuntime implements Live2DInstance {
   private debugOverlay: { dispose: () => void, refresh: () => void } | undefined
   private intersectionObserver: IntersectionObserver | undefined
   private listeners = new Set<Listener>()
-  private model: ModelHandle | undefined
+  private models: ModelRecord[] = []
+  private backend: Live2DBackend | undefined
   private onStageResume: (() => void) | undefined
   private pauseReasons = new Set<PauseReason>()
   private resizeAnimationFrame = 0
@@ -389,6 +462,11 @@ export class Live2DRuntime implements Live2DInstance {
     this.fit = options.fit ?? 'upper-body'
     this.debug = options.debug ?? false
     this.accessibility = options.accessibility
+  }
+
+  /** The model `src` created. Instance-level methods act on this one. */
+  private get model(): ModelHandle | undefined {
+    return this.models[0]?.handle
   }
 
   readonly getState = () => this.state
@@ -466,8 +544,15 @@ export class Live2DRuntime implements Live2DInstance {
       cleanup()
     for (const feature of [...this.features].reverse())
       feature.detach()
-    this.model?.dispose()
-    this.model = undefined
+    // Every model's own features go first too. Teardown order is feature,
+    // then model, then stage, and a model added through addModel() keeps its
+    // features on its record rather than in the list above.
+    for (const record of this.models) {
+      for (const feature of record.features.splice(0).reverse())
+        feature.detach()
+      record.handle.dispose()
+    }
+    this.models = []
     this.stage?.dispose()
     this.stage = undefined
   }
@@ -504,7 +589,8 @@ export class Live2DRuntime implements Live2DInstance {
 
       // Framework modules read the Core global while evaluating, so the
       // default adapter must never be imported before Core is ready.
-      const backend = await this.resolveBackend()
+      const backend = this.backend ?? await this.resolveBackend()
+      this.backend = backend
       if (controller.signal.aborted)
         throw controller.signal.reason
 
@@ -643,25 +729,40 @@ export class Live2DRuntime implements Live2DInstance {
         loadingStage: 'model',
         render: this.readRenderState(stage),
       })
-      const model = await this.loadModel(backend, stage, controller.signal)
-      if (controller.signal.aborted || this.stage !== stage) {
-        model.dispose()
-        throw controller.signal.reason
+      if (this.options.src !== undefined) {
+        const model = await this.loadModel(backend, stage, this.options.src, controller.signal)
+        if (controller.signal.aborted || this.stage !== stage) {
+          model.dispose()
+          throw controller.signal.reason
+        }
+        this.models.push({
+          features: [],
+          fit: this.fit,
+          followPointer: this.options.followPointer ?? false,
+          handle: model,
+        })
+        this.applyFit()
+        for (const feature of this.features)
+          feature.attach(model)
       }
-      this.model = model
-      this.applyFit()
-      for (const feature of this.features)
-        feature.attach(model)
-      if (this.options.followPointer) {
+      {
         const container = this.options.container
         const onPointerMove = (event: PointerEvent) => {
-          if (this.model && this.stage === stage)
-            this.focusAt(event.clientX, event.clientY)
+          if (this.stage !== stage)
+            return
+          const point = stage.toWorld(event.clientX, event.clientY)
+          for (const record of this.models) {
+            if (record.followPointer)
+              record.handle.focus(point.x, point.y)
+          }
         }
         const onPointerLeave = () => {
-          if (this.model && this.stage === stage) {
-            const size = stage.getSize()
-            this.model.focus(size.width / 2, size.height / 2)
+          if (this.stage !== stage)
+            return
+          const size = stage.getSize()
+          for (const record of this.models) {
+            if (record.followPointer)
+              record.handle.focus(size.width / 2, size.height / 2)
           }
         }
         container.addEventListener('pointermove', onPointerMove)
@@ -699,15 +800,17 @@ export class Live2DRuntime implements Live2DInstance {
   private async loadModel(
     backend: Live2DBackend,
     stage: StageHandle,
+    src: string,
     signal: AbortSignal,
+    options?: AddModelOptions,
   ) {
-    const retries = this.options.retries ?? 2
+    const retries = options?.retries ?? this.options.retries ?? 2
     let lastError: Live2DError | undefined
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        return await backend.loadModel(stage, this.options.src, {
-          idleMotion: this.options.idleMotion,
-          resolveAsset: this.options.resolveAsset,
+        return await backend.loadModel(stage, src, {
+          idleMotion: options?.idleMotion ?? this.options.idleMotion,
+          resolveAsset: options?.resolveAsset ?? this.options.resolveAsset,
           signal,
         })
       }
@@ -750,19 +853,30 @@ export class Live2DRuntime implements Live2DInstance {
     return this.model
   }
 
-  private async mountDebugOverlay(stage: StageHandle) {
+  private async mountDebugOverlay(stage: StageHandle, record?: ModelRecord) {
     // Kept out of the root bundle: the overlay is a development tool and most
     // pages never turn it on.
     const { mountLive2DDebugOverlay } = await import('../debug')
     if (this.disposed || this.stage !== stage || !this.debug || this.debugOverlay)
       return
+    // The overlay edits one model's layout, so it edits the one that asked for
+    // it. Without a record it is the instance-level `debug`, which means the
+    // model `src` created.
     const overlay = mountLive2DDebugOverlay({
       container: this.options.container,
-      onChange: fit => this.options.onFitChange?.(fit),
-      target: {
-        getFit: () => this.getFit(),
-        setFit: fit => this.setFit(fit),
-      },
+      onChange: fit => (record?.onFitChange ?? this.options.onFitChange)?.(fit),
+      target: record
+        ? {
+            getFit: () => (typeof record.fit === 'object' ? { ...record.fit } : record.fit),
+            setFit: (fit) => {
+              record.fit = fit
+              this.applyFit()
+            },
+          }
+        : {
+            getFit: () => this.getFit(),
+            setFit: fit => this.setFit(fit),
+          },
     })
     this.debugOverlay = overlay
     this.stageCleanup.push(() => {
@@ -772,7 +886,7 @@ export class Live2DRuntime implements Live2DInstance {
     })
   }
 
-  setDebug(enabled: boolean) {
+  setDebug(enabled: boolean, record?: ModelRecord) {
     if (typeof enabled !== 'boolean')
       throw new Live2DError('invalid-props', 'debug must be a boolean.')
     this.debug = enabled
@@ -781,18 +895,17 @@ export class Live2DRuntime implements Live2DInstance {
       this.debugOverlay = undefined
       return
     }
-    if (this.model && this.stage)
-      void this.mountDebugOverlay(this.stage)
+    if (this.stage && (record ?? this.model))
+      void this.mountDebugOverlay(this.stage, record)
   }
 
   private applyFit() {
-    if (!this.model || !this.stage)
+    const stage = this.stage
+    if (!stage)
       return
-    this.model.setTransform(fitModel(
-      this.stage.getSize(),
-      this.model.getIntrinsicSize(),
-      this.fit,
-    ))
+    const size = stage.getSize()
+    for (const record of this.models)
+      record.handle.setTransform(fitModel(size, record.handle.getIntrinsicSize(), record.fit))
   }
 
   motion(group: string, index?: number, options?: MotionOptions) {
@@ -846,18 +959,26 @@ export class Live2DRuntime implements Live2DInstance {
   }
 
   focusAt(clientX: number, clientY: number) {
-    const model = this.requireModel()
-    if (!this.stage)
+    const stage = this.stage
+    if (!stage || this.models.length === 0)
       return
-    const point = this.stage.toWorld(clientX, clientY)
-    model.focus(point.x, point.y)
+    const point = stage.toWorld(clientX, clientY)
+    for (const record of this.models)
+      record.handle.focus(point.x, point.y)
   }
 
+  // Topmost first, because that is the one the pointer is over.
   hitTest(clientX: number, clientY: number): string[] {
-    if (!this.model || !this.stage)
+    const stage = this.stage
+    if (!stage)
       return []
-    const point = this.stage.toWorld(clientX, clientY)
-    return this.model.hitTest(point.x, point.y)
+    const point = stage.toWorld(clientX, clientY)
+    for (let index = this.models.length - 1; index >= 0; index--) {
+      const areas = this.models[index].handle.hitTest(point.x, point.y)
+      if (areas.length > 0)
+        return areas
+    }
+    return []
   }
 
   getParameter(id: string) {
@@ -873,11 +994,158 @@ export class Live2DRuntime implements Live2DInstance {
   }
 
   setFit(fit: ModelFit) {
+    // `this.fit` is the primary model's layout, kept separately because setFit()
+    // can be called before that model has finished loading.
     this.fit = fit
+    if (this.models[0])
+      this.models[0].fit = fit
     this.applyFit()
     // The overlay shows the placement it is editing, so a change from anywhere
     // else has to reach its readout.
     this.debugOverlay?.refresh()
+  }
+
+  /**
+   * Loads another model onto the same canvas, so a second character costs a
+   * model rather than a second WebGL context. It draws over the ones already
+   * there, and owns its own layout, motions and parameters.
+   */
+  async addModel(options: AddModelOptions): Promise<Live2DModelHandle> {
+    if (this.disposed)
+      throw new Live2DError('invalid-props', 'The Live2D instance has been disposed.')
+    if (!options || typeof options.src !== 'string' || options.src === '')
+      throw new Live2DError('invalid-props', 'addModel requires a src.')
+    // A React child mounts as soon as the canvas hands it the instance, which
+    // is before start() has built the stage. Waiting here is what lets
+    // <Live2DModel> just call this rather than watch for readiness itself.
+    await this.whenStageReady()
+    const stage = this.stage
+    const backend = this.backend
+    if (!stage || !backend) {
+      throw new Live2DError(
+        'invalid-props',
+        'The Live2D canvas is not ready. Await createLive2D() before adding a model.',
+      )
+    }
+    const controller = new AbortController()
+    const abort = () => controller.abort(options.signal?.reason)
+    options.signal?.addEventListener('abort', abort, { once: true })
+    let handle: ModelHandle
+    try {
+      handle = await this.loadModel(backend, stage, options.src, controller.signal, options)
+    }
+    finally {
+      options.signal?.removeEventListener('abort', abort)
+    }
+    if (this.disposed || this.stage !== stage) {
+      handle.dispose()
+      throw new Live2DError('invalid-props', 'The Live2D canvas went away while the model loaded.')
+    }
+    const record: ModelRecord = {
+      features: [],
+      fit: options.fit ?? 'upper-body',
+      followPointer: options.followPointer ?? false,
+      handle,
+      onFitChange: options.onFitChange,
+    }
+    this.models.push(record)
+    this.applyFit()
+    return this.createModelHandle(record)
+  }
+
+  private whenStageReady(): Promise<void> {
+    if (this.stage && this.backend)
+      return Promise.resolve()
+    if (this.state.status === 'error')
+      return Promise.reject(this.state.error ?? new Live2DError('adapter-error', 'The Live2D canvas failed to start.'))
+    return new Promise((resolve, reject) => {
+      const unsubscribe = this.subscribe(() => {
+        if (this.disposed) {
+          unsubscribe()
+          reject(new Live2DError('invalid-props', 'The Live2D instance has been disposed.'))
+          return
+        }
+        if (this.stage && this.backend) {
+          unsubscribe()
+          resolve()
+          return
+        }
+        if (this.state.status === 'error') {
+          unsubscribe()
+          reject(this.state.error ?? new Live2DError('adapter-error', 'The Live2D canvas failed to start.'))
+        }
+      })
+    })
+  }
+
+  private createModelHandle(record: ModelRecord): Live2DModelHandle {
+    const require = () => {
+      if (!this.models.includes(record))
+        throw new Live2DError('invalid-props', 'This Live2D model has been disposed.')
+      return record.handle
+    }
+    return Object.freeze({
+      addLipSync: (lipSyncOptions: RuntimeLipSyncOptions) =>
+        this.addLipSync(lipSyncOptions, record),
+      addParameterDriver: (id: string, driver: ParameterDriver) =>
+        this.addParameterDriver(id, driver, record),
+      clearExpression: () => require().clearExpression(),
+      clearParameter: (id: string) => require().clearParameter(id),
+      dispose: () => {
+        const index = this.models.indexOf(record)
+        if (index < 0)
+          return
+        this.models.splice(index, 1)
+        for (const feature of record.features.splice(0))
+          feature.detach()
+        record.handle.dispose()
+      },
+      expression: (id?: string, expressionOptions?: ExpressionOptions) =>
+        require().expression(id, expressionOptions),
+      focus: (x: number, y: number) => require().focus(x, y),
+      focusAt: (clientX: number, clientY: number) => {
+        const stage = this.stage
+        if (!stage)
+          return
+        const point = stage.toWorld(clientX, clientY)
+        require().focus(point.x, point.y)
+      },
+      getFit: () => (typeof record.fit === 'object' ? { ...record.fit } : record.fit),
+      getModelInfo: () => require().getModelInfo(),
+      getParameter: (id: string) => require().getParameter(id),
+      hitTest: (clientX: number, clientY: number) => {
+        const stage = this.stage
+        if (!stage)
+          return []
+        const point = stage.toWorld(clientX, clientY)
+        return require().hitTest(point.x, point.y)
+      },
+      isMotionPlaying: () => require().isMotionPlaying(),
+      motion: (group: string, index?: number, motionOptions?: MotionOptions) =>
+        require().motion(group, index, motionOptions),
+      playMotion: async (group: string, index?: number, motionOptions?: MotionOptions) => {
+        const model = require()
+        if (!model.playMotion)
+          throw new Live2DError('adapter-error', 'The selected Live2D backend does not support detailed motion playback.')
+        return model.playMotion(group, index, motionOptions)
+      },
+      sequence: async (steps: readonly MotionSequenceStep[]) => {
+        const model = require()
+        if (!model.playMotion)
+          throw new Live2DError('adapter-error', 'The selected Live2D backend does not support motion sequences.')
+        return playMotionSequence(
+          steps,
+          model.getModelInfo(),
+          (group, index, motionOptions) => model.playMotion!(group, index, motionOptions),
+        )
+      },
+      setDebug: (enabled: boolean) => this.setDebug(enabled, record),
+      setFit: (fit: ModelFit) => {
+        record.fit = fit
+        this.applyFit()
+      },
+      setParameter: (id: string, value: number) => require().setParameter(id, value),
+    })
   }
 
   getFit(): ModelFit {
@@ -892,19 +1160,24 @@ export class Live2DRuntime implements Live2DInstance {
     this.stage?.setAccessibility?.(accessibility)
   }
 
-  private addFeature(feature: RuntimeFeature) {
-    this.features.push(feature)
-    if (this.model)
-      feature.attach(this.model)
+  private addFeature(feature: RuntimeFeature, record?: ModelRecord) {
+    // A record means the caller holds a specific model. Without one the
+    // feature belongs to the primary model, which may not have loaded yet, so
+    // it waits in this.features and attaches when it does.
+    const list = record?.features ?? this.features
+    list.push(feature)
+    const target = record?.handle ?? this.model
+    if (target)
+      feature.attach(target)
     return once(() => {
       feature.detach()
-      const index = this.features.indexOf(feature)
+      const index = list.indexOf(feature)
       if (index >= 0)
-        this.features.splice(index, 1)
+        list.splice(index, 1)
     })
   }
 
-  addParameterDriver(id: string, driver: ParameterDriver) {
+  addParameterDriver(id: string, driver: ParameterDriver, record?: ModelRecord) {
     if (!driver || typeof driver.getValue !== 'function') {
       throw new Live2DError(
         'invalid-props',
@@ -927,10 +1200,10 @@ export class Live2DRuntime implements Live2DInstance {
         unsubscribe()
         model.clearParameter(id)
       }
-    }, error => this.report(asLive2DError(error, 'render-error'))))
+    }, error => this.report(asLive2DError(error, 'render-error'))), record)
   }
 
-  addLipSync(options: RuntimeLipSyncOptions) {
+  addLipSync(options: RuntimeLipSyncOptions, record?: ModelRecord) {
     const reportLipSyncError = (error: unknown) => {
       const normalized = asLive2DError(error, 'lipsync-error')
       options.onError?.(normalized)
@@ -982,7 +1255,7 @@ export class Live2DRuntime implements Live2DInstance {
         sourceConnection?.dispose()
       }
     }, reportLipSyncError)
-    return this.addFeature(feature)
+    return this.addFeature(feature, record)
   }
 
   pause() {

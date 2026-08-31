@@ -7,6 +7,18 @@
 import { Profile } from 'wlipsync';
 
 // @public
+export interface AddModelOptions {
+    fit?: ModelFit;
+    followPointer?: boolean;
+    idleMotion?: IdleMotion;
+    onFitChange?: (fit: ModelFit) => void;
+    resolveAsset?: Live2DAssetResolver;
+    retries?: number;
+    signal?: AbortSignal;
+    src: string;
+}
+
+// @public
 export interface AutoQualityPolicy {
     desktopMaxResolution?: number;
     desktopPixelBudget?: number;
@@ -36,7 +48,7 @@ interface BaseCreateLive2DOptions {
     resolveAsset?: Live2DAssetResolver;
     retries?: number;
     signal?: AbortSignal;
-    src: string;
+    src?: string;
 }
 
 // @public (undocumented)
@@ -181,6 +193,7 @@ export interface Live2DErrorOptions extends ErrorOptions {
 // @public (undocumented)
 export interface Live2DInstance {
     addLipSync: (options: RuntimeLipSyncOptions) => () => void;
+    addModel: (options: AddModelOptions) => Promise<Live2DModelHandle>;
     addParameterDriver: (id: string, driver: ParameterDriver) => () => void;
     clearExpression: () => void;
     clearParameter: (id: string) => void;
@@ -205,6 +218,42 @@ export interface Live2DInstance {
     setFit: (fit: ModelFit) => void;
     setParameter: (id: string, value: number) => void;
     readonly subscribe: (listener: () => void) => () => void;
+}
+
+// @public
+export interface Live2DModelHandle {
+    // (undocumented)
+    addLipSync: (options: RuntimeLipSyncOptions) => () => void;
+    // (undocumented)
+    addParameterDriver: (id: string, driver: ParameterDriver) => () => void;
+    // (undocumented)
+    clearExpression: () => void;
+    // (undocumented)
+    clearParameter: (id: string) => void;
+    dispose: () => void;
+    // (undocumented)
+    expression: (id?: string, options?: ExpressionOptions) => Promise<void>;
+    focus: (x: number, y: number) => void;
+    focusAt: (clientX: number, clientY: number) => void;
+    // (undocumented)
+    getFit: () => ModelFit;
+    // (undocumented)
+    getModelInfo: () => ModelInfo;
+    // (undocumented)
+    getParameter: (id: string) => number;
+    hitTest: (clientX: number, clientY: number) => string[];
+    // (undocumented)
+    isMotionPlaying: () => boolean;
+    // (undocumented)
+    motion: (group: string, index?: number, options?: MotionOptions) => Promise<void>;
+    // (undocumented)
+    playMotion: (group: string, index?: number, options?: MotionOptions) => Promise<MotionPlaybackResult>;
+    // (undocumented)
+    sequence: (steps: readonly MotionSequenceStep[]) => Promise<MotionSequenceResult>;
+    setDebug: (enabled: boolean) => void;
+    setFit: (fit: ModelFit) => void;
+    // (undocumented)
+    setParameter: (id: string, value: number) => void;
 }
 
 // @public (undocumented)

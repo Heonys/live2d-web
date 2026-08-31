@@ -6,6 +6,8 @@ import type { Live2DError } from '../core/errors'
 import type { AutoQualityPolicy } from '../core/quality'
 import type { LoadingStage } from './store'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Live2DError as Live2DErrorClass } from '../core/errors'
+import { Live2DRuntime } from '../core/runtime'
 import { RuntimeHostContext, StageContext } from './context'
 import { StageStore } from './store'
 
@@ -28,6 +30,8 @@ interface BaseLive2DCanvasProps {
   fallback?: (stage: LoadingStage) => ReactNode
   errorFallback?: (error: Live2DError, retry: () => void) => ReactNode
   onError?: (error: Live2DError) => void
+  /** Pauses rendering for the whole canvas, models included. */
+  paused?: boolean
   children?: ReactNode
 }
 
@@ -117,6 +121,7 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     fallback,
     maxFps,
     onError,
+    paused = false,
     pauseWhenOffscreen,
     style,
   } = props
@@ -137,6 +142,60 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
   )
   const lastReportedErrorRef = useRef<Live2DError | undefined>(undefined)
   useUnstableBackendWarning(backend, coreUrl)
+  const [runtime, setRuntime] = useState<Live2DRuntime | null>(null)
+
+  // The stage lives here, not in <Live2DModel>. A model that built its own
+  // runtime also built its own canvas and WebGL context, which is why only one
+  // could ever exist under a canvas.
+  useEffect(() => {
+    if (!container)
+      return
+    let active = true
+    const generation = new Live2DRuntime({
+      accessibility: accessibilityRef.current,
+      backend,
+      container,
+      coreUrl,
+      maxFps,
+      onError: (error) => {
+        store.fail(error)
+      },
+      pauseWhenOffscreen,
+      // Both, as the consumer gave them: passing only one would swallow the
+      // quality/resolution conflict the runtime is supposed to reject.
+      quality: stableQuality,
+      resolution,
+    } as ConstructorParameters<typeof Live2DRuntime>[0])
+    const unsubscribe = generation.subscribe(() => store.syncRuntime(generation.getState()))
+    setRuntime(generation)
+    store.syncRuntime(generation.getState())
+    void generation.start().catch((error) => {
+      // Option validation throws before the runtime can record a state, so a
+      // bad quality/resolution pair would otherwise vanish here.
+      if (!active)
+        return
+      store.fail(error instanceof Live2DErrorClass
+        ? error
+        : new Live2DErrorClass('adapter-error', error instanceof Error ? error.message : String(error)))
+    })
+    return () => {
+      active = false
+      unsubscribe()
+      setRuntime(current => (current === generation ? null : current))
+      generation.dispose()
+      void active
+    }
+  }, [backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableQuality, store])
+
+  useEffect(() => {
+    if (!runtime)
+      return
+    if (paused) {
+      runtime.pause()
+      return () => runtime.resume()
+    }
+  }, [paused, runtime])
+
   const runtimeHost = useMemo(() => ({
     accessibilityRef,
     backend,
@@ -147,7 +206,8 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
     quality: stableQuality,
     resolution,
     retryVersion,
-  }), [accessibilityRef, backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, stableQuality])
+    runtime,
+  }), [accessibilityRef, backend, container, coreUrl, maxFps, pauseWhenOffscreen, resolution, retryVersion, runtime, stableQuality])
 
   useEffect(() => {
     if (!snapshot.error || snapshot.error === lastReportedErrorRef.current)
@@ -159,6 +219,10 @@ export function Live2DCanvas(props: Live2DCanvasProps) {
   useEffect(() => {
     return () => store.disposeModelResource()
   }, [store])
+
+  useEffect(() => {
+    runtime?.setAccessibility(stableAccessibility)
+  }, [runtime, stableAccessibility])
 
   const loadingNode = snapshot.status === 'loading' && snapshot.loadingStage
     ? fallback?.(snapshot.loadingStage)

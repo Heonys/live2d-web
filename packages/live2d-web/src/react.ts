@@ -48,9 +48,11 @@ export type {
 // The React surface names these in its own signatures (useLive2D, the model
 // controller), so a /react-only consumer has to be able to name them too.
 export type {
+  AddModelOptions,
   CreateLive2DOptions,
   LipSyncDriver,
   Live2DInstance,
+  Live2DModelHandle,
   Live2DRuntimeState,
   ParameterDriver,
   RuntimeLoadingStage,

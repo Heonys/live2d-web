@@ -43,7 +43,6 @@ import { CubismPoseUpdater } from '#cubism-framework/motion/cubismposeupdater'
 import { CubismUpdateScheduler } from '#cubism-framework/motion/cubismupdatescheduler'
 import { CubismUpdateOrder, ICubismUpdater } from '#cubism-framework/motion/icubismupdater'
 import { CubismWebGLOffscreenManager } from '#cubism-framework/rendering/cubismoffscreenmanager'
-import { CubismShaderManager_WebGL } from '#cubism-framework/rendering/cubismshader_webgl'
 import { Live2DError } from '../../core/errors'
 import { resolveIdleMotion, selectIdleMotionIndex } from '../../core/idle-motion'
 import {
@@ -66,6 +65,7 @@ import { acquireFramework } from './framework-manager'
 import { buildMvpMatrix, measureLayout } from './matrix'
 import { ensureCachedBuffer, preparePlaybackMotion } from './motion-playback'
 import { MotionStateTracker } from './motion-state'
+import { acquireRenderContext } from './render-context'
 import { getStageInternals } from './stage'
 
 const PRIORITY_IDLE = 1
@@ -135,6 +135,7 @@ class FrameworkModel extends CubismUserModel {
   // Held so dispose() can release GL state without asking the stage, which
   // throws once the stage itself is gone.
   private renderContext: WebGL2RenderingContext | undefined
+  private releaseRenderContext: (() => void) | undefined
   // Set once the stage reports a render error. The frame loop never restarts
   // after that, so motions can no longer finish on their own.
   private renderError: Live2DError | undefined
@@ -409,6 +410,7 @@ class FrameworkModel extends CubismUserModel {
   private async setupRenderer() {
     const { canvas, gl } = getStageInternals(this.stage)
     this.renderContext = gl
+    this.releaseRenderContext = acquireRenderContext(gl)
     this.createRenderer(canvas.width, canvas.height)
     const renderer = this.getRenderer()
     renderer.startUp(gl)
@@ -1067,12 +1069,11 @@ class FrameworkModel extends CubismUserModel {
       for (const motion of this.loadedMotions)
         ACubismMotion.delete(motion)
       this.loadedMotions.clear()
-      if (gl) {
-        // Map-keyed registries, so this drops the compiled programs and the
-        // dead context itself even after the context is lost.
-        CubismWebGLOffscreenManager.getInstance().removeContext(gl)
-        CubismShaderManager_WebGL.getInstance().releaseContext(gl)
-      }
+      // Map-keyed registries shared by every model on this canvas, so the
+      // release only lands once the last one is gone. Dropping them per model
+      // took the shaders out from under the models still drawing.
+      this.releaseRenderContext?.()
+      this.releaseRenderContext = undefined
     }
     finally {
       this.releaseFramework()

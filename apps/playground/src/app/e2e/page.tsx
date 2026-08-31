@@ -66,6 +66,13 @@ declare global {
   interface Window {
     __live2dWebE2E?: {
       abortLoad: () => Promise<string>
+      multiModelFixture: () => Promise<{
+        canvases: number
+        leftPixels: number
+        rightPixels: number
+        afterDisposeLeft: number
+        afterDisposeRight: number
+      }>
       cycle: (count: number) => Promise<{ canvases: number, mouth: number }>
       expressionFixture: () => Promise<number>
       expressionFadeFixture: () => Promise<{
@@ -244,6 +251,81 @@ export default function E2EHarness() {
     }
 
     window.__live2dWebE2E = {
+      // Two models on one canvas is a rendering claim, and a fake GL cannot
+      // check it. This draws one model left and one right, then reads the
+      // backing buffer: both halves must have opaque pixels, and removing the
+      // right model must leave the left one drawing.
+      async multiModelFixture() {
+        const host = document.createElement('div')
+        host.style.height = '640px'
+        host.style.width = '640px'
+        host.style.position = 'fixed'
+        host.style.top = '0'
+        host.style.left = '0'
+        document.body.appendChild(host)
+        const instance = await createLive2D({
+          container: host,
+          coreUrl: CORE_URL,
+          fit: { offsetX: -0.25, scale: 0.5, units: 'stage' },
+          // The host sits below the fold, and an offscreen pause would stop the
+          // loop before anything reached the buffer.
+          pauseWhenOffscreen: false,
+          resolution: 1,
+          src: MODEL_URL,
+        })
+        try {
+          // A different model file, so a shared-asset bug cannot hide behind
+          // two loads of the same one.
+          const right = await instance.addModel({
+            fit: { offsetX: 0.25, scale: 0.5, units: 'stage' },
+            src: '/assets/live2d/mark/Mark.model3.json',
+          })
+          const canvas = host.querySelector('canvas')!
+          const gl = canvas.getContext('webgl2')!
+          const opaquePixels = (fromX: number) => {
+            // Cubism leaves its 256x256 mask framebuffer bound after a draw
+            // that used one. The stage rebinds the default buffer before it
+            // clears, so rendering is fine, but a reader outside the frame has
+            // to rebind or it samples the mask instead of the canvas.
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+            const width = Math.floor(canvas.width / 2)
+            const buffer = new Uint8Array(width * canvas.height * 4)
+            gl.readPixels(fromX, 0, width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, buffer)
+            let count = 0
+            for (let index = 3; index < buffer.length; index += 4) {
+              if (buffer[index] > 16)
+                count++
+            }
+            return count
+          }
+          // The default framebuffer is cleared after compositing, so the read
+          // has to happen inside the frame that drew, not after awaiting one.
+          const readHalves = () => new Promise<{ left: number, right: number }>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve({
+                  left: opaquePixels(0),
+                  right: opaquePixels(Math.floor(canvas.width / 2)),
+                })
+              })
+            })
+          })
+          const both = await readHalves()
+          right.dispose()
+          const afterDispose = await readHalves()
+          return {
+            afterDisposeLeft: afterDispose.left,
+            afterDisposeRight: afterDispose.right,
+            canvases: host.querySelectorAll('canvas').length,
+            leftPixels: both.left,
+            rightPixels: both.right,
+          }
+        }
+        finally {
+          instance.dispose()
+          host.remove()
+        }
+      },
       async abortLoad() {
         const host = document.createElement('div')
         host.style.height = '320px'

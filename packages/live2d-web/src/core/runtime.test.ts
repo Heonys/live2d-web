@@ -208,6 +208,77 @@ describe('createLive2D', () => {
     instance.dispose()
   })
 
+  // A second character used to cost a second WebGL context, which browsers cap.
+  it('puts more than one model on the same canvas', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/a.model3.json',
+    })
+    const second = await instance.addModel({ fit: 'full', src: '/b.model3.json' })
+
+    expect(harness.events.filter(event => event === 'stage:create')).toHaveLength(1)
+    expect(harness.events.filter(event => event === 'model:load')).toHaveLength(2)
+
+    // Each model carries its own layout, so `full` and `upper-body` land on
+    // different transforms from the same stage.
+    const transforms = harness.events.filter(event => event.startsWith('transform:'))
+    expect(new Set(transforms).size).toBeGreaterThan(1)
+
+    await second.motion('Tap', 0)
+    expect(harness.events).toContain('motion:Tap:0')
+    instance.dispose()
+  })
+
+  it('leaves the rest of the canvas alone when one model goes', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/a.model3.json',
+    })
+    const second = await instance.addModel({ src: '/b.model3.json' })
+
+    second.dispose()
+    second.dispose()
+    expect(harness.events.filter(event => event === 'model:dispose')).toHaveLength(1)
+    expect(harness.events).not.toContain('stage:dispose')
+    // The handle is dead, but the canvas and the first model are not.
+    expect(() => second.getModelInfo()).toThrow(/disposed/)
+    await instance.motion('Tap', 0)
+    expect(harness.events).toContain('motion:Tap:0')
+
+    instance.dispose()
+    expect(harness.events.filter(event => event === 'model:dispose')).toHaveLength(2)
+  })
+
+  it('opens a canvas with no model and fills it later', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+    })
+    expect(instance.getState().status).toBe('ready')
+    expect(harness.events).not.toContain('model:load')
+
+    const model = await instance.addModel({ src: '/a.model3.json' })
+    expect(harness.events).toContain('model:load')
+    expect(model.getModelInfo().motions).toEqual({ Tap: 2 })
+    instance.dispose()
+  })
+
+  it('refuses a model before the canvas is ready and after it is gone', async () => {
+    const harness = createRuntimeHarness()
+    const instance = await createLive2D({
+      backend: harness.backend,
+      container: document.body,
+      src: '/a.model3.json',
+    })
+    instance.dispose()
+    await expect(instance.addModel({ src: '/b.model3.json' })).rejects.toThrow(/disposed/)
+  })
+
   it('passes canvas accessibility to custom backends and keeps it on retry', async () => {
     const harness = createRuntimeHarness()
     const accessibility = {

@@ -141,6 +141,61 @@ describe('cubism-webgl Stage', () => {
     expect(document.querySelector('canvas')).toBeNull()
   })
 
+  it('updates every driver, then draws them in the order they attached', () => {
+    const gl = createGl()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl)
+    const stage = createWebGLStage(document.body, { height: 100, width: 200 })
+    const events: string[] = []
+    const driver = (name: string): StageFrameDriver => ({
+      draw: () => events.push(`draw:${name}`),
+      resize: () => events.push(`resize:${name}`),
+      update: () => events.push(`update:${name}`),
+    })
+    const internals = getStageInternals(stage)
+    internals.attachDriver(driver('a'))
+    const detachB = internals.attachDriver(driver('b'))
+    events.length = 0
+
+    frames.shift()?.(16)
+    // Everything updates before anything draws: a driver must not see the
+    // frame half rendered. Draw order is attach order, so a model added later
+    // sits on top.
+    expect(events).toEqual(['update:a', 'update:b', 'draw:a', 'draw:b'])
+
+    events.length = 0
+    detachB()
+    detachB()
+    frames.shift()?.(32)
+    expect(events).toEqual(['update:a', 'draw:a'])
+
+    stage.dispose()
+  })
+
+  it('sizes a driver as it attaches and on every later resize', () => {
+    const gl = createGl()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl)
+    const stage = createWebGLStage(document.body, { height: 100, width: 200 })
+    const sizes: string[] = []
+    const internals = getStageInternals(stage)
+    internals.attachDriver({
+      draw: () => {},
+      resize: (width, height) => sizes.push(`a ${width}x${height}`),
+      update: () => {},
+    })
+    internals.attachDriver({
+      draw: () => {},
+      resize: (width, height) => sizes.push(`b ${width}x${height}`),
+      update: () => {},
+    })
+    expect(sizes).toEqual(['a 200x100', 'b 200x100'])
+
+    sizes.length = 0
+    stage.resize(300, 150)
+    expect(sizes).toEqual(['a 300x150', 'b 300x150'])
+
+    stage.dispose()
+  })
+
   it('keeps a 60 FPS cap on a 120 Hz animation clock', () => {
     const gl = createGl()
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl)

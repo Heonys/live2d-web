@@ -1,6 +1,5 @@
-import type { ModelHandle } from '../core/contract'
 import type { Live2DError } from '../core/errors'
-import type { Live2DInstance, Live2DRuntimeState } from '../core/runtime'
+import type { Live2DModelHandle, Live2DRuntimeState } from '../core/runtime'
 import type { Live2DModelController } from './controller'
 
 export type LoadingStage = 'core' | 'stage' | 'model'
@@ -20,15 +19,16 @@ export interface Live2DCanvasState {
 
 interface ModelResource {
   dispose: () => void
-  handle: ModelHandle
 }
 
 type Listener = () => void
 
 export class StageStore {
   private listeners = new Set<Listener>()
-  private modelOwner: symbol | null = null
-  private modelResource: { owner: symbol, resource: ModelResource } | null = null
+  // Every mounted model, by the symbol its component owns. The canvas is only
+  // ready once the stage is and none of them is still loading.
+  private models = new Map<symbol, { loading: boolean, resource?: ModelResource }>()
+  private stageReady = false
   private structuralError: Live2DError | undefined
   private snapshot: Live2DCanvasState
 
@@ -68,83 +68,79 @@ export class StageStore {
       return
     if (state.status === 'disposed')
       return
+    this.stageReady = state.status === 'ready'
     this.update({
       error: state.error,
       loadingStage: state.loadingStage,
       render: state.render,
       status: state.status,
     })
+    this.settle()
   }
 
-  claimModel(owner: symbol): boolean {
-    if (this.modelOwner && this.modelOwner !== owner)
-      return false
-    this.modelOwner = owner
-    return true
-  }
-
-  isModelOwner(owner: symbol) {
-    return this.modelOwner === owner
-  }
-
-  releaseModel(owner: symbol) {
-    if (this.modelOwner !== owner)
-      return
-    this.disposeModelResource(owner)
-    this.modelOwner = null
-    if (this.snapshot.status !== 'error') {
-      // Back to the pre-model state: nothing renders now, so reporting 'ready'
-      // would hide the fallback and leave a stale render snapshot behind.
-      this.update({
-        loadingStage: 'core',
-        render: undefined,
-        status: 'loading',
-      })
-    }
+  registerModel(owner: symbol) {
+    this.models.set(owner, { loading: true })
+    this.settle()
   }
 
   setModelResource(owner: symbol, resource: ModelResource) {
-    if (this.modelOwner !== owner) {
+    const entry = this.models.get(owner)
+    if (!entry) {
+      // The component unmounted while the model loaded.
       resource.dispose()
       return false
     }
-    this.disposeModelResource(owner)
-    this.modelResource = { owner, resource }
+    entry.resource?.dispose()
+    entry.resource = resource
     return true
   }
 
   setModelReady(owner: symbol) {
-    if (this.modelOwner !== owner || this.snapshot.status === 'error')
+    const entry = this.models.get(owner)
+    if (!entry)
       return
-    this.update({
-      loadingStage: undefined,
-      status: 'ready',
-    })
+    entry.loading = false
+    this.settle()
   }
 
-  clearModelResource(owner: symbol, resource: ModelResource) {
-    if (
-      this.modelResource?.owner === owner
-      && this.modelResource.resource === resource
-    ) {
-      this.modelResource = null
+  releaseModel(owner: symbol) {
+    const entry = this.models.get(owner)
+    if (!entry)
+      return
+    this.models.delete(owner)
+    entry.resource?.dispose()
+    this.settle()
+  }
+
+  disposeModelResource() {
+    for (const entry of this.models.values())
+      entry.resource?.dispose()
+    this.models.clear()
+  }
+
+  /**
+   * The canvas is ready when the stage is and no model is still loading. An
+   * empty canvas counts as ready: a consumer can mount one and add models to
+   * it later.
+   */
+  private settle() {
+    if (this.structuralError || this.snapshot.status === 'error')
+      return
+    const loading = [...this.models.values()].some(entry => entry.loading)
+    if (this.stageReady && !loading) {
+      if (this.snapshot.status !== 'ready')
+        this.update({ loadingStage: undefined, status: 'ready' })
+      return
     }
-  }
-
-  disposeModelResource(owner?: symbol) {
-    if (!this.modelResource)
-      return
-    if (owner && this.modelResource.owner !== owner)
-      return
-    const current = this.modelResource
-    this.modelResource = null
-    current.resource.dispose()
+    if (this.stageReady && loading && this.snapshot.status !== 'loading')
+      this.update({ loadingStage: 'model', status: 'loading' })
   }
 }
 
 interface ModelSnapshot {
   controller: Live2DModelController | null
-  runtime: Live2DInstance | null
+  /** This model's handle, so a child feature attaches to its own model. */
+  runtime: Live2DModelHandle | null
 }
 
 export class ModelStore {
@@ -166,7 +162,7 @@ export class ModelStore {
       listener()
   }
 
-  setRuntime(runtime: Live2DInstance | null) {
+  setRuntime(runtime: Live2DModelHandle | null) {
     if (this.snapshot.runtime === runtime)
       return
     this.snapshot = { ...this.snapshot, runtime }

@@ -1,12 +1,15 @@
 import type { Live2DBackend, Live2DCanvasAccessibility } from '../core/contract'
 import type { LifecycleScope } from '../core/lifecycle'
 import type { AutoQualityPolicy } from '../core/quality'
+import type { Live2DInstance } from '../core/runtime'
 import type { ModelStore, StageStore } from './store'
 import { createContext } from 'react'
 
 export const StageContext = createContext<StageStore | null>(null)
 
 export interface RuntimeHostContextValue {
+  /** The stage. Null until <Live2DCanvas> has created and started it. */
+  runtime: Live2DInstance | null
   /**
    * A ref, not a value: changing the canvas description must not change this
    * object's identity, because the runtime-creation effect depends on it and

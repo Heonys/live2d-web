@@ -1,17 +1,16 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { IdleMotion, Live2DAssetResolver, ModelHandle } from '../core/contract'
+import type { IdleMotion, Live2DAssetResolver } from '../core/contract'
 import type { Live2DError } from '../core/errors'
 import type { ModelFit } from '../core/fit'
-import type { CreateLive2DOptions } from '../core/runtime'
+import type { Live2DModelHandle } from '../core/runtime'
 import type { Live2DModelController } from './controller'
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react'
 import { Live2DError as Live2DErrorClass } from '../core/errors'
 import { sameFit } from '../core/fit'
 import { idleMotionIdentity, validateIdleMotion } from '../core/idle-motion'
 import { LifecycleScope } from '../core/lifecycle'
-import { Live2DRuntime } from '../core/runtime'
 import { ModelContext, RuntimeHostContext, StageContext } from './context'
 import { createLive2DModelController } from './controller'
 import { ModelStore } from './store'
@@ -107,7 +106,7 @@ export function Live2DModel({
   const fitRef = useRef(fit)
   const debugRef = useRef(debug)
   const onFitChangeRef = useRef(onFitChange)
-  const runtimeRef = useRef<Live2DRuntime | null>(null)
+  const handleRef = useRef<Live2DModelHandle | null>(null)
   const lastErrorRef = useRef<Live2DError | null>(null)
   onLoadRef.current = onLoad
   onErrorRef.current = onError
@@ -159,93 +158,64 @@ export function Live2DModel({
       reportError(stableIdleError)
   }, [stableIdleError, reportError])
 
+  // Render errors arrive on the canvas now that it owns the stage, but they
+  // still stop this model, so its onError has to hear about them.
   useEffect(() => {
-    if (currentStageStore.claimModel(owner))
-      return () => currentStageStore.releaseModel(owner)
-
-    const error = new Live2DErrorClass(
-      'invalid-tree',
-      'live2d-web v0.1 supports exactly one <Live2DModel> per <Live2DCanvas>.',
-    )
-    currentStageStore.fail(error)
-    reportError(error)
-  }, [currentStageStore, owner, reportError])
+    const unsubscribe = currentStageStore.subscribe(() => {
+      const error = currentStageStore.getSnapshot().error
+      if (error)
+        reportError(error)
+    })
+    return () => {
+      unsubscribe()
+    }
+  }, [currentStageStore, reportError])
 
   useEffect(() => {
-    const container = currentRuntimeHost.container
-    if (!container || !currentStageStore.isModelOwner(owner))
+    const runtime = currentRuntimeHost.runtime
+    if (!runtime)
       return
 
+    currentStageStore.registerModel(owner)
     let active = true
-    let resource: { dispose: () => void, handle: ModelHandle } | undefined
     let invalidateController: (() => void) | undefined
-    const runtime = new Live2DRuntime({
-      accessibility: currentRuntimeHost.accessibilityRef.current,
-      backend: currentRuntimeHost.backend,
-      container,
-      coreUrl: currentRuntimeHost.coreUrl,
-      debug: debugRef.current,
-      fit: fitRef.current,
-      onFitChange: (next: ModelFit) => onFitChangeRef.current?.(next),
-      idleMotion: stableIdleMotion,
-      maxFps: currentRuntimeHost.maxFps,
-      // Without this the model never hears about context loss, render errors
-      // or lip-sync failures, which the runtime reports after ready.
-      onError: reportError,
-      pauseWhenOffscreen: currentRuntimeHost.pauseWhenOffscreen,
-      quality: currentRuntimeHost.quality,
-      resolution: currentRuntimeHost.resolution,
-      resolveAsset,
-      retries,
-      src,
-    } as CreateLive2DOptions)
-    runtimeRef.current = runtime
-    modelStore.setRuntime(runtime)
-    const unsubscribe = runtime.subscribe(() => {
-      currentStageStore.syncRuntime(runtime.getState())
-    })
-    currentStageStore.syncRuntime(runtime.getState())
+    let handle: Live2DModelHandle | undefined
 
     const dispose = once(() => {
       active = false
-      unsubscribe()
       invalidateController?.()
       invalidateController = undefined
       lifecycle.disposeAll()
       modelStore.setController(null)
       modelStore.setRuntime(null)
-      runtime.dispose()
-      if (resource)
-        currentStageStore.clearModelResource(owner, resource)
-      if (runtimeRef.current === runtime)
-        runtimeRef.current = null
+      handleRef.current = null
+      handle?.dispose()
+      handle = undefined
     })
 
-    void runtime.start()
-      .then(() => {
+    void runtime.addModel({
+      fit: fitRef.current,
+      idleMotion: stableIdleMotion,
+      onFitChange: (next: ModelFit) => onFitChangeRef.current?.(next),
+      resolveAsset,
+      retries,
+      src,
+    })
+      .then((added) => {
         if (!active) {
-          runtime.dispose()
+          added.dispose()
           return
         }
-        const model = runtime.getModelHandle()
-        if (!model) {
-          throw new Live2DErrorClass(
-            'model-load-failed',
-            'The runtime became ready without a model handle.',
-          )
-        }
-        resource = { dispose, handle: model }
-        if (!currentStageStore.setModelResource(owner, resource))
-          return
-        const controllerBinding = createLive2DModelController(
-          model,
-          (id, driver) => runtime.addParameterDriver(id, driver),
-        )
-        invalidateController = controllerBinding.invalidate
-        const controller = controllerBinding.controller
-        modelStore.setController(controller)
+        handle = added
+        handleRef.current = added
+        modelStore.setRuntime(added)
+        added.setDebug(debugRef.current)
+        currentStageStore.setModelResource(owner, { dispose })
+        const binding = createLive2DModelController(added)
+        invalidateController = binding.invalidate
+        modelStore.setController(binding.controller)
         currentStageStore.setModelReady(owner)
-        onLoadRef.current?.(controller)
+        onLoadRef.current?.(binding.controller)
       })
       .catch((error) => {
         if (!active)
@@ -257,9 +227,10 @@ export function Live2DModel({
 
     return () => {
       dispose()
+      currentStageStore.releaseModel(owner)
     }
   }, [
-    currentRuntimeHost,
+    currentRuntimeHost.runtime,
     currentStageStore,
     stableIdleMotion,
     lifecycle,
@@ -274,45 +245,30 @@ export function Live2DModel({
   // Compared by value: an inline object prop has a new identity every render,
   // and reapplying it would wipe what the debug overlay was dragged to.
   useEffect(() => {
-    const runtime = runtimeRef.current
-    if (!runtime || sameFit(runtime.getFit(), fit))
+    const handle = handleRef.current
+    if (!handle || sameFit(handle.getFit(), fit))
       return
-    runtime.setFit(fit)
+    handle.setFit(fit)
   }, [fit])
 
   useEffect(() => {
-    runtimeRef.current?.setDebug(debug)
+    handleRef.current?.setDebug(debug)
   }, [debug])
 
-  // Re-describing the canvas is a running-state change, like fit: the stage
-  // stays, so a label that tracks speaking state does not reload the model.
+  // Accessibility and pausing belong to the canvas now that it owns the stage.
+  // The props stay here so existing trees keep working: any paused model
+  // pauses the canvas.
   useEffect(() => {
-    runtimeRef.current?.setAccessibility(accessibility)
-  }, [accessibility])
+    currentRuntimeHost.runtime?.setAccessibility(accessibility)
+  }, [accessibility, currentRuntimeHost.runtime])
 
   useEffect(() => {
-    const runtime = runtimeRef.current
-    if (!runtime)
+    const runtime = currentRuntimeHost.runtime
+    if (!runtime || !paused)
       return
-    if (paused) {
-      runtime.pause()
-      return () => runtime.resume()
-    }
-    // Deps mirror the runtime-creation effect above: anything that builds a new
-    // runtime has to re-apply the pause to it.
-  }, [
-    currentRuntimeHost,
-    currentStageStore,
-    stableIdleMotion,
-    lifecycle,
-    modelStore,
-    owner,
-    paused,
-    reportError,
-    resolveAsset,
-    retries,
-    src,
-  ])
+    runtime.pause()
+    return () => runtime.resume()
+  }, [currentRuntimeHost.runtime, paused])
 
   // Pointer wiring lives in React (not CreateLive2DOptions) so toggling these
   // props never recreates the runtime or reloads the model.
@@ -320,24 +276,21 @@ export function Live2DModel({
     const container = currentRuntimeHost.container
     if (!container || (!followPointer && !hasOnTap))
       return
+    // Per model, so one character can watch the cursor while another holds its
+    // pose, and a tap reports only the hit areas of the model that was hit.
     const onPointerMove = (event: PointerEvent) => {
-      const runtime = runtimeRef.current
-      if (runtime?.getState().status === 'ready')
-        runtime.focusAt(event.clientX, event.clientY)
+      handleRef.current?.focusAt(event.clientX, event.clientY)
     }
     // Matches the vanilla followPointer wiring: the gaze returns to the centre
     // once the pointer leaves, instead of freezing at its last position.
     const onPointerLeave = () => {
-      const runtime = runtimeRef.current
-      if (runtime?.getState().status !== 'ready')
-        return
       const rect = container.getBoundingClientRect()
-      runtime.focus(rect.width / 2, rect.height / 2)
+      handleRef.current?.focus(rect.width / 2, rect.height / 2)
     }
     const onClick = (event: MouseEvent) => {
-      const runtime = runtimeRef.current
-      if (runtime && onTapRef.current)
-        onTapRef.current(runtime.hitTest(event.clientX, event.clientY), event)
+      const handle = handleRef.current
+      if (handle && onTapRef.current)
+        onTapRef.current(handle.hitTest(event.clientX, event.clientY), event)
     }
     if (followPointer) {
       container.addEventListener('pointermove', onPointerMove)

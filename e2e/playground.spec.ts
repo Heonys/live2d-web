@@ -1306,3 +1306,38 @@ test('leaves the client directive to the Next guide', async ({ page }) => {
   expect(react).toContain('Live2DCanvas')
   expect(react).not.toContain('use client')
 })
+
+// Two models on one canvas is a rendering claim, and a fake GL cannot check
+// it. This one caught a real defect: the Framework keeps its compiled programs
+// in registries keyed by GL context, and disposing any single model released
+// them, so the models still on the canvas stopped drawing.
+test('draws two models on one canvas and keeps the rest after one goes', async ({ page }) => {
+  await page.goto('/e2e')
+  await page.waitForFunction(() => Boolean(window.__live2dWebE2E))
+  const result = await page.evaluate(() => window.__live2dWebE2E!.multiModelFixture())
+
+  expect(result.canvases).toBe(1)
+  expect(result.leftPixels).toBeGreaterThan(1_000)
+  expect(result.rightPixels).toBeGreaterThan(1_000)
+
+  expect(result.afterDisposeRight).toBe(0)
+  expect(result.afterDisposeLeft).toBeGreaterThan(1_000)
+})
+
+// The React tree used to refuse a second <Live2DModel> because each one built
+// its own canvas and WebGL context. Both now share the one the canvas owns.
+test('draws two React models on one canvas', async ({ page }) => {
+  await page.goto('/e2e/multi')
+  await page.waitForFunction(() => window.__live2dWebReactMulti?.loaded === 2)
+
+  await expect(page.locator('canvas')).toHaveCount(1)
+  const both = await page.evaluate(() => window.__live2dWebReactMulti!.readHalves())
+  expect(both.left).toBeGreaterThan(1_000)
+  expect(both.right).toBeGreaterThan(1_000)
+
+  await page.getByRole('button', { name: 'drop right' }).click()
+  await expect.poll(async () =>
+    (await page.evaluate(() => window.__live2dWebReactMulti!.readHalves())).right).toBe(0)
+  const after = await page.evaluate(() => window.__live2dWebReactMulti!.readHalves())
+  expect(after.left).toBeGreaterThan(1_000)
+})

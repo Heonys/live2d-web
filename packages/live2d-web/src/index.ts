@@ -47,9 +47,11 @@ export type {
 } from './core/quality'
 export { createLive2D } from './core/runtime'
 export type {
+  AddModelOptions,
   CreateLive2DOptions,
   LipSyncDriver,
   Live2DInstance,
+  Live2DModelHandle,
   Live2DRuntimeState,
   ParameterDriver,
   RuntimeLipSyncOptions,
