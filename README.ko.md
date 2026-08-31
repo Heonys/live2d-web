@@ -50,8 +50,6 @@ character.dispose()
 ```
 
 ```tsx
-'use client'
-
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
 export function Avatar() {

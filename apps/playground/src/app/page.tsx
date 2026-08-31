@@ -19,9 +19,7 @@ const character = await createLive2D({
 await character.motion('TapBody', 0)
 window.addEventListener('pagehide', () => character.dispose(), { once: true })`
 
-const REACT_QUICK_START = `'use client'
-
-import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
+const REACT_QUICK_START = `import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
 export function Avatar() {
   return (

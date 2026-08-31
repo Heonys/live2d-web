@@ -1,10 +1,8 @@
-## Client Component で使う
+## コンポーネントを配置する
 
-`/react` は Client Component でのみ読み込んでください。`Live2DCanvas` が描画を管理し、`Live2DModel` がモデルの読み込みと画面から外れたときの破棄を行います。
+`Live2DCanvas` が描画を管理し、`Live2DModel` がモデルの読み込みと画面から外れたときの破棄を行います。
 
 ```tsx
-'use client'
-
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
 export function Avatar() {
@@ -15,6 +13,11 @@ export function Avatar() {
   )
 }
 ```
+
+> **ディレクティブが必要なのは React Server Components だけです。** Next.js では
+> このファイルを `'use client'` で始める必要があり、それは
+> [Next と SSR のガイド](/docs/ja/next-ssr)で説明します。Vite、Remix、
+> Create React App では不要で、付けるとバンドラーの警告が出るだけです。
 
 ## Canvas のアクセシビリティ
 

@@ -1,10 +1,8 @@
-## Client component boundary
+## Mount the components
 
-Import /react only from a Client Component. Live2DCanvas owns rendering; Live2DModel owns model loading and cleans itself when React unmounts it.
+`Live2DCanvas` owns rendering; `Live2DModel` owns model loading and cleans itself when React unmounts it.
 
 ```tsx
-'use client'
-
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
 export function Avatar() {
@@ -15,6 +13,11 @@ export function Avatar() {
   )
 }
 ```
+
+> **Only React Server Components need a directive.** In Next.js this file has to
+> start with `'use client'`, which the [Next and SSR guide](/docs/en/next-ssr)
+> covers. Vite, Remix and Create React App need nothing: a stray directive there
+> only earns a bundler warning.
 
 ## Canvas accessibility
 

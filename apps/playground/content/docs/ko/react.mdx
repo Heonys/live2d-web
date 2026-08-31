@@ -1,10 +1,8 @@
-## Client Component에서 사용하기
+## 컴포넌트 붙이기
 
-`live2d-web/react`는 Client Component에서만 불러오세요. `Live2DCanvas`는 Canvas 렌더링을 관리하고, `Live2DModel`은 모델을 불러오며 컴포넌트가 제거될 때 자원을 정리합니다.
+`Live2DCanvas`는 Canvas 렌더링을 관리하고, `Live2DModel`은 모델을 불러오며 컴포넌트가 제거될 때 자원을 정리합니다.
 
 ```tsx
-'use client'
-
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
 
 export function Avatar() {
@@ -15,6 +13,11 @@ export function Avatar() {
   )
 }
 ```
+
+> **디렉티브가 필요한 것은 React Server Components뿐입니다.** Next.js에서는 이
+> 파일이 `'use client'`로 시작해야 하고, 그건 [Next와 SSR 가이드](/docs/ko/next-ssr)에
+> 있습니다. Vite, Remix, Create React App에는 필요 없습니다. 거기에 붙이면 번들러
+> 경고만 생깁니다.
 
 ## Canvas 접근성
 
