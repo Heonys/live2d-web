@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A tracked blink now closes the eye. Three separate causes were found by
+  putting the tracker on a real avatar and measuring what came out.
+
+  Smoothing sized for head pose was flattening the blink. One constant covered
+  every blendshape, and a blink is over in about 120ms, three or four frames at
+  30fps, so the peak was averaged away before it arrived and the lid stopped
+  around halfway. Closing now follows the signal while opening keeps the shared
+  constant. Held expressions such as a squint are unaffected.
+
+  Calibration normalized each score against a maximum of 1, which MediaPipe does
+  not reach for a shut eye: held medians measured 0.73 and 0.68 on the two sides.
+  Nearly a third of the usable range was discarded, so a fully closed eye
+  arrived as a lid a third open. Blink shapes now normalize against the score a
+  real closure reports. This is not a `sensitivity` change; gain multiplies the
+  resting offset and the left-right difference along with the movement.
+
+  Together these also remove the asymmetry that prompted the report, where one
+  eye sat visibly less open than the other while the wearer did nothing.
+
+  Measured on one face and two cameras. A camera that scores higher will
+  saturate early.
+- A MediaPipe worker that dies reaching for `document` names the remedy instead
+  of forwarding `Can't find variable: document`. MediaPipe 1.0.1 touches
+  `document` while fetching its WASM and no worker has one, which affects Chrome
+  and the Google app on iOS. Catch the error and recreate with
+  `execution: 'main'`; the tracker never switches modes on its own.
+- The `devtools` panel no longer draws its own heading. Every host that mounts it
+  has already labelled the region it was handed, so the screen carried two
+  titles. Its tab strip was also fixed at four columns and would have wrapped a
+  fifth, the status row printed "model controller" when no runtime state was
+  available, and format versions were two bare numbers either side of a slash.
+
+### Changed
+
+- Calibration guidance asks for the wearer's normal posture rather than a held
+  neutral expression. Sitting up deliberately for the calibration second makes an
+  ordinary posture read as slightly closed eyes afterwards.
+
 ## 0.7.0 - 2026-08-28
 
 ### Added

@@ -31,3 +31,19 @@ public/
 ## Check compatibility before rendering
 
 Open the model in [Inspector](/inspect) or call `inspectModelSource()` to find missing references, unexpected external URLs and unsupported versions before creating a Canvas. Keep licensed Core and model files out of public bug reports; share the error code, failing URL, HTTP status and export version instead.
+
+## Fit the model to the canvas
+
+`fit` decides how large the model is drawn and where it sits. The default,
+`'upper-body'`, scales the model to twice the canvas and anchors it bottom
+center. `'full'` fits the whole model inside the canvas instead.
+
+`'upper-body'` assumes a full-body rig that fills its canvas vertically. A rig
+already drawn from the waist up overflows at twice the size, and a rig drawn
+off center in its canvas leans to one side. Two of the five official Cubism
+samples behave this way. `model3.json` records the canvas size but not where
+the character is drawn inside it, so neither value can correct for this on its
+own.
+
+If the model looks wrong, try `'full'` first. When neither is right, pass
+`{ scale, offsetX, offsetY }` and adjust from the `'upper-body'` position.
