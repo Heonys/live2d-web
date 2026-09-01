@@ -131,12 +131,21 @@
   margin: 8px 0 6px;
   font-size: 20px;
   letter-spacing: -0.03em;
+  word-break: keep-all;
+  text-wrap: balance;
 }
 .panel-heading p {
   margin: 0;
   color: var(--text-3);
   font-size: 13px;
   line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.playground-page:lang(ja) .panel-heading h2,
+.playground-page:lang(ja) .panel-heading p {
+  line-break: strict;
+  word-break: normal;
 }
 .playground-fieldset {
   display: grid;

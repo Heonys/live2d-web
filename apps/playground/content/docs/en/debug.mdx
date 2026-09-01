@@ -8,7 +8,7 @@ The overlay is the answer: drag the model where you want it and copy the value b
 
 ## Turn it on
 
-```tsx title="Avatar.tsx" showLineNumbers
+```tsx title="Avatar.tsx"
 <Live2DModel src="/models/model.model3.json" debug fit="upper-body" />
 ```
 
@@ -16,7 +16,7 @@ That is the whole setup. The overlay owns the placement while it is up, and a `f
 
 Add `onFitChange` only when your app wants the value too, to store it or show it in your own UI:
 
-```tsx title="Avatar.tsx" showLineNumbers
+```tsx title="Avatar.tsx"
 const [fit, setFit] = useState<ModelFit>('upper-body')
 
 <Live2DModel src="/models/model.model3.json" debug fit={fit} onFitChange={setFit} />
@@ -24,7 +24,7 @@ const [fit, setFit] = useState<ModelFit>('upper-body')
 
 Vanilla takes the same flag:
 
-```ts title="avatar.ts" showLineNumbers
+```ts title="avatar.ts"
 const live2d = await createLive2D({
   container: document.querySelector('#avatar')!,
   coreUrl: '/live2dcubismcore.min.js',

@@ -2,7 +2,7 @@
 
 Devtools は必要な画面でのみ読み込んでください。このサブパスは React に依存せず、アプリの基本バンドルにも含まれません。
 
-```ts title="devtools.ts" showLineNumbers
+```ts title="devtools.ts"
 import { mountLive2DDevtools } from 'live2d-web/devtools'
 
 const devtools = mountLive2DDevtools({
@@ -15,7 +15,7 @@ devtools.setTab('parameters')
 devtools.dispose()
 ```
 
-> **コンテナにサイズを与えてください。** パネルは `height: 100%` でコンテナを満たします。自分から浮いたりトグルボタンを作ったりしないため、高さ0の要素にマウントするとエラーもなく何も表示されません。
+> **コンテナにサイズを与えてください。** パネルは `height: 100%` でそれを満たします。自分から浮いたりトグルボタンを作ったりしないため、高さ0の要素にマウントするとエラーもなく何も表示されません。
 
 ## 操作できる内容
 
@@ -24,7 +24,7 @@ devtools.dispose()
 - **Motion** では、優先度や切り替え時間を指定してモーションを再生できます。簡単な連続再生にも対応します。
 - **Expression** では、表情の適用、切り替え時間の指定、解除ができます。
 
-コンテナの位置、サイズ、スクロールはアプリ側で管理します。Devtools は open Shadow DOM のホストを1つ追加しますが、既存の子要素は削除しません。マイク、MediaPipe、Worker の管理もアプリ側の責任です。
+コンテナの位置、サイズ、スクロールはアプリ側で管理します。Devtools は open Shadow DOM のホストを1つ追加しますが、既存の子要素は削除しません。マイク、MediaPipe、Worker もアプリ側の責任です。
 
 > モデルまたはパネルを画面から外すときは `dispose()` を呼びます。複数回呼んでも安全です。
 

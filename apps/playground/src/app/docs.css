@@ -345,6 +345,7 @@
   font-size: clamp(44px, 7vw, 64px);
   line-height: 1;
   letter-spacing: -0.045em;
+  text-wrap: balance;
 }
 .docs-article .docs-lead {
   margin: 18px 0 0;
@@ -361,12 +362,14 @@
   color: var(--text-1);
   font-size: 26px;
   letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 .docs-article h3 {
   margin: 32px 0 10px;
   scroll-margin-top: 84px;
   color: var(--text-1);
   font-size: 19px;
+  text-wrap: balance;
 }
 .docs-article h2 a,
 .docs-article h3 a {
@@ -387,6 +390,32 @@
 }
 .docs-article li + li {
   margin-top: 5px;
+}
+/* Korean breaks at any character unless told otherwise, which splits words down
+   the middle. Japanese is the opposite: breaking mid-word is correct there and
+   only the kinsoku rules need enforcing. overflow-wrap keeps a long identifier
+   from overflowing once keep-all forbids breaking it. Same split as landing.css. */
+.docs-article h1,
+.docs-article h2,
+.docs-article h3,
+.docs-article .docs-lead,
+.docs-article p,
+.docs-article li,
+.docs-table th,
+.docs-table td {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.docs-layout:lang(ja) .docs-article h1,
+.docs-layout:lang(ja) .docs-article h2,
+.docs-layout:lang(ja) .docs-article h3,
+.docs-layout:lang(ja) .docs-article .docs-lead,
+.docs-layout:lang(ja) .docs-article p,
+.docs-layout:lang(ja) .docs-article li,
+.docs-layout:lang(ja) .docs-table th,
+.docs-layout:lang(ja) .docs-table td {
+  line-break: strict;
+  word-break: normal;
 }
 .docs-article a {
   color: var(--text-1);
@@ -489,18 +518,8 @@ figure[data-rehype-pretty-code-figure] figcaption {
    own height left it sitting on the bottom border. Percentages resolve against
    the figure, not the caption, so this is (38 - 27) / 2 from the two fixed
    heights above. The e2e assertion holds it to a pixel. */
-figure[data-rehype-pretty-code-figure]:has(figcaption) .docs-code-copy {
+figure[data-rehype-pretty-code-figure] .docs-code-copy {
   top: 5.5px;
-}
-figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) .docs-code-copy {
-  top: 8px;
-}
-/* Without a caption the button floats over the code. Right padding cannot help
-   because the lines do not wrap, so the block opens far enough for the button
-   to sit above the first line instead of on it. One line on the JavaScript page
-   ran 26px underneath and was hidden by the button's own background. */
-figure[data-rehype-pretty-code-figure]:not(:has(figcaption)) pre {
-  padding-top: 44px;
 }
 figure[data-rehype-pretty-code-figure] pre,
 .docs-code pre {
@@ -563,10 +582,10 @@ figure[data-rehype-pretty-code-figure] [data-highlighted-line] {
   border-left: 3px solid var(--accent);
   background: rgb(255 113 143 / 7%);
 }
-figure[data-rehype-pretty-code-figure] code[data-line-numbers] {
+figure[data-rehype-pretty-code-figure][data-line-numbers] code {
   counter-reset: line;
 }
-figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::before {
+figure[data-rehype-pretty-code-figure][data-line-numbers] [data-line]::before {
   content: counter(line);
   counter-increment: line;
   display: inline-block;
@@ -707,7 +726,10 @@ figure[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::be
     transition: none;
   }
 }
-@media (max-width: 1120px) {
+/* 264 + 780 + 72 + 224 plus a scrollbar. Below this the third column can only
+   come out of the reading column: at 1121px the article was 550px wide next to
+   a 224px table of contents, narrower than the same page at 1024px. */
+@media (max-width: 1359px) {
   .docs-layout {
     grid-template-columns: 232px minmax(0, 1fr);
   }

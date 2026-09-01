@@ -1148,9 +1148,36 @@ test('renders code blocks at their own line height', async ({ page }) => {
     expect(block.ratio).toBeLessThan(1.02)
 })
 
+// Every fenced block carries a header: its filename when the fence names one,
+// otherwise its language. Without one the copy button sat alone above the code,
+// and whether a block had numbers came down to which fences an author had
+// tagged rather than to how long the block was.
+test('gives every code block a header and numbers only the long ones', async ({ page }) => {
+  const blocks: { caption: string | null, lines: number, numbered: boolean }[] = []
+  for (const slug of ['react', 'vanilla', 'debug', 'devtools']) {
+    await page.goto(`/docs/en/${slug}`)
+    blocks.push(...await page.evaluate(() =>
+      [...document.querySelectorAll('figure[data-rehype-pretty-code-figure]')].map(figure => ({
+        caption: figure.querySelector('figcaption')?.textContent ?? null,
+        lines: figure.querySelectorAll('[data-line]').length,
+        numbered: figure.hasAttribute('data-line-numbers'),
+      }))))
+  }
+  expect(blocks.length).toBeGreaterThan(10)
+  for (const block of blocks) {
+    expect(block.caption).toBeTruthy()
+    expect(block.numbered).toBe(block.lines >= 5)
+  }
+  // A number column that no rule draws would be an empty gutter.
+  const gutter = await page.evaluate(() => {
+    const line = document.querySelector('figure[data-line-numbers] [data-line]')
+    return line ? getComputedStyle(line, '::before').content : null
+  })
+  expect(gutter).toBe('counter(line)')
+})
+
 // The button was pinned near the caption's top, which its own height then
-// pushed onto the bottom border; without a caption it sat on the first line and
-// hid it behind its own background.
+// pushed onto the bottom border.
 test('keeps the code copy button clear of the code', async ({ page }) => {
   await page.goto('/docs/en/vanilla')
   const figures = await page.evaluate(() => {
@@ -1186,6 +1213,65 @@ test('keeps the code copy button clear of the code', async ({ page }) => {
       expect(Math.abs(figure.offset!)).toBeLessThanOrEqual(1)
     else
       expect(figure.clears).toBe(true)
+  }
+})
+
+// Korean breaks at any character unless keep-all says otherwise, which split
+// words down the middle: "\uc815\ub9ac\ud569\ub2c8 / \ub2e4." Japanese is the opposite, so it is
+// excluded. The reading column is 780px from 1100px up, which is what makes a
+// wrap point stable enough to assert on.
+test('breaks Korean prose between words', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const breaks: string[] = []
+  for (const slug of ['react', 'vanilla', 'troubleshooting', 'security-and-license']) {
+    await page.goto(`/docs/ko/${slug}`)
+    breaks.push(...await page.evaluate(() => {
+      const found: string[] = []
+      for (const element of document.querySelectorAll('.docs-article p, .docs-article li')) {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+        const range = document.createRange()
+        let text = ''
+        const tops: number[] = []
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const value = node.nodeValue ?? ''
+          for (let index = 0; index < value.length; index++) {
+            range.setStart(node, index)
+            range.setEnd(node, index + 1)
+            const rect = range.getBoundingClientRect()
+            text += value[index]
+            tops.push(rect.width === 0 && rect.height === 0 ? Number.NaN : Math.round(rect.top))
+          }
+        }
+        const drawn = tops.flatMap((top, index) => Number.isNaN(top) ? [] : [index])
+        for (let index = 1; index < drawn.length; index++) {
+          const before = drawn[index - 1]
+          const after = drawn[index]
+          if (tops[after] <= tops[before])
+            continue
+          const isHangul = (character: string) => /[\uAC00-\uD7A3]/.test(character)
+          if (/\s/.test(text.slice(before + 1, after)))
+            continue
+          if (/\s/.test(text[before]) || !isHangul(text[before]) || !isHangul(text[after]))
+            continue
+          found.push(`${text.slice(Math.max(0, before - 10), before + 1)} / ${text.slice(after, after + 10)}`)
+        }
+      }
+      return found
+    }))
+  }
+  expect(breaks).toEqual([])
+})
+
+// At 1121px the article was 550px wide beside a 224px table of contents,
+// narrower than the same page at 1024px where the column is dropped.
+test('never narrows the docs column to seat the table of contents', async ({ page }) => {
+  for (const width of [1440, 1360, 1280, 1180, 1100]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/docs/en/react')
+    const article = await page.locator('.docs-article').evaluate(
+      element => element.getBoundingClientRect().width,
+    )
+    expect(article, `viewport ${width}`).toBe(780)
   }
 })
 

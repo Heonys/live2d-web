@@ -8,15 +8,15 @@
 
 ## 有効にする
 
-```tsx title="Avatar.tsx" showLineNumbers
+```tsx title="Avatar.tsx"
 <Live2DModel src="/models/model.model3.json" debug fit="upper-body" />
 ```
 
 必要なのはこれだけです。オーバーレイが表示されている間は配置をオーバーレイが持ち、実際には変わっていない `fit` prop がその上に再適用されることはありません。
 
-値をアプリ側でも使いたいとき、つまり保存したり自前の UI に表示したいときだけ `onFitChange` を付けます。
+保存したり自前の UI に表示したりと、値をアプリ側でも使いたいときだけ `onFitChange` を付けます。
 
-```tsx title="Avatar.tsx" showLineNumbers
+```tsx title="Avatar.tsx"
 const [fit, setFit] = useState<ModelFit>('upper-body')
 
 <Live2DModel src="/models/model.model3.json" debug fit={fit} onFitChange={setFit} />
@@ -24,7 +24,7 @@ const [fit, setFit] = useState<ModelFit>('upper-body')
 
 バニラでも同じフラグを受け取ります。
 
-```ts title="avatar.ts" showLineNumbers
+```ts title="avatar.ts"
 const live2d = await createLive2D({
   container: document.querySelector('#avatar')!,
   coreUrl: '/live2dcubismcore.min.js',
@@ -35,7 +35,7 @@ const live2d = await createLive2D({
 live2d.setDebug(false)
 ```
 
-オーバーレイは必要になったときに読み込まれるため、`debug` を無効のままにしても root バンドルには影響しません。別の場所に自分で接続する場合は `live2d-web/debug` の `mountLive2DDebugOverlay()` を使います。
+オーバーレイは必要になったときに読み込まれるため、`debug` を無効のままにしても root バンドルには影響しません。自分で別の場所に接続するなら `live2d-web/debug` の `mountLive2DDebugOverlay()` を使います。
 
 ## 一度に1つのモデル
 

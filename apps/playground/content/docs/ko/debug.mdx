@@ -8,7 +8,7 @@
 
 ## 켜기
 
-```tsx title="Avatar.tsx" showLineNumbers
+```tsx title="Avatar.tsx"
 <Live2DModel src="/models/model.model3.json" debug fit="upper-body" />
 ```
 
@@ -16,7 +16,7 @@
 
 값을 앱에서도 쓰고 싶을 때만, 그러니까 저장하거나 자기 UI에 보여줄 때만 `onFitChange`를 붙이면 됩니다.
 
-```tsx title="Avatar.tsx" showLineNumbers
+```tsx title="Avatar.tsx"
 const [fit, setFit] = useState<ModelFit>('upper-body')
 
 <Live2DModel src="/models/model.model3.json" debug fit={fit} onFitChange={setFit} />
@@ -24,7 +24,7 @@ const [fit, setFit] = useState<ModelFit>('upper-body')
 
 바닐라도 같은 플래그를 받습니다.
 
-```ts title="avatar.ts" showLineNumbers
+```ts title="avatar.ts"
 const live2d = await createLive2D({
   container: document.querySelector('#avatar')!,
   coreUrl: '/live2dcubismcore.min.js',

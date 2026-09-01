@@ -1,6 +1,6 @@
 ## コンポーネントを配置する
 
-`Live2DCanvas` が描画を管理し、`Live2DModel` がモデルの読み込みと画面から外れたときの破棄を行います。
+`Live2DCanvas` が描画を、`Live2DModel` がモデルの読み込みを担当し、React から外れると自分で後始末します。
 
 ```tsx
 import { Live2DCanvas, Live2DModel } from 'live2d-web/react'
@@ -24,7 +24,7 @@ export function Avatar() {
 Canvas 1つに好きなだけモデルを置けます。WebGL コンテキストを共有するので、2体目の
 キャラクターがブラウザーの数少ないコンテキストをもう1つ消費しません。
 
-```tsx title="Duo.tsx" showLineNumbers
+```tsx title="Duo.tsx"
 <Live2DCanvas coreUrl="/live2dcubismcore.min.js">
   <Live2DModel src="/models/host.model3.json" fit="full" />
   <Live2DModel

@@ -22,7 +22,7 @@ character.dispose()
 `addModel()` loads another model onto the same canvas, so a second character
 costs a model rather than a second WebGL context, which browsers cap.
 
-```ts title="two.ts" showLineNumbers
+```ts title="two.ts"
 const stage = await createLive2D({
   container: document.querySelector('#stage')!,
   coreUrl: '/live2dcubismcore.min.js',

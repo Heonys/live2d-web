@@ -29,7 +29,7 @@ URL を指定した検査では、モデルに記載された HTTP(S) の参照�
 
 `compatible` は参照先を読み取れて、現在の Backend で扱える構成であることを示します。`warning` は外部 URL や推奨値を超えるファイルなど、配信前に確認したい項目がある状態です。`incompatible` は model3 の解析失敗や必須ファイルの欠落など、そのままでは描画できない問題を含みます。
 
-```ts title="inspection.ts" showLineNumbers
+```ts title="inspection.ts"
 const report = await inspectModelSource({ src: modelUrl })
 
 for (const finding of report.findings) {
