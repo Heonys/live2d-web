@@ -362,13 +362,6 @@ export default function PlaygroundPage() {
   const [faceEyes, setFaceEyes] = useState({ left: 1, low: 1, right: 1, spread: 0, spreadMax: 0 })
   const faceEyeLowRef = useRef(Number.POSITIVE_INFINITY)
   const faceEyeSpreadRef = useRef(0)
-  // 화면을 봐야 숫자를 읽는데 보는 순간 눈꺼풀이 움직여 값이 바뀐다. 창을 열어
-  // 두고 시선을 정면에 둔 채 재고, 끝난 뒤에 결과를 읽게 한다.
-  const eyeStudyRef = useRef<{ left: number[], right: number[] } | null>(null)
-  const [eyeStudy, setEyeStudy] = useState<
-    { left: number, right: number, spread: number, samples: number } | null
-  >(null)
-  const [eyeStudyLeft, setEyeStudyLeft] = useState(0)
   const [faceLostMode, setFaceLostMode] = useState<MediaPipeFaceLostBehaviour>('hold')
   const [facePose, setFacePose] = useState({ x: 0, y: 0, z: 0 })
   const [facePeak, setFacePeak] = useState({ x: 0, y: 0, z: 0 })
@@ -453,39 +446,6 @@ export default function PlaygroundPage() {
       video.pause()
       video.srcObject = null
     }
-  }, [])
-
-  // 중앙값을 쓴다. 평균은 눈을 깜빡인 몇 프레임에 끌려가고, 우리가 알고 싶은
-  // 것은 "가만히 있을 때 어디에 머무는가"다.
-  const median = (values: number[]) => {
-    const sorted = [...values].sort((left, right) => left - right)
-    return sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)]
-  }
-
-  const startEyeStudy = useCallback(() => {
-    setEyeStudy(null)
-    setEyeStudyLeft(10)
-    eyeStudyRef.current = { left: [], right: [] }
-    const timer = setInterval(() => {
-      setEyeStudyLeft((remaining) => {
-        if (remaining > 1)
-          return remaining - 1
-        clearInterval(timer)
-        const collected = eyeStudyRef.current
-        eyeStudyRef.current = null
-        if (collected && collected.left.length > 0) {
-          const left = median(collected.left)
-          const right = median(collected.right)
-          setEyeStudy({
-            left,
-            right,
-            samples: collected.left.length,
-            spread: Math.abs(left - right),
-          })
-        }
-        return 0
-      })
-    }, 1000)
   }, [])
 
   const resetFacePeak = useCallback(() => {
@@ -654,10 +614,6 @@ export default function PlaygroundPage() {
             )
             const spread = Math.abs(eyes.left - eyes.right)
             faceEyeSpreadRef.current = Math.max(faceEyeSpreadRef.current, spread)
-            if (eyeStudyRef.current) {
-              eyeStudyRef.current.left.push(eyes.left)
-              eyeStudyRef.current.right.push(eyes.right)
-            }
             if (timestamp - facePoseSampledAtRef.current >= 100) {
               facePoseSampledAtRef.current = timestamp
               setFacePose(pose)
@@ -1467,87 +1423,13 @@ export default function PlaygroundPage() {
                   data-testid="face-preview"
                   style={{ transform: facePreviewMirrored ? 'scaleX(-1)' : undefined }}
                 />
-                <output data-testid="face-tracking-status">
-                  {faceTrackingStatus}
-                  {faceTrackingActive && ` · inference ${faceInferenceMs.toFixed(1)} ms · round trip ${faceRoundTripMs.toFixed(1)} ms · ${faceEffectiveFps.toFixed(0)} fps · ${(faceSkippedRatio * 100).toFixed(0)}% skipped`}
-                </output>
+                <output data-testid="face-tracking-status">{faceTrackingStatus}</output>
                 {faceTrackingError && (
                   <p className="tracking-error" data-testid="tracking-failure" role="alert">
                     {faceTrackingError.code && <strong>{faceTrackingError.code}</strong>}
                     {faceTrackingError.message}
                     {faceTrackingError.url && <span className="note">{faceTrackingError.url}</span>}
                   </p>
-                )}
-                {faceStartupTiming && (
-                  <output className="note" data-testid="face-startup-timing">
-                    {formatFaceStartupTiming(faceStartupTiming)}
-                    {faceStartupTiming.resources.length > 0 && (
-                      ` · ${faceStartupTiming.resources.join(', ')}`
-                    )}
-                  </output>
-                )}
-                {faceTrackingActive && (
-                  <output className="note" data-testid="face-eye-readout">
-                    {messages.playground.eyeReadout}
-                    {' L '}
-                    {faceEyes.left.toFixed(2)}
-                    {' · R '}
-                    {faceEyes.right.toFixed(2)}
-                    {' · min '}
-                    {Number.isFinite(faceEyes.low) ? faceEyes.low.toFixed(2) : '—'}
-                    {' · Δ '}
-                    {faceEyes.spread.toFixed(3)}
-                    {' · Δmax '}
-                    {faceEyes.spreadMax.toFixed(3)}
-                  </output>
-                )}
-                {eyeStudy && (
-                  <output className="note" data-testid="face-eye-study">
-                    {messages.playground.eyeStudyResult}
-                    {' L '}
-                    {eyeStudy.left.toFixed(3)}
-                    {' · R '}
-                    {eyeStudy.right.toFixed(3)}
-                    {' · Δ '}
-                    {eyeStudy.spread.toFixed(3)}
-                    {` (${eyeStudy.samples} frames)`}
-                  </output>
-                )}
-                {faceTrackingActive && (
-                  <table className="pose-readout" data-testid="face-pose-readout">
-                    <thead>
-                      <tr>
-                        <th>{messages.playground.headAngle}</th>
-                        <th>{messages.playground.now}</th>
-                        <th>{messages.playground.peak}</th>
-                        <th>{messages.playground.body}</th>
-                        <th>{messages.playground.range}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {([
-                        [messages.playground.xTurn, facePose.x, facePeak.x, faceBody.x],
-                        [messages.playground.yNod, facePose.y, facePeak.y, faceBody.y],
-                        [messages.playground.zTilt, facePose.z, facePeak.z, faceBody.z],
-                      ] as const).map(([label, now, peak, body]) => (
-                        <tr key={label}>
-                          <td>{label}</td>
-                          <td>{now.toFixed(1)}</td>
-                          <td>{peak.toFixed(1)}</td>
-                          <td>{body.toFixed(2)}</td>
-                          <td>
-                            <span
-                              className="pose-bar"
-                              style={{ width: `${Math.min(100, peak / 30 * 100)}%` }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {faceTrackingActive && faceRanges && (
-                  <p className="pose-ranges">{faceRanges}</p>
                 )}
                 <button
                   type="button"
@@ -1570,27 +1452,6 @@ export default function PlaygroundPage() {
                 >
                   {messages.playground.recalibrate}
                 </button>
-                <button
-                  type="button"
-                  disabled={!faceTrackingActive || eyeStudyLeft > 0}
-                  onClick={startEyeStudy}
-                >
-                  {eyeStudyLeft > 0 ? `${eyeStudyLeft}s` : messages.playground.eyeStudy}
-                </button>
-                <label>
-                  {messages.playground.execution}
-                  <select
-                    aria-label={messages.playground.faceExecution}
-                    disabled={faceTrackingActive}
-                    value={faceExecution}
-                    onChange={event => setFaceExecution(
-                      event.target.value as FaceTrackingExecution,
-                    )}
-                  >
-                    <option value="worker">{messages.playground.worker}</option>
-                    <option value="main">{messages.playground.mainThread}</option>
-                  </select>
-                </label>
                 <label>
                   {messages.playground.poseSensitivity}
                   <output>{facePoseSensitivity.toFixed(2)}</output>
@@ -1619,33 +1480,6 @@ export default function PlaygroundPage() {
                       setFaceEyeSensitivity(Number(event.target.value))}
                   />
                 </label>
-                <label>
-                  {messages.playground.faceLost}
-                  <select
-                    aria-label={messages.playground.faceLostBehaviour}
-                    value={faceLostMode}
-                    onChange={event => setFaceLostMode(
-                      event.target.value as MediaPipeFaceLostBehaviour,
-                    )}
-                  >
-                    <option value="hold">{messages.playground.holdLastPose}</option>
-                    <option value="neutral">{messages.playground.returnNeutral}</option>
-                  </select>
-                </label>
-                <label>
-                  {messages.playground.mapping}
-                  <select
-                    aria-label={messages.playground.faceMapping}
-                    value={faceMapping}
-                    onChange={event => setFaceMapping(
-                      event.target.value as MediaPipeMappingMode,
-                    )}
-                  >
-                    <option value="auto">{messages.common.auto}</option>
-                    <option value="standard">{messages.inspector.standard}</option>
-                    <option value="perfect-sync">{messages.playground.perfectSync}</option>
-                  </select>
-                </label>
                 <label className="toggle">
                   <input
                     checked={facePreviewMirrored}
@@ -1654,19 +1488,140 @@ export default function PlaygroundPage() {
                   />
                   {messages.playground.mirroredPreview}
                 </label>
-                {(['pose', 'eyes', 'brows', 'mouth', 'cheeks'] as const).map(channel => (
-                  <label key={channel} className="toggle">
-                    <input
-                      checked={faceChannels[channel]}
-                      type="checkbox"
-                      onChange={event => setFaceChannels(current => ({
-                        ...current,
-                        [channel]: event.target.checked,
-                      }))}
-                    />
-                    {messages.playground[channel]}
-                  </label>
-                ))}
+                {/* Numbers that were tuning aids while the tracker was built. They
+                    sat above the start button, so the panel opened on readouts of
+                    a tracker nobody had started yet. */}
+                <details className="playground-more">
+                  <summary>{messages.playground.measurements}</summary>
+                  <div className="playground-more-body">
+                    {faceTrackingActive && (
+                      <output className="note" data-testid="face-frame-timing">
+                        {`inference ${faceInferenceMs.toFixed(1)} ms · round trip ${faceRoundTripMs.toFixed(1)} ms · ${faceEffectiveFps.toFixed(0)} fps · ${(faceSkippedRatio * 100).toFixed(0)}% skipped`}
+                      </output>
+                    )}
+                    {faceStartupTiming && (
+                      <output className="note" data-testid="face-startup-timing">
+                        {formatFaceStartupTiming(faceStartupTiming)}
+                        {faceStartupTiming.resources.length > 0 && (
+                          ` · ${faceStartupTiming.resources.join(', ')}`
+                        )}
+                      </output>
+                    )}
+                    {faceTrackingActive && (
+                      <output className="note" data-testid="face-eye-readout">
+                        {messages.playground.eyeReadout}
+                        {' L '}
+                        {faceEyes.left.toFixed(2)}
+                        {' · R '}
+                        {faceEyes.right.toFixed(2)}
+                        {' · min '}
+                        {Number.isFinite(faceEyes.low) ? faceEyes.low.toFixed(2) : '—'}
+                        {' · Δ '}
+                        {faceEyes.spread.toFixed(3)}
+                        {' · Δmax '}
+                        {faceEyes.spreadMax.toFixed(3)}
+                      </output>
+                    )}
+                    {faceTrackingActive && (
+                      <table className="pose-readout" data-testid="face-pose-readout">
+                        <thead>
+                          <tr>
+                            <th>{messages.playground.headAngle}</th>
+                            <th>{messages.playground.now}</th>
+                            <th>{messages.playground.peak}</th>
+                            <th>{messages.playground.body}</th>
+                            <th>{messages.playground.range}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {([
+                            [messages.playground.xTurn, facePose.x, facePeak.x, faceBody.x],
+                            [messages.playground.yNod, facePose.y, facePeak.y, faceBody.y],
+                            [messages.playground.zTilt, facePose.z, facePeak.z, faceBody.z],
+                          ] as const).map(([label, now, peak, body]) => (
+                            <tr key={label}>
+                              <td>{label}</td>
+                              <td>{now.toFixed(1)}</td>
+                              <td>{peak.toFixed(1)}</td>
+                              <td>{body.toFixed(2)}</td>
+                              <td>
+                                <span
+                                  className="pose-bar"
+                                  style={{ width: `${Math.min(100, peak / 30 * 100)}%` }}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    {faceTrackingActive && faceRanges && (
+                      <p className="pose-ranges">{faceRanges}</p>
+                    )}
+                    {!faceTrackingActive && !faceStartupTiming && (
+                      <p className="note">{messages.playground.measurementsPending}</p>
+                    )}
+                  </div>
+                </details>
+                <details className="playground-more">
+                  <summary>{messages.common.advanced}</summary>
+                  <div className="playground-more-body">
+                    <label>
+                      {messages.playground.execution}
+                      <select
+                        aria-label={messages.playground.faceExecution}
+                        disabled={faceTrackingActive}
+                        value={faceExecution}
+                        onChange={event => setFaceExecution(
+                          event.target.value as FaceTrackingExecution,
+                        )}
+                      >
+                        <option value="worker">{messages.playground.worker}</option>
+                        <option value="main">{messages.playground.mainThread}</option>
+                      </select>
+                    </label>
+                    <label>
+                      {messages.playground.faceLost}
+                      <select
+                        aria-label={messages.playground.faceLostBehaviour}
+                        value={faceLostMode}
+                        onChange={event => setFaceLostMode(
+                          event.target.value as MediaPipeFaceLostBehaviour,
+                        )}
+                      >
+                        <option value="hold">{messages.playground.holdLastPose}</option>
+                        <option value="neutral">{messages.playground.returnNeutral}</option>
+                      </select>
+                    </label>
+                    <label>
+                      {messages.playground.mapping}
+                      <select
+                        aria-label={messages.playground.faceMapping}
+                        value={faceMapping}
+                        onChange={event => setFaceMapping(
+                          event.target.value as MediaPipeMappingMode,
+                        )}
+                      >
+                        <option value="auto">{messages.common.auto}</option>
+                        <option value="standard">{messages.inspector.standard}</option>
+                        <option value="perfect-sync">{messages.playground.perfectSync}</option>
+                      </select>
+                    </label>
+                    {(['pose', 'eyes', 'brows', 'mouth', 'cheeks'] as const).map(channel => (
+                      <label key={channel} className="toggle">
+                        <input
+                          checked={faceChannels[channel]}
+                          type="checkbox"
+                          onChange={event => setFaceChannels(current => ({
+                            ...current,
+                            [channel]: event.target.checked,
+                          }))}
+                        />
+                        {messages.playground[channel]}
+                      </label>
+                    ))}
+                  </div>
+                </details>
               </section>
 
               <section

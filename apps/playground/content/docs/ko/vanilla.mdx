@@ -80,6 +80,36 @@ window.addEventListener('pagehide', () => {
 }, { once: true })
 ```
 
+## Vue, Svelte, 그 밖의 프레임워크
+
+전용 진입점은 React에만 있습니다. 컴포넌트 트리는 생명주기 훅에는 없는 도움이 필요하기 때문입니다. React는 Strict Mode에서 effect를 두 번 실행하고, 동시에 렌더링하며, 정리 시점을 스스로 정합니다. 다른 프레임워크에서는 명령형 API가 곧 바인딩입니다. 컴포넌트가 마운트될 때 인스턴스를 만들고, 사라질 때 정리하고, 그 사이에는 프레임워크가 부르는 이름의 지역 상태에 담아 두면 됩니다.
+
+```vue title="Vue"
+<script setup lang="ts">
+import { createLive2D } from 'live2d-web'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+const host = ref<HTMLElement>()
+let character: Awaited<ReturnType<typeof createLive2D>> | undefined
+
+onMounted(async () => {
+  character = await createLive2D({
+    container: host.value!,
+    coreUrl: '/live2dcubismcore.min.js',
+    src: '/models/model.model3.json',
+  })
+})
+
+onBeforeUnmount(() => character?.dispose())
+</script>
+
+<template>
+  <div ref="host" />
+</template>
+```
+
+[Vue Vite 예제](https://github.com/Heonys/live2d-web/tree/main/examples/vue-vite)에 전체가 있습니다. Svelte, Solid, Angular도 생명주기 이름만 다를 뿐 형태는 같습니다.
+
 ## 조작과 재시도 UI 만들기
 
 모션, 표정, 재시도는 Canvas 밖의 일반 버튼으로 제공하세요. 로드 전에는 비활성화하고, 실패하면 `Live2DError.code`를 표시합니다. Core 경로, 모델 자산, WebGL 환경을 수정한 뒤 새 인스턴스로 재시도하세요.

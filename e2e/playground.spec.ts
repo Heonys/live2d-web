@@ -339,6 +339,7 @@ test('inspects a model URL and cleans the previous canvas on replacement', async
   await expect(canvas).toHaveCount(1)
 
   await page.getByLabel('Framing').selectOption('full')
+  await page.getByText('Advanced').click()
   await page.getByLabel('Resolution').selectOption('2')
   await expect(page.getByTestId('inspector-status')).toContainText('ready')
   await expect.poll(async () => canvas.evaluate((element) => {
@@ -348,9 +349,6 @@ test('inspects a model URL and cleans the previous canvas on replacement', async
   })).toBeCloseTo(2, 1)
 
   await page.getByRole('button', { name: 'Play motion' }).click()
-  await page.getByLabel('Parameter value').fill('0.65')
-  await page.getByRole('button', { name: 'Set parameter' }).click()
-  await expect(page.getByTestId('parameter-readback')).toContainText('0.650')
   await page.getByTestId('inspector-stage').hover({ position: { x: 450, y: 200 } })
 
   await page.getByRole('button', { name: 'Copy JSON' }).click()
@@ -785,6 +783,10 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
   await expect(page.getByTestId('face-tracking-status')).toContainText('lost', {
     timeout: 30_000,
   })
+  // The panel opens on the camera and the start button; the numbers that were
+  // tuning aids while the tracker was built are a disclosure below them.
+  await expect(page.getByTestId('face-startup-timing')).toBeHidden()
+  await page.getByRole('group').filter({ hasText: 'Measurements' }).getByText('Measurements').click()
   await expect(page.getByTestId('face-startup-timing')).toContainText('camera')
   await expect(page.getByTestId('face-startup-timing')).toContainText('tracker')
   await expect(page.getByTestId('face-startup-timing')).toContainText('first inference')
@@ -796,6 +798,7 @@ test('owns MediaPipe camera tracks across stop, restart and canvas unmount', asy
   await expect(readout).toBeVisible()
   await expect(readout.locator('tbody tr')).toHaveCount(3)
   await expect(page.getByRole('slider', { name: 'Pose sensitivity' })).toBeVisible()
+  await page.getByRole('group').filter({ hasText: 'Advanced' }).getByText('Advanced').click()
   await expect(page.getByLabel('Face lost behaviour')).toHaveValue('hold')
   await expect(page.getByLabel('Face tracking execution')).toBeVisible()
   await expect(page.getByLabel('Face mapping')).toHaveValue('auto')

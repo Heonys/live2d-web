@@ -81,6 +81,36 @@ window.addEventListener('pagehide', () => {
 }, { once: true })
 ```
 
+## Vue, Svelte and other frameworks
+
+Only React has its own entry, because a component tree needs help that a lifecycle hook does not: React mounts effects twice under Strict Mode, renders concurrently, and cleans up on its own schedule. Elsewhere the imperative API is the binding. Create the instance when the component mounts, dispose it when it unmounts, and hold it in whatever your framework calls local state.
+
+```vue title="Vue"
+<script setup lang="ts">
+import { createLive2D } from 'live2d-web'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+const host = ref<HTMLElement>()
+let character: Awaited<ReturnType<typeof createLive2D>> | undefined
+
+onMounted(async () => {
+  character = await createLive2D({
+    container: host.value!,
+    coreUrl: '/live2dcubismcore.min.js',
+    src: '/models/model.model3.json',
+  })
+})
+
+onBeforeUnmount(() => character?.dispose())
+</script>
+
+<template>
+  <div ref="host" />
+</template>
+```
+
+The [Vue Vite example](https://github.com/Heonys/live2d-web/tree/main/examples/vue-vite) runs this in full. Svelte, Solid and Angular follow the same shape with their own lifecycle names.
+
 ## Keep application controls outside Canvas
 
 Use ordinary buttons for motions, expressions and retry. This makes keyboard behavior explicit and lets the application disable controls until loading completes. Catch `Live2DError`, show its stable `code`, and recreate the instance only after the underlying Core, asset or WebGL problem has changed.

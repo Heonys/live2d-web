@@ -80,6 +80,36 @@ window.addEventListener('pagehide', () => {
 }, { once: true })
 ```
 
+## Vue、Svelte、その他のフレームワーク
+
+専用のエントリーがあるのは React だけです。コンポーネントツリーには、ライフサイクルフックには不要な手当てが要るからです。React は Strict Mode で effect を2回実行し、並行してレンダリングし、後始末の時期を自分で決めます。ほかのフレームワークでは、命令型 API がそのままバインディングになります。マウント時にインスタンスを作り、アンマウント時に破棄し、その間はフレームワークが呼ぶところのローカルな状態に持たせてください。
+
+```vue title="Vue"
+<script setup lang="ts">
+import { createLive2D } from 'live2d-web'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+const host = ref<HTMLElement>()
+let character: Awaited<ReturnType<typeof createLive2D>> | undefined
+
+onMounted(async () => {
+  character = await createLive2D({
+    container: host.value!,
+    coreUrl: '/live2dcubismcore.min.js',
+    src: '/models/model.model3.json',
+  })
+})
+
+onBeforeUnmount(() => character?.dispose())
+</script>
+
+<template>
+  <div ref="host" />
+</template>
+```
+
+[Vue Vite の例](https://github.com/Heonys/live2d-web/tree/main/examples/vue-vite)に一式があります。Svelte、Solid、Angular もライフサイクルの名前が違うだけで、形は同じです。
+
 ## 通常の DOM で操作と再試行を用意
 
 モーション、表情、再試行は Canvas 外のボタンで提供します。準備前は無効にし、失敗時は `Live2DError.code` を表示して、Core、アセット、WebGL の原因を修正してから再作成します。

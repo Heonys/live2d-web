@@ -245,9 +245,6 @@ export function InspectorApp() {
   const [resolutionMode, setResolutionMode] = useState<ResolutionMode>('auto')
   const [motionValue, setMotionValue] = useState('')
   const [expression, setExpression] = useState('')
-  const [parameterId, setParameterId] = useState('ParamMouthOpenY')
-  const [parameterValue, setParameterValue] = useState(0.5)
-  const [parameterReadback, setParameterReadback] = useState<number>()
   const [pointerFocus, setPointerFocus] = useState(true)
 
   const resetModel = useCallback(() => {
@@ -257,7 +254,6 @@ export function InspectorApp() {
     setCapabilities(undefined)
     setRuntimeError(undefined)
     setOperationError('')
-    setParameterReadback(undefined)
     setGeneration(value => value + 1)
   }, [])
 
@@ -527,21 +523,6 @@ export function InspectorApp() {
             </select>
           </label>
           <label>
-            {messages.inspector.resolution}
-            <select
-              aria-label={messages.inspector.resolution}
-              value={resolutionMode}
-              onChange={(event) => {
-                setController(null)
-                setResolutionMode(event.target.value as ResolutionMode)
-              }}
-            >
-              <option value="auto">{messages.common.auto}</option>
-              <option value="1">1×</option>
-              <option value="2">2×</option>
-            </select>
-          </label>
-          <label>
             {messages.inspector.motions}
             <select aria-label={messages.inspector.motions} disabled={!motionOptions.length} value={motionValue} onChange={event => setMotionValue(event.target.value)}>
               {!motionOptions.length && <option value="">{messages.inspector.noMotions}</option>}
@@ -573,41 +554,30 @@ export function InspectorApp() {
             </select>
           </label>
           <button disabled={!controller || !expression} type="button" onClick={() => void runOperation(() => controller?.expression(expression))}>{messages.inspector.applyExpression}</button>
-          <label>
-            {messages.inspector.parameterId}
-            <input
-              type="text"
-              value={parameterId}
-              onChange={event => setParameterId(event.target.value)}
-            />
-          </label>
-          <label>
-            {messages.inspector.parameterValue}
-            <input aria-label={messages.inspector.parameterValue} step="0.01" type="number" value={parameterValue} onChange={event => setParameterValue(Number(event.target.value))} />
-          </label>
-          <button
-            disabled={!controller || !parameterId.trim() || !Number.isFinite(parameterValue)}
-            type="button"
-            onClick={() => void runOperation(() => {
-              controller?.setParameter(parameterId.trim(), parameterValue)
-              setParameterReadback(controller?.getParameter(parameterId.trim()))
-            })}
-          >
-            {messages.inspector.setParameter}
-          </button>
-          {parameterReadback !== undefined && (
-            <output data-testid="parameter-readback">
-              {parameterId.trim()}
-              {' '}
-              =
-              {' '}
-              {parameterReadback.toFixed(3)}
-            </output>
-          )}
           <label className="toggle">
             <input checked={pointerFocus} type="checkbox" onChange={event => setPointerFocus(event.target.checked)} />
             {messages.inspector.followPointer}
           </label>
+          <details className="playground-more">
+            <summary>{messages.common.advanced}</summary>
+            <div className="playground-more-body">
+              <label>
+                {messages.inspector.resolution}
+                <select
+                  aria-label={messages.inspector.resolution}
+                  value={resolutionMode}
+                  onChange={(event) => {
+                    setController(null)
+                    setResolutionMode(event.target.value as ResolutionMode)
+                  }}
+                >
+                  <option value="auto">{messages.common.auto}</option>
+                  <option value="1">1×</option>
+                  <option value="2">2×</option>
+                </select>
+              </label>
+            </div>
+          </details>
           {runtimeError && (
             <div className="inline-error" role="alert">
               <strong>{runtimeError.code}</strong>
