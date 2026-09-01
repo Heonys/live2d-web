@@ -1,8 +1,14 @@
+## Whether to move at all
+
+`pixi-live2d-display` was last published in December 2023 and still declares `@pixi/core: "^6"`, so a project on Pixi 7 or 8 cannot use it. Leaving Pixi is not the only way out of that.
+
+[untitled-pixi-live2d-engine](https://github.com/Untitled-Story/untitled-pixi-live2d-engine) continues it on Pixi v8, covers Cubism 2 through 5, and keeps the same API, which makes moving to it an import change rather than a rewrite. **If you want to stay on Pixi, start there.** A Cubism 2.1 model settles it on its own: this runtime does not load one.
+
+This page is for the other case. `live2d-web` brings its own WebGL2 renderer and owns the canvas, so Pixi leaves the project. Take it when Pixi was in the bundle for the Live2D model and nothing else, when you want React components, or when face tracking has to come from the same library. It is a rewrite, and the rest of this page is what that costs.
+
 ## What changes
 
 `pixi-live2d-display` renders a Live2D model as a PixiJS `Container`, so Pixi owns the canvas, the ticker and the WebGL context. This runtime owns them itself. The six `@pixi/*` peer dependencies go away, and nothing here is tied to a Pixi version.
-
-That matters for a specific reason: its peer range is `@pixi/core: "^6"`, and Pixi is on v8. It was last published in December 2023.
 
 ```html title="index.html, before"
 <!-- Cubism Core has to be in the page before the plugin runs -->
@@ -57,8 +63,8 @@ Placement is the one that is not a rename. Pixi transforms are pixels on a stage
 
 ## What does not come across
 
-- **Cubism 2.1 models.** `pixi-live2d-display` ships a `/cubism2` entry. This runtime is Cubism 4/5 only, and a `.moc` file will not load.
-- **The Pixi scene graph.** Filters, blend modes and mixing a model with other sprites all belong to Pixi. This runtime owns its canvas, so a model cannot be placed inside a Pixi scene.
+- **Cubism 2.1 models.** This runtime is Cubism 3/4/5 only, and a `.moc` file will not load. Both `pixi-live2d-display` and the fork above cover 2.1, so a rig on that version is a reason to stay with them.
+- **The Pixi scene graph.** Filters, blend modes and mixing a model with other sprites all belong to Pixi. This runtime owns its canvas, so a model cannot be placed inside a Pixi scene. There is no compatibility layer for this and there will not be one: drawing into someone else's renderer is the design this runtime exists to avoid.
 - **Audio playback.** There is no `SoundManager` and no `model.speak(url)`. The application plays the audio it already owns, and [lip sync](/docs/en/lip-sync) drives the mouth from it.
 
 ## Cubism Core

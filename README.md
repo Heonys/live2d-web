@@ -21,7 +21,7 @@
 
 ## Features
 
-- Cubism 4/5 models loaded through a bundled Framework 5-r.5 adapter and
+- Cubism 3/4/5 models loaded through a bundled Framework 5-r.5 adapter and
   drawn on WebGL2
 - A plain JavaScript runtime, with React components and hooks included
 - Motions, sequences, fades, weighted idle, expressions and pointer interaction
@@ -37,7 +37,7 @@ pnpm add live2d-web
 ```
 
 Cubism Core and model files are deliberately not bundled. Download Core under
-Live2D’s terms, self-host it, and serve a licensed Cubism 4/5 model directory.
+Live2D’s terms, self-host it, and serve a licensed Cubism 3/4/5 model directory.
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -68,9 +68,9 @@ export function Avatar() {
 The host element needs an explicit CSS size. Dispose the JavaScript instance when
 the host view is removed; React components clean themselves up on unmount.
 
-Coming from `pixi-live2d-display`? The method-by-method mapping, and what does not
-come across, are in
-[Migrating from pixi-live2d-display](https://live2d-web.heonys.dev/docs/en/pixi-live2d-display).
+Coming from `pixi-live2d-display`?
+[Migrating from pixi-live2d-display](https://live2d-web.heonys.dev/docs/en/pixi-live2d-display)
+maps the methods, and says when staying on Pixi is the better call.
 
 ## Live2D Devtools
 

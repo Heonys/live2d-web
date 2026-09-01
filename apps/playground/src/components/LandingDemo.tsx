@@ -231,7 +231,7 @@ export function LandingDemo() {
     <div className="landing-demo" data-load-phase={controller ? 'ready' : error ? 'error' : loadPhase}>
       <div className="landing-demo-meta">
         <span>Live demo</span>
-        <span>WebGL2 · Cubism 4/5</span>
+        <span>WebGL2 · Cubism 3/4/5</span>
       </div>
       <div className="landing-stage" data-model-visible={Boolean(controller)}>
         {!controller && (

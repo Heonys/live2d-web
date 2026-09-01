@@ -41,7 +41,7 @@ export function LandingPageContent({ locale }: { locale: SiteLocale }) {
   const capabilities = [
     {
       description: messages.runtimeCapabilityDescription,
-      features: ['Cubism 4/5', 'Motion & sequences', 'Expressions', 'Parameters'],
+      features: ['Cubism 3/4/5', 'Motion & sequences', 'Expressions', 'Parameters'],
       label: messages.runtimeCapabilityLabel,
     },
     {

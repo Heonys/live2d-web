@@ -99,7 +99,7 @@ export default function OpenGraphImage() {
                 marginTop: '26px',
               }}
             >
-              Cubism 4/5 · WebGL2 · JavaScript + React
+              Cubism 3/4/5 · WebGL2 · JavaScript + React
             </div>
           </div>
 

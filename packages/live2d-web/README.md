@@ -13,7 +13,7 @@ npm install live2d-web
 ```
 
 Cubism Core and model files are not bundled. Download Core under Live2D’s
-terms, self-host it, and serve a licensed Cubism 4/5 model directory.
+terms, self-host it, and serve a licensed Cubism 3/4/5 model directory.
 
 ## JavaScript
 

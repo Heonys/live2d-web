@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The supported model range is stated as `.moc3` v1 to v6, which is Cubism 3.0
+  through 5.3, rather than "Cubism 4/5". Nothing changed in the runtime: the
+  five official samples already span that whole range, Hiyori at v1 and Ren at
+  v6, and the end-to-end suite loads all of them on three engines. The old
+  wording undersold what the tests already cover. What is genuinely untested is
+  narrower and now says so: a `model3.json` at v1 or v2, and the motion and
+  physics formats of that era.
+
 ## 0.9.0 - 2026-09-01
 
 ### Added

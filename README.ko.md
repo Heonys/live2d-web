@@ -21,7 +21,7 @@
 
 ## 주요 기능
 
-- Framework 5-r.5 어댑터로 Cubism 4/5 모델을 불러와 WebGL2로 직접 렌더링
+- Framework 5-r.5 어댑터로 Cubism 3/4/5 모델을 불러와 WebGL2로 직접 렌더링
 - 바닐라 JavaScript 런타임과 React 컴포넌트, 훅
 - 모션, 시퀀스, 페이드, 가중 Idle, 표정, 포인터 상호작용
 - 캔버스 하나에 모델 여럿, WebGL 컨텍스트를 공유
@@ -35,7 +35,7 @@ pnpm add live2d-web
 ```
 
 Cubism Core와 모델은 패키지에 포함되지 않습니다. Live2D 약관에 따라 Core를
-받아 직접 호스팅하고, 사용 권한이 있는 Cubism 4/5 모델 디렉터리를 제공하세요.
+받아 직접 호스팅하고, 사용 권한이 있는 Cubism 3/4/5 모델 디렉터리를 제공하세요.
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -68,7 +68,7 @@ dispose하고, React 컴포넌트는 unmount 시 스스로 정리합니다.
 
 `pixi-live2d-display`를 쓰고 있다면
 [pixi-live2d-display에서 옮겨오기](https://live2d-web.heonys.dev/docs/ko/pixi-live2d-display)를
-보세요. 함수 대응표와 넘어오지 않는 것을 정리해 뒀습니다.
+보세요. 함수 대응표와 함께, Pixi에 남는 편이 나은 경우도 적어뒀습니다.
 
 ## Live2D Devtools
 

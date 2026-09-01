@@ -21,7 +21,7 @@
 
 ## 主な機能
 
-- Framework 5-r.5 アダプター経由で Cubism 4/5 のモデルを読み込み、WebGL2 で
+- Framework 5-r.5 アダプター経由で Cubism 3/4/5 のモデルを読み込み、WebGL2 で
   直接描画
 - バニラ JavaScript のランタイムと、React コンポーネントおよびフック
 - モーション、シーケンス、フェード、重み付き Idle、表情、ポインター操作
@@ -36,7 +36,7 @@ pnpm add live2d-web
 ```
 
 Cubism Core とモデルはパッケージに含まれません。Live2D の規約に従って Core
-を取得・self-host し、利用権のある Cubism 4/5 モデルを配信してください。
+を取得・self-host し、利用権のある Cubism 3/4/5 モデルを配信してください。
 
 ```ts
 import { createLive2D } from 'live2d-web'
@@ -69,7 +69,7 @@ dispose します。React component は unmount 時に自動で破棄します�
 
 `pixi-live2d-display` を使っているなら
 [pixi-live2d-display からの移行](https://live2d-web.heonys.dev/docs/ja/pixi-live2d-display)を
-見てください。関数の対応表と、移せないものをまとめています。
+見てください。関数の対応表と、Pixi に留まるほうがよい場合をまとめています。
 
 ## Live2D Devtools
 

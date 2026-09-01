@@ -1,8 +1,14 @@
+## 옮길지부터 정하기
+
+`pixi-live2d-display`는 마지막 발행이 2023년 12월이고 `@pixi/core: "^6"`을 그대로 선언합니다. Pixi 7이나 8을 쓰는 프로젝트는 못 씁니다. 그렇다고 Pixi를 떠나는 것만이 답은 아닙니다.
+
+[untitled-pixi-live2d-engine](https://github.com/Untitled-Story/untitled-pixi-live2d-engine)이 그 자리를 이어받아 Pixi v8에서 동작하고, Cubism 2부터 5까지 다루며, API가 같습니다. 옮기는 일이 다시 쓰기가 아니라 import 경로 변경으로 끝납니다. **Pixi를 계속 쓸 생각이라면 그쪽이 맞습니다.** Cubism 2.1 모델을 쓴다면 고민할 것도 없습니다. 이 런타임은 2.1을 못 읽습니다.
+
+이 문서는 그 반대 경우를 위한 것입니다. `live2d-web`은 자체 WebGL2 렌더러를 갖고 캔버스를 직접 소유하므로, 프로젝트에서 Pixi가 빠집니다. Live2D 모델 하나 때문에 Pixi를 넣고 있었다면, React 컴포넌트가 필요하다면, 얼굴 트래킹까지 같은 라이브러리에서 받아야 한다면 이쪽입니다. 다시 쓰는 일이고, 이 아래가 그 비용입니다.
+
 ## 무엇이 달라지나
 
 `pixi-live2d-display`는 Live2D 모델을 PixiJS `Container`로 그립니다. 캔버스와 ticker, WebGL 컨텍스트를 Pixi가 소유합니다. 이 런타임은 그것들을 직접 소유합니다. `@pixi/*` peer 의존 여섯 개가 사라지고, Pixi 버전에 묶이는 부분이 없습니다.
-
-이게 중요한 이유가 있습니다. 그쪽 peer 범위가 `@pixi/core: "^6"`인데 Pixi는 v8입니다. 마지막 발행은 2023년 12월입니다.
 
 ```html title="index.html, 이전"
 <!-- 플러그인이 돌기 전에 Cubism Core가 페이지에 있어야 한다 -->
@@ -57,8 +63,8 @@ application도, stage도, 등록할 ticker도 없습니다. Cubism Core는 `core
 
 ## 넘어오지 않는 것
 
-- **Cubism 2.1 모델.** `pixi-live2d-display`에는 `/cubism2` 진입점이 있지만 이 런타임은 Cubism 4/5 전용이라 `.moc` 파일이 로드되지 않습니다.
-- **Pixi 씬 그래프.** 필터, 블렌드 모드, 다른 스프라이트와 섞기는 전부 Pixi의 몫입니다. 이 런타임은 자체 캔버스를 소유하므로 모델을 Pixi 씬 안에 넣을 수 없습니다.
+- **Cubism 2.1 모델.** 이 런타임은 Cubism 3/4/5 전용이라 `.moc` 파일이 로드되지 않습니다. `pixi-live2d-display`와 위의 포크는 둘 다 2.1을 다루므로, 그 버전 리그를 쓴다면 그쪽에 남을 이유가 됩니다.
+- **Pixi 씬 그래프.** 필터, 블렌드 모드, 다른 스프라이트와 섞기는 전부 Pixi의 몫입니다. 이 런타임은 자체 캔버스를 소유하므로 모델을 Pixi 씬 안에 넣을 수 없습니다. 이걸 위한 호환 계층은 없고 앞으로도 만들지 않습니다. 남의 렌더러 안으로 그리는 것이 이 런타임이 피하려고 만들어진 설계이기 때문입니다.
 - **오디오 재생.** `SoundManager`도 `model.speak(url)`도 없습니다. 오디오는 이미 앱이 갖고 있으니 앱이 재생하고, [립싱크](/docs/ko/lip-sync)가 그 소리로 입을 움직입니다.
 
 ## Cubism Core

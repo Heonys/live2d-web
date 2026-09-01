@@ -416,7 +416,7 @@ test('uses the compact landing hierarchy without reloading the model on resize',
   await page.setViewportSize({ height: 844, width: 390 })
   await page.goto('/')
   await expect(page.locator('.landing-demo')).toHaveAttribute('data-load-phase', 'ready')
-  await expect(page.locator('.landing-demo-meta')).toContainText('WebGL2 · Cubism 4/5')
+  await expect(page.locator('.landing-demo-meta')).toContainText('WebGL2 · Cubism 3/4/5')
 
   const layout = await page.evaluate(() => {
     const actions = [...document.querySelectorAll<HTMLElement>('.landing-actions a')]
