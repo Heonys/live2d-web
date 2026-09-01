@@ -1,0 +1,76 @@
+## 何が変わるか
+
+`pixi-live2d-display` は Live2D モデルを PixiJS の `Container` として描画します。キャンバス、ticker、WebGL コンテキストは Pixi が持ちます。このランタイムはそれらを自分で持ちます。`@pixi/*` の peer 依存6つがなくなり、Pixi のバージョンに縛られる部分もありません。
+
+これが効いてくる理由があります。あちらの peer 範囲は `@pixi/core: "^6"` で、Pixi は v8 です。最後の公開は2023年12月です。
+
+```html title="index.html、移行前"
+<!-- プラグインが動く前に Cubism Core がページにある必要がある -->
+<script src="/live2dcubismcore.min.js"></script>
+```
+
+```ts title="移行前"
+import { Live2DModel } from 'pixi-live2d-display'
+import * as PIXI from 'pixi.js'
+
+// プラグインが window.PIXI.Ticker を読んでモデルを更新する
+window.PIXI = PIXI
+
+const app = new PIXI.Application({ view: canvas })
+const model = await Live2DModel.from('/models/avatar.model3.json')
+app.stage.addChild(model)
+model.scale.set(0.3)
+model.position.set(200, 100)
+```
+
+```ts title="移行後"
+import { createLive2D } from 'live2d-web'
+
+const character = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/avatar.model3.json',
+})
+```
+
+application も stage も、登録する ticker もありません。Cubism Core は `coreUrl` が読み込むので、script タグも順番を合わせる手間もありません。コンテナに CSS のサイズを与えれば、キャンバスがそこを満たします。
+
+## 関数の対応
+
+| pixi-live2d-display | live2d-web |
+| --- | --- |
+| `Live2DModel.from(url)`、`stage.addChild()` | `createLive2D({ container, coreUrl, src })` |
+| ページに `<script src="live2dcubismcore.min.js">` | `coreUrl` |
+| `addChild()` をもう一度 | `addModel()` または `<Live2DModel>` をもう1つ |
+| `model.motion(group, index, priority)` | `motion(group, index, { priority })` |
+| `MotionPriority.NORMAL` / `FORCE` / `IDLE` | `'normal'` / `'force'` / `'idle'` |
+| `model.expression(id)` | `expression(id)` |
+| `model.focus(x, y)` | `focus(x, y)`、`focusAt(clientX, clientY)` |
+| `model.tap(x, y)`、`model.hitTest(x, y)` | `hitTest(clientX, clientY)` |
+| `model.x`、`y`、`scale`、`anchor` | `fit` |
+| `autoUpdate`、ticker の登録 | 自動 |
+| `autoInteract` | `followPointer`、`onTap` |
+| `coreModel.setParameterValueById()` | `setParameter(id, value)` |
+| `model.destroy()` | `dispose()` |
+
+名前が変わるだけで済まないのは配置だけです。Pixi の変換は自分で決めた stage 上のピクセル値ですが、`fit` は画面へのおさめ方を書くもので、リサイズのたびに計算し直します。[配置オーバーレイ](/docs/ja/debug)を開けば、好きな位置へドラッグして値をコピーできます。
+
+## 移せないもの
+
+- **Cubism 2.1 のモデル。** `pixi-live2d-display` には `/cubism2` エントリーがありますが、このランタイムは Cubism 4/5 専用で、`.moc` ファイルは読み込めません。
+- **Pixi のシーングラフ。** フィルター、ブレンドモード、ほかのスプライトとの合成はすべて Pixi のものです。このランタイムは自分のキャンバスを持つため、モデルを Pixi のシーンに置くことはできません。
+- **音声の再生。** `SoundManager` も `model.speak(url)` もありません。音声はアプリがすでに持っているので、アプリが再生し、[リップシンク](/docs/ja/lip-sync)がその音で口を動かします。
+
+## Cubism Core
+
+移行で最初につまずくのはたいていここです。同梱の Framework 5-r.5 アダプターは **Cubism Core 5.3** を必要とし、`core/06` として配布されています。古い `core/05` は moc の読み込みで失敗するので、Pixi で使っていた Core スクリプトを置き換える必要があるかもしれません。入手先は [Core とモデル](/docs/ja/core-and-models)にあります。
+
+## 進める順番
+
+1. Cubism Core 5.3 を配置し、モデルがともかく描画されることを確認します。
+2. 生成のコードを置き換えます。JavaScript は `createLive2D()`、React は `<Live2DCanvas>` と `<Live2DModel>` です。
+3. 座標と拡大率を `fit` に移します。値は配置オーバーレイで探します。
+4. 上の表のとおりに呼び出しを置き換えます。
+5. `pixi-live2d-display` と、Pixi 自体に不要な `@pixi/*` の依存を削除します。
+
+描画されないときは、先に[モデル検査](/docs/ja/model-inspection)を実行してください。moc のバージョンと足りない資産を報告するので、移行中に起きることの多くはそこで分かります。

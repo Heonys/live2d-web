@@ -8,7 +8,7 @@ import { useSiteMessages } from '../i18n/SiteLocale'
 import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
 import { useDocsNavigation } from './docsNavigationContext'
-import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref, getDocPage } from './manifest'
+import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref, getDocPage, navLabel } from './manifest'
 
 const SIDEBAR_SCROLL_KEY = 'live2d-web:docs-sidebar-scroll'
 
@@ -125,7 +125,7 @@ export function DocsSidebar({ locale }: { locale: DocLocale }) {
                   aria-current={pathname === href ? 'page' : undefined}
                   href={href}
                 >
-                  {entry.title[locale]}
+                  {navLabel(entry, locale)}
                 </DocsIntentLink>
               )
             })}

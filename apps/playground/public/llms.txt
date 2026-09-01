@@ -17,6 +17,7 @@ backend uses WebGL2 without Pixi. Cubism Core and model files are never bundled.
 ## Main topics
 
 - /docs/en/core-and-models
+- /docs/en/pixi-live2d-display
 - /docs/en/vanilla
 - /docs/en/react
 - /docs/en/motion-and-expression

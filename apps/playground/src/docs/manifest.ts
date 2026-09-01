@@ -16,6 +16,8 @@ export const DOC_GROUP_NAMES: Record<DocLocale, Record<DocGroup, string>> = {
 export interface LocalizedText { en: string, ja: string, ko: string }
 export interface DocPageMeta {
   group: DocGroup
+  /** Sidebar label, when the title is too long to sit on one line there. */
+  navTitle?: LocalizedText
   slug: string
   summary: LocalizedText
   title: LocalizedText
@@ -48,6 +50,25 @@ export const DOC_PAGES = [
       en: 'Core and models',
       ja: 'Core とモデル',
       ko: 'Core와 모델',
+    },
+  },
+  {
+    group: 'Start',
+    navTitle: {
+      en: 'Migration',
+      ja: '移行',
+      ko: '마이그레이션',
+    },
+    slug: 'pixi-live2d-display',
+    summary: {
+      en: 'Move a Pixi-hosted model onto a runtime that owns its own canvas.',
+      ja: 'Pixi 上のモデルを、キャンバスを自分で持つランタイムへ移します。',
+      ko: 'Pixi 위의 모델을 캔버스를 직접 소유하는 런타임으로 옮깁니다.',
+    },
+    title: {
+      en: 'Migrating from pixi-live2d-display',
+      ja: 'pixi-live2d-display からの移行',
+      ko: 'pixi-live2d-display에서 옮겨오기',
     },
   },
   {
@@ -247,6 +268,10 @@ export const DOC_PAGES = [
     },
   },
 ] as const satisfies readonly DocPageMeta[]
+
+export function navLabel(page: DocPageMeta, locale: DocLocale) {
+  return (page.navTitle ?? page.title)[locale]
+}
 
 export function getDocPage(slug: string) {
   return DOC_PAGES.find(page => page.slug === slug)

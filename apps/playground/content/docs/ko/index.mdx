@@ -29,3 +29,7 @@ await character.motion('Idle', 0)
 ## 로드 확인과 정리
 
 Network 탭에서 model3, moc3, 텍스처가 모두 성공했는지 확인합니다. 오류가 나면 [문제 해결 가이드](/docs/ko/troubleshooting)에서 오류 코드에 맞는 복구 방법을 찾으세요. 화면을 닫을 때는 `dispose()`로 Canvas, WebGL 자원, 애니메이션 루프를 정리합니다.
+
+## pixi-live2d-display에서 옮겨오기
+
+배치, 함수 이름, 넘어오지 않는 것을 [따로 정리해 뒀습니다](/docs/ko/pixi-live2d-display). 코드를 고치기 전에 읽어보세요. Cubism Core 5.3이 필요하고, Cubism 2.1 모델은 아예 옮길 수 없습니다.

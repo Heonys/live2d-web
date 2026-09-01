@@ -11,7 +11,8 @@
   <strong><a href="https://live2d-web.heonys.dev/docs/en">Documentation</a></strong> ·
   <a href="https://live2d-web.heonys.dev/playground">Playground</a> ·
   <a href="https://live2d-web.heonys.dev/inspect">Model inspector</a> ·
-  <a href="examples">Examples</a>
+  <a href="examples">Examples</a> ·
+  <a href="https://live2d-web.heonys.dev/docs/en/pixi-live2d-display">From pixi-live2d-display</a>
 </p>
 
 <p align="center">
@@ -66,6 +67,10 @@ export function Avatar() {
 
 The host element needs an explicit CSS size. Dispose the JavaScript instance when
 the host view is removed; React components clean themselves up on unmount.
+
+Coming from `pixi-live2d-display`? The method-by-method mapping, and what does not
+come across, are in
+[Migrating from pixi-live2d-display](https://live2d-web.heonys.dev/docs/en/pixi-live2d-display).
 
 ## Learn and verify
 

@@ -11,7 +11,8 @@
   <strong><a href="https://live2d-web.heonys.dev/docs/ja">日本語ドキュメント</a></strong> ·
   <a href="https://live2d-web.heonys.dev/ja/playground">Playground</a> ·
   <a href="https://live2d-web.heonys.dev/ja/inspect">モデル検査</a> ·
-  <a href="examples">サンプル</a>
+  <a href="examples">サンプル</a> ·
+  <a href="https://live2d-web.heonys.dev/docs/ja/pixi-live2d-display">pixi からの移行</a>
 </p>
 
 <p align="center">
@@ -65,6 +66,10 @@ export function Avatar() {
 
 host 要素には CSS のサイズが必要です。JavaScript instance は画面から外すときに
 dispose します。React component は unmount 時に自動で破棄します。
+
+`pixi-live2d-display` を使っているなら
+[pixi-live2d-display からの移行](https://live2d-web.heonys.dev/docs/ja/pixi-live2d-display)を
+見てください。関数の対応表と、移せないものをまとめています。
 
 ## 詳細ドキュメントとサンプル
 

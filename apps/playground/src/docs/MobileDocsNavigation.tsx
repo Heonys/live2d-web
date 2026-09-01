@@ -7,7 +7,7 @@ import { lockPageScroll } from '../components/pageScrollLock'
 import { useSiteMessages } from '../i18n/SiteLocale'
 import { DocsSearchTrigger } from './DocSearch'
 import { DocsIntentLink } from './DocsNavigation'
-import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref, getDocPage } from './manifest'
+import { DOC_GROUP_NAMES, DOC_GROUPS, DOC_PAGES, docHref, getDocPage, navLabel } from './manifest'
 
 export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
   const pathname = usePathname()
@@ -136,7 +136,7 @@ export function MobileDocsNavigation({ locale }: { locale: DocLocale }) {
                   href={docHref(locale, page.slug)}
                   onClick={close}
                 >
-                  {page.title[locale]}
+                  {navLabel(page, locale)}
                 </DocsIntentLink>
               ))}
             </section>

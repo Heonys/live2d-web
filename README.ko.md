@@ -11,7 +11,8 @@
   <strong><a href="https://live2d-web.heonys.dev/docs/ko">한국어 문서</a></strong> ·
   <a href="https://live2d-web.heonys.dev/ko/playground">Playground</a> ·
   <a href="https://live2d-web.heonys.dev/ko/inspect">모델 검사기</a> ·
-  <a href="examples">예제</a>
+  <a href="examples">예제</a> ·
+  <a href="https://live2d-web.heonys.dev/docs/ko/pixi-live2d-display">pixi에서 옮겨오기</a>
 </p>
 
 <p align="center">
@@ -64,6 +65,10 @@ export function Avatar() {
 
 호스트 요소에는 CSS 크기가 필요합니다. JavaScript 인스턴스는 화면에서 제거할 때
 dispose하고, React 컴포넌트는 unmount 시 스스로 정리합니다.
+
+`pixi-live2d-display`를 쓰고 있다면
+[pixi-live2d-display에서 옮겨오기](https://live2d-web.heonys.dev/docs/ko/pixi-live2d-display)를
+보세요. 함수 대응표와 넘어오지 않는 것을 정리해 뒀습니다.
 
 ## 자세한 문서와 예제
 

@@ -7,6 +7,7 @@ export const DOC_LOADERS: Record<DocLocale, Record<string, () => Promise<DocModu
   en: {
     '': () => import('../../content/docs/en/index.mdx'),
     'core-and-models': () => import('../../content/docs/en/core-and-models.mdx'),
+    'pixi-live2d-display': () => import('../../content/docs/en/pixi-live2d-display.mdx'),
     'vanilla': () => import('../../content/docs/en/vanilla.mdx'),
     'react': () => import('../../content/docs/en/react.mdx'),
     'motion-and-expression': () => import('../../content/docs/en/motion-and-expression.mdx'),
@@ -25,6 +26,7 @@ export const DOC_LOADERS: Record<DocLocale, Record<string, () => Promise<DocModu
   ko: {
     '': () => import('../../content/docs/ko/index.mdx'),
     'core-and-models': () => import('../../content/docs/ko/core-and-models.mdx'),
+    'pixi-live2d-display': () => import('../../content/docs/ko/pixi-live2d-display.mdx'),
     'vanilla': () => import('../../content/docs/ko/vanilla.mdx'),
     'react': () => import('../../content/docs/ko/react.mdx'),
     'motion-and-expression': () => import('../../content/docs/ko/motion-and-expression.mdx'),
@@ -43,6 +45,7 @@ export const DOC_LOADERS: Record<DocLocale, Record<string, () => Promise<DocModu
   ja: {
     '': () => import('../../content/docs/ja/index.mdx'),
     'core-and-models': () => import('../../content/docs/ja/core-and-models.mdx'),
+    'pixi-live2d-display': () => import('../../content/docs/ja/pixi-live2d-display.mdx'),
     'vanilla': () => import('../../content/docs/ja/vanilla.mdx'),
     'react': () => import('../../content/docs/ja/react.mdx'),
     'motion-and-expression': () => import('../../content/docs/ja/motion-and-expression.mdx'),

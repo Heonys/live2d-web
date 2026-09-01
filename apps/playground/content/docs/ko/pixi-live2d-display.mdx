@@ -1,0 +1,76 @@
+## 무엇이 달라지나
+
+`pixi-live2d-display`는 Live2D 모델을 PixiJS `Container`로 그립니다. 캔버스와 ticker, WebGL 컨텍스트를 Pixi가 소유합니다. 이 런타임은 그것들을 직접 소유합니다. `@pixi/*` peer 의존 여섯 개가 사라지고, Pixi 버전에 묶이는 부분이 없습니다.
+
+이게 중요한 이유가 있습니다. 그쪽 peer 범위가 `@pixi/core: "^6"`인데 Pixi는 v8입니다. 마지막 발행은 2023년 12월입니다.
+
+```html title="index.html, 이전"
+<!-- 플러그인이 돌기 전에 Cubism Core가 페이지에 있어야 한다 -->
+<script src="/live2dcubismcore.min.js"></script>
+```
+
+```ts title="이전"
+import { Live2DModel } from 'pixi-live2d-display'
+import * as PIXI from 'pixi.js'
+
+// 플러그인이 window.PIXI.Ticker를 읽어 모델을 갱신한다
+window.PIXI = PIXI
+
+const app = new PIXI.Application({ view: canvas })
+const model = await Live2DModel.from('/models/avatar.model3.json')
+app.stage.addChild(model)
+model.scale.set(0.3)
+model.position.set(200, 100)
+```
+
+```ts title="이후"
+import { createLive2D } from 'live2d-web'
+
+const character = await createLive2D({
+  container: document.querySelector('#stage')!,
+  coreUrl: '/live2dcubismcore.min.js',
+  src: '/models/avatar.model3.json',
+})
+```
+
+application도, stage도, 등록할 ticker도 없습니다. Cubism Core는 `coreUrl`이 불러오므로 script 태그도, 순서를 맞출 일도 없습니다. 컨테이너에 CSS 크기만 주면 캔버스가 그 안을 채웁니다.
+
+## 함수 대응
+
+| pixi-live2d-display | live2d-web |
+| --- | --- |
+| `Live2DModel.from(url)`, `stage.addChild()` | `createLive2D({ container, coreUrl, src })` |
+| 페이지에 `<script src="live2dcubismcore.min.js">` | `coreUrl` |
+| `addChild()` 한 번 더 | `addModel()` 또는 `<Live2DModel>` 하나 더 |
+| `model.motion(group, index, priority)` | `motion(group, index, { priority })` |
+| `MotionPriority.NORMAL` / `FORCE` / `IDLE` | `'normal'` / `'force'` / `'idle'` |
+| `model.expression(id)` | `expression(id)` |
+| `model.focus(x, y)` | `focus(x, y)`, `focusAt(clientX, clientY)` |
+| `model.tap(x, y)`, `model.hitTest(x, y)` | `hitTest(clientX, clientY)` |
+| `model.x`, `y`, `scale`, `anchor` | `fit` |
+| `autoUpdate`, ticker 등록 | 자동 |
+| `autoInteract` | `followPointer`, `onTap` |
+| `coreModel.setParameterValueById()` | `setParameter(id, value)` |
+| `model.destroy()` | `dispose()` |
+
+이름만 바뀌지 않는 건 배치 하나입니다. Pixi의 변환은 직접 정한 stage 위의 픽셀 값이지만, `fit`은 화면에 어떻게 담을지를 적고 리사이즈마다 다시 계산합니다. [배치 오버레이](/docs/ko/debug)를 켜면 원하는 자리로 끌어다 놓고 값을 복사할 수 있습니다.
+
+## 넘어오지 않는 것
+
+- **Cubism 2.1 모델.** `pixi-live2d-display`에는 `/cubism2` 진입점이 있지만 이 런타임은 Cubism 4/5 전용이라 `.moc` 파일이 로드되지 않습니다.
+- **Pixi 씬 그래프.** 필터, 블렌드 모드, 다른 스프라이트와 섞기는 전부 Pixi의 몫입니다. 이 런타임은 자체 캔버스를 소유하므로 모델을 Pixi 씬 안에 넣을 수 없습니다.
+- **오디오 재생.** `SoundManager`도 `model.speak(url)`도 없습니다. 오디오는 이미 앱이 갖고 있으니 앱이 재생하고, [립싱크](/docs/ko/lip-sync)가 그 소리로 입을 움직입니다.
+
+## Cubism Core
+
+옮기다 대개 처음 막히는 자리입니다. 번들된 Framework 5-r.5 어댑터는 **Cubism Core 5.3**이 필요하고, `core/06`으로 배포됩니다. 예전 `core/05` 파일은 moc를 읽는 중에 실패하므로, Pixi 때 쓰던 Core 스크립트를 바꿔야 할 수 있습니다. 받는 곳은 [Core와 모델](/docs/ko/core-and-models)에 있습니다.
+
+## 옮기는 순서
+
+1. Cubism Core 5.3을 배치하고 모델이 일단 그려지는지 확인합니다.
+2. 생성 코드를 바꿉니다. JavaScript는 `createLive2D()`, React는 `<Live2DCanvas>`와 `<Live2DModel>`입니다.
+3. 좌표·배율을 `fit`으로 옮깁니다. 값은 배치 오버레이로 찾습니다.
+4. 위 표대로 호출을 바꿉니다.
+5. `pixi-live2d-display`와, Pixi 자체에 필요하지 않은 `@pixi/*` 의존을 지웁니다.
+
+모델이 안 그려지면 [모델 검사](/docs/ko/model-inspection)를 먼저 돌리세요. moc 버전과 빠진 자산을 알려주는데, 옮기는 중에 생기는 문제는 대개 거기서 답이 나옵니다.

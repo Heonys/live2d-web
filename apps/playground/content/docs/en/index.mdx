@@ -29,3 +29,7 @@ await character.motion('Idle', 0)
 ## Verify and clean up
 
 Check the Network panel for the model3 file, moc3 file and every texture. A blank Canvas with a successful model3 request usually means a referenced asset, Core or WebGL problem; the [troubleshooting guide](/docs/en/troubleshooting) maps every error code to a recovery step. Call `dispose()` when the host view is removed so the Canvas, WebGL resources and animation loop are released.
+
+## Coming from pixi-live2d-display
+
+The placement, the method names and what does not come across are collected in [Migrating from pixi-live2d-display](/docs/en/pixi-live2d-display). Read it before rewriting anything: Cubism Core 5.3 is required, and a Cubism 2.1 model cannot move at all.

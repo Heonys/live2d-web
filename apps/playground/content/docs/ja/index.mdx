@@ -29,3 +29,7 @@ await character.motion('Idle', 0)
 ## 読み込みと後始末を確認
 
 Network パネルで model3、moc3、テクスチャが揃ったか確認します。エラー時は[トラブルシューティング](/docs/ja/troubleshooting)を参照し、画面を閉じるときは `dispose()` で Canvas、WebGL リソース、描画ループを解放します。
+
+## pixi-live2d-display からの移行
+
+配置、関数名、移せないものを [pixi-live2d-display からの移行](/docs/ja/pixi-live2d-display)にまとめました。書き換える前に目を通してください。Cubism Core 5.3 が必要で、Cubism 2.1 のモデルはそもそも移せません。

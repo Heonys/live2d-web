@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
 
 const withMDX = createMDX({
   options: {
+    // Tables. Plugins are named rather than imported so Turbopack can serialize them.
+    remarkPlugins: [['remark-gfm', {}]],
     rehypePlugins: [['rehype-pretty-code', {
       keepBackground: false,
       theme: 'github-dark-default',
