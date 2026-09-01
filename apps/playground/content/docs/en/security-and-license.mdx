@@ -13,7 +13,7 @@ live2d-web is unofficial. Core, Framework, models and MediaPipe have separate te
 
 ## Define the trust boundary
 
-Do not render an untrusted archive merely because its JSON parses. Inspect first, cap compressed and expanded sizes, reject traversal and unexpected external references, and serve approved files from a controlled origin. Server-side URL inspection needs outbound network restrictions in addition to an allow-list.
+Do not render an untrusted archive merely because its JSON parses. Inspect first, cap compressed and expanded sizes, reject traversal and unexpected external references, and serve approved files from a controlled origin. Server-side URL inspection needs outbound network limits as well as an allow-list.
 
 ```ts
 const report = await inspectModelSource({

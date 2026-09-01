@@ -30,7 +30,7 @@ if (report.status === 'incompatible') {
 }
 ```
 
-サーバーから URL を検査する場合は、HTTP(S) であることだけでなく、許可する hostname、解決後の IP、redirect 先も確認します。内部ネットワークへ接続できる環境では、アプリ側のネットワークポリシーが必要です。
+サーバーから URL を検査する場合は、HTTP(S) だけでなく、許可する hostname、解決後の IP、redirect 先も確認します。内部ネットワークへ接続できる環境では、アプリ側のネットワークポリシーが必要です。
 
 ## 公開前の確認項目
 
@@ -40,4 +40,4 @@ if (report.status === 'incompatible') {
 4. エラーログにモデル URL、カメラ画像、顔の landmark を不要に保存しないよう確認します。
 5. unmount 後に MediaStream track、Worker、AudioContext、Canvas が残らないことを確認します。
 
-モデルや Core を issue、CI artifact、公開リポジトリへ添付する前にも、それぞれの利用条件を確認してください。
+モデルや Core を issue、CI artifact、公開リポジトリへ添付する前にも、利用条件を確認してください。

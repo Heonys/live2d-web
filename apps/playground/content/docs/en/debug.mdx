@@ -53,7 +53,7 @@ Drag to move, scroll to zoom around the cursor, arrow keys to nudge (hold Shift 
 
 The bar shows the scale, not the value. That value is the output, needed once, and **Copy** delivers it. If the clipboard refuses, as it can outside a secure context, the literal appears above the bar so it can be selected by hand.
 
-Pointer events stop at the overlay, including the click a press synthesizes. Without that, `followPointer` would chase the cursor while the model slides under it, and letting go would play a motion through `onTap`.
+Pointer events stop at the overlay, including the click a press makes. Without it, `onTap` would fire on release, and `followPointer` would chase the cursor while the model slid under it.
 
 ## The value it gives you
 

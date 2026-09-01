@@ -1,6 +1,6 @@
 ## Main-thread tracking
 
-> Tracking, including the Worker entry, is **experimental** until mobile and external-consumer validation is complete. Minor releases may include documented migrations; patch releases do not make breaking changes.
+> Tracking, including the Worker entry, is **experimental** until mobile and external-consumer validation is complete. Minor releases may carry documented migrations; patch releases do not break.
 
 MediaPipe is an optional peer and loads only from its subpath. You supply WASM, the Face Landmarker model, video frames and scheduling. The tracker keeps normalized values, never frames or landmarks.
 
@@ -52,8 +52,8 @@ five-second number is a local expectation checked by hand, not a CI gate: no
 workflow runs the tracking benchmark. iPhone Safari still
 requires physical-device validation, and Android Chrome is explicitly
 unverified. If Worker creation fails or times out, surface the `tracking-error`
-and let the user recreate the tracker in main mode; do not wait indefinitely or
-silently fall back.
+and let the user recreate the tracker in main mode. Do not wait indefinitely,
+and do not fall back without saying so.
 
 ## Calibrate and map deliberately
 

@@ -111,7 +111,7 @@ export const DOC_PAGES = [
     slug: 'mediapipe',
     summary: {
       en: 'Attach standard or Perfect Sync face tracking on main or Worker.',
-      ja: 'メインスレッドまたは Worker で、Standard と Perfect Sync のフェイストラッキングを使います。',
+      ja: 'メインスレッドか Worker で、Standard と Perfect Sync の顔トラッキングを使います。',
       ko: '메인 스레드나 Worker에서 Standard·Perfect Sync 얼굴 트래킹을 연결합니다.',
     },
     title: {
