@@ -52,10 +52,29 @@ jobs:
       - run: pnpm docs:check
       - run: pnpm verify:package
       - run: pnpm verify:packed-consumers
+      # The local-source lab build is a consumer-bundle gate and does not need
+      # the licensed Cubism model assets.
+      - run: pnpm lab:build:local
       # The playground build asserts the tracking assets exist, because a deploy
       # without them serves 404s and face tracking dies in every browser.
       - run: pnpm fetch-mediapipe-assets
       - run: pnpm -F @live2d-web/playground build
+
+  # Runs on fork PRs as well: requests for licensed model assets are stubbed by
+  # the test, and model responses are never written to reports or artifacts.
+  lab-ui-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm lab:build:local
+      - run: pnpm test:lab:ui
 
   # Hiyori and Cubism Core are licensed downloads: fetched fresh each run
   # against the official terms, never stored in the Actions cache or an
@@ -93,6 +112,8 @@ jobs:
         run: sudo apt-get install -y xvfb
       - run: pnpm -F @live2d-web/playground build
       - run: ${{ matrix.browser == 'firefox' && 'xvfb-run -a' || '' }} pnpm test:e2e --project=${{ matrix.browser }}
+      - run: pnpm lab:build:local
+      - run: ${{ matrix.browser == 'firefox' && 'xvfb-run -a' || '' }} env LIVE2D_LAB_SOURCE=local LIVE2D_LAB_SUITE=smoke pnpm exec playwright test --config playwright.lab.config.ts --project=${{ matrix.browser }}
 
   # Firefox infers an order of magnitude slower; the adaptive cap lets it pass
   # (private/docs/benchmarks/2026-08-25-0.5.0-candidate.md), so it blocks like the rest.

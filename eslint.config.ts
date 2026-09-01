@@ -32,6 +32,13 @@ export default antfu({
     'react-refresh/only-export-components': 'off',
   },
 }, {
+  // The release lab deliberately bypasses workspace/catalog substitution so
+  // it can exercise the exact registry tarball under test.
+  files: ['apps/integration-lab/package.json'],
+  rules: {
+    'pnpm/json-enforce-catalog': 'off',
+  },
+}, {
   // pixi 계열 catalog 항목은 M0 어댑터 구현 전 선등록(버전 고정 기록) — 미사용 경고 제외
   files: ['pnpm-workspace.yaml'],
   rules: {

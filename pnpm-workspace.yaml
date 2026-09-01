@@ -45,6 +45,7 @@ catalog:
   '@types/node': ^26.1.2
   '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.3
+  '@vitejs/plugin-react': ^5.0.4
   '@vitejs/plugin-vue': ^6.0.1
   eslint: ^10.2.1
   eslint-plugin-format: ^2.0.1
