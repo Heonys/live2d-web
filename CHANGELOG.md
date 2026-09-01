@@ -48,6 +48,12 @@
 
 ### Fixed
 
+- The placement overlay belongs to one model at a time, and turning `debug` on
+  moves it to that model. It used to mount for whichever model finished loading
+  first, drop the others without a word, let any model remove another's, and
+  stay behind editing a model that had been disposed while still taking the
+  pointer over the canvas. Declaring `debug` on two models at once now warns
+  rather than silently picking one.
 - Disposing one model no longer stops the others on its canvas. The Framework
   keeps compiled shaders and offscreen buffers in registries keyed by GL
   context, and every model released them on the way out, so the models still

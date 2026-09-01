@@ -279,6 +279,78 @@ describe('createLive2D', () => {
     await expect(instance.addModel({ src: '/b.model3.json' })).rejects.toThrow(/disposed/)
   })
 
+  // The overlay covers the canvas to take the pointer, so two of them cannot
+  // share it. Before this it was the first to finish loading that won, the
+  // others were dropped without a word, and any model could remove another's.
+  describe('placement overlay with more than one model', () => {
+    const hosts = () => document.querySelectorAll('[data-live2d-debug]').length
+    const editing = () =>
+      document.querySelector('[data-live2d-debug]')?.shadowRoot?.querySelector('.value')?.textContent
+
+    it('moves to the model that asked last', async () => {
+      const harness = createRuntimeHarness()
+      const instance = await createLive2D({
+        backend: harness.backend,
+        container: document.body,
+        src: '/a.model3.json',
+      })
+      const second = await instance.addModel({
+        fit: { offsetX: 0.25, scale: 1, units: 'stage' },
+        src: '/b.model3.json',
+      })
+
+      instance.setDebug(true)
+      await vi.waitFor(() => expect(hosts()).toBe(1))
+      expect(editing()).toContain('offsetX: 0')
+
+      second.setDebug(true)
+      await vi.waitFor(() => expect(editing()).toContain('offsetX: 0.25'))
+      expect(hosts()).toBe(1)
+
+      instance.dispose()
+    })
+
+    it('lets only the model holding it take it away', async () => {
+      const harness = createRuntimeHarness()
+      const instance = await createLive2D({
+        backend: harness.backend,
+        container: document.body,
+        src: '/a.model3.json',
+      })
+      const second = await instance.addModel({ src: '/b.model3.json' })
+
+      second.setDebug(true)
+      await vi.waitFor(() => expect(hosts()).toBe(1))
+
+      // The first model never had it, so turning its debug off changes nothing.
+      instance.setDebug(false)
+      expect(hosts()).toBe(1)
+
+      second.setDebug(false)
+      expect(hosts()).toBe(0)
+      instance.dispose()
+    })
+
+    it('takes the overlay away with the model that owns it', async () => {
+      const harness = createRuntimeHarness()
+      const instance = await createLive2D({
+        backend: harness.backend,
+        container: document.body,
+        src: '/a.model3.json',
+      })
+      const second = await instance.addModel({ src: '/b.model3.json' })
+
+      second.setDebug(true)
+      await vi.waitFor(() => expect(hosts()).toBe(1))
+
+      // Otherwise it stays behind editing a model that is gone, and keeps the
+      // pointer over the canvas while doing nothing.
+      second.dispose()
+      expect(hosts()).toBe(0)
+      instance.dispose()
+    })
+  })
+
   it('passes canvas accessibility to custom backends and keeps it on retry', async () => {
     const harness = createRuntimeHarness()
     const accessibility = {

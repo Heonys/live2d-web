@@ -45,6 +45,13 @@ const POSE_PARAMETER_IDS = [
   'ParamBodyAngleZ',
 ] as const
 
+/** One model on the shared canvas. `sampleId` empty means the default manifest. */
+interface StageModel {
+  id: string
+  sampleId: string
+  fit: ModelFit
+}
+
 interface MotionOption {
   group: string
   index: number
@@ -240,13 +247,73 @@ export default function PlaygroundPage() {
   const [assetError, setAssetError] = useState('')
   // 개발에서만 채운다. 공개 데모는 지금까지처럼 Hiyori 하나만 띄운다.
   const [samples, setSamples] = useState<SampleModel[]>([])
-  const [sampleId, setSampleId] = useState('')
   // 공식 샘플마다 캔버스 안에서 캐릭터가 차지하는 크기가 달라, upper-body의
   // 2배 확대가 Mark처럼 이미 상반신만 그려진 리그에서는 화면을 넘긴다.
   // 데모 기본값은 어느 리그에서나 안전한 full로 둔다.
-  const [fit, setFit] = useState<ModelFit>('full')
+  // 한 캔버스에 여럿을 올릴 수 있게 목록으로 든다. 탭들은 지금처럼 선택된 모델
+  // 하나만 조작하므로 `controller`라는 이름과 그것을 읽는 코드는 그대로 남는다.
+  const [stageModels, setStageModels] = useState<StageModel[]>([
+    { fit: 'full', id: 'model-1', sampleId: '' },
+  ])
+  const [activeModelId, setActiveModelId] = useState('model-1')
   const [adjustFraming, setAdjustFraming] = useState(false)
-  const [controller, setController] = useState<Live2DModelController | null>(null)
+  const [controllers, setControllers] = useState<Record<string, Live2DModelController>>({})
+
+  // Read inside handleLoad, which is not re-created when the selection moves.
+  const activeModelIdRef = useRef(activeModelId)
+  activeModelIdRef.current = activeModelId
+
+  const patchActiveModel = useCallback((patch: Partial<StageModel>) => {
+    setStageModels(models => models.map(model =>
+      model.id === activeModelId ? { ...model, ...patch } : model))
+  }, [activeModelId])
+  const setFit = useCallback((next: ModelFit) => {
+    patchActiveModel({ fit: next })
+  }, [patchActiveModel])
+  const setSampleId = useCallback((next: string) => {
+    patchActiveModel({ sampleId: next })
+  }, [patchActiveModel])
+
+  const addStageModel = useCallback(() => {
+    setStageModels((models) => {
+      const id = `model-${Date.now()}`
+      // The same fit would land it exactly on the one already there, so each
+      // addition steps sideways. Otherwise it matches `full`, which is what the
+      // first model uses, so the two read as the same shot rather than two
+      // different ones. Arranging them from there is what the overlay is for.
+      const step = 0.24 * ((models.length % 2 === 0 ? -1 : 1) * Math.ceil(models.length / 2))
+      const source = models.find(model => model.id === activeModelId) ?? models[0]
+      setActiveModelId(id)
+      return [...models, {
+        fit: { offsetX: step, offsetY: -0.5, scale: 0.5, units: 'stage' },
+        id,
+        sampleId: source?.sampleId ?? '',
+      }]
+    })
+  }, [activeModelId])
+
+  const removeActiveModel = useCallback(() => {
+    setStageModels((models) => {
+      if (models.length < 2)
+        return models
+      const next = models.filter(model => model.id !== activeModelId)
+      setActiveModelId(next[0].id)
+      return next
+    })
+    setControllers(({ [activeModelId]: _removed, ...rest }) => rest)
+  }, [activeModelId])
+
+  const activeModel = stageModels.find(model => model.id === activeModelId) ?? stageModels[0]
+  const sampleId = activeModel?.sampleId ?? ''
+  const fit = activeModel?.fit ?? 'full'
+  const controller = (activeModel && controllers[activeModel.id]) ?? null
+  const sourceFor = (model: StageModel) =>
+    samples.find(sample => sample.id === model.sampleId)?.model3 ?? manifest?.model3
+  // Matched on the resolved source, not on sampleId: an unpicked model falls
+  // back to the manifest, which is one of the samples under a different key.
+  const labelFor = (model: StageModel) =>
+    samples.find(sample => sample.model3 === sourceFor(model))?.name
+    ?? messages.playground.model
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null)
   const [motionValue, setMotionValue] = useState('')
   const [motionFadePreset, setMotionFadePreset] = useState<MotionFadePreset>('model')
@@ -881,8 +948,10 @@ export default function PlaygroundPage() {
     }
   }, [idlePreset, modelInfo?.motions.Idle])
 
-  const handleLoad = useCallback((nextController: Live2DModelController) => {
-    setController(nextController)
+  const handleLoad = useCallback((id: string, nextController: Live2DModelController) => {
+    setControllers(current => ({ ...current, [id]: nextController }))
+    if (id !== activeModelIdRef.current)
+      return
     const info = nextController.getModelInfo()
     setModelInfo(info)
     // Default to a tap-style motion: playing an Idle entry is visually
@@ -917,8 +986,9 @@ export default function PlaygroundPage() {
       })
   }, [controller, motionFadePreset])
 
-  const handleTap = useCallback((hitAreas: string[]) => {
-    setHitReadout(hitAreas.length ? `Hit: ${hitAreas.join(', ')}` : 'Hit: none')
+  const handleTap = useCallback((hitAreas: string[], label?: string) => {
+    const prefix = label ? `${label} ` : ''
+    setHitReadout(hitAreas.length ? `${prefix}Hit: ${hitAreas.join(', ')}` : `${prefix}Hit: none`)
     if (!modelInfo)
       return
     const tapGroup = Object.keys(modelInfo.motions).find(group =>
@@ -963,9 +1033,6 @@ export default function PlaygroundPage() {
     })
   }, [controller, motionFadePreset, motionOptions])
 
-  const selectedSample = samples.find(sample => sample.id === sampleId)
-  // 고르지 않았으면 지금까지와 완전히 같은 경로다. 공개 데모는 이 분기에만 닿는다.
-  const modelSrc = selectedSample?.model3 ?? manifest?.model3
   const stage = manifest && mounted
     ? (
         <Live2DCanvas
@@ -980,37 +1047,44 @@ export default function PlaygroundPage() {
             <StageError error={error} retry={retry} />
           )}
         >
-          <Live2DModel
-            debug={adjustFraming}
-            fit={fit}
-            // The overlay writes through this, not straight to the runtime.
-            // `fit` is controlled here, so a value it only applied internally
-            // would be reverted by the next render.
-            onFitChange={setFit}
-            // Pointer follow and face tracking both drive ParamAngle*, and the
-            // pointer wins nothing but confusion while a face is attached.
-            followPointer={!faceTrackingActive}
-            idleMotion={idleMotion}
-            // 모델을 바꾸면 이전 것을 정리하고 새로 만든다. key가 없으면
-            // 같은 인스턴스가 src만 갈아끼워 생명주기 경로를 지나가지 않는다.
-            key={modelSrc}
-            src={modelSrc ?? manifest.model3}
-            onLoad={handleLoad}
-            onTap={handleTap}
-          >
-            {lipSyncMode === 'source'
-              ? (
-                  <LipSync
-                    active={sourceActive}
-                    profile={SYNTHETIC_LIPSYNC_PROFILE}
-                    source={sourceNode}
-                    onError={error => setLipSyncError(error.message)}
-                  />
-                )
-              : micActive
-                ? <LipSync driver={micDriver} />
-                : <LipSync mouthOpen={mouthOpen} speaking={mouthOpen > 0} />}
-          </Live2DModel>
+          {stageModels.map(model => (
+            <Live2DModel
+              // Only the selected model gets the placement overlay: it edits one
+              // model's layout and two of them would fight over the pointer.
+              debug={adjustFraming && model.id === activeModelId}
+              fit={model.fit}
+              // The overlay writes through this, not straight to the runtime.
+              // `fit` is controlled here, so a value it only applied internally
+              // would be reverted by the next render.
+              onFitChange={next => setStageModels(models => models.map(entry =>
+                entry.id === model.id ? { ...entry, fit: next } : entry))}
+              // Pointer follow and face tracking both drive ParamAngle*, and the
+              // pointer wins nothing but confusion while a face is attached.
+              followPointer={!faceTrackingActive}
+              idleMotion={idleMotion}
+              // 모델을 바꾸면 이전 것을 정리하고 새로 만든다. key가 없으면
+              // 같은 인스턴스가 src만 갈아끼워 생명주기 경로를 지나가지 않는다.
+              key={`${model.id}:${sourceFor(model)}`}
+              src={sourceFor(model) ?? manifest.model3}
+              onLoad={next => handleLoad(model.id, next)}
+              onTap={areas => handleTap(areas, stageModels.length > 1 ? labelFor(model) : undefined)}
+            >
+              {model.id !== activeModelId
+                ? null
+                : lipSyncMode === 'source'
+                  ? (
+                      <LipSync
+                        active={sourceActive}
+                        profile={SYNTHETIC_LIPSYNC_PROFILE}
+                        source={sourceNode}
+                        onError={error => setLipSyncError(error.message)}
+                      />
+                    )
+                  : micActive
+                    ? <LipSync driver={micDriver} />
+                    : <LipSync mouthOpen={mouthOpen} speaking={mouthOpen > 0} />}
+            </Live2DModel>
+          ))}
           <Diagnostics />
           {hitReadout && <output className="hit-readout">{hitReadout}</output>}
           {/* The tool acts on the canvas, so its switch lives here. In the panel
@@ -1101,6 +1175,36 @@ export default function PlaygroundPage() {
                         {samples.map(sample => (
                           <option key={sample.id} value={sample.id}>
                             {`${sample.name} · ${sample.role}`}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {samples.length > 1 && (
+                    <div className="playground-actions">
+                      <button type="button" onClick={addStageModel}>
+                        {messages.playground.addModel}
+                      </button>
+                      <button
+                        disabled={stageModels.length < 2}
+                        type="button"
+                        onClick={removeActiveModel}
+                      >
+                        {messages.playground.removeModel}
+                      </button>
+                    </div>
+                  )}
+                  {stageModels.length > 1 && (
+                    <label>
+                      {messages.playground.activeModel}
+                      <select
+                        aria-label={messages.playground.activeModel}
+                        value={activeModelId}
+                        onChange={event => setActiveModelId(event.target.value)}
+                      >
+                        {stageModels.map((model, index) => (
+                          <option key={model.id} value={model.id}>
+                            {`${index + 1}. ${labelFor(model)}`}
                           </option>
                         ))}
                       </select>

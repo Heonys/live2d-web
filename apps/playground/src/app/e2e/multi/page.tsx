@@ -21,6 +21,11 @@ export default function ReactMultiModelHarness() {
   const hostRef = useRef<HTMLDivElement>(null)
   const [loaded, setLoaded] = useState(0)
   const [showRight, setShowRight] = useState(true)
+  // Opt-in, so the plain multi-model test is not made to warn.
+  const [bothDebug, setBothDebug] = useState(false)
+  useEffect(() => {
+    setBothDebug(new URLSearchParams(window.location.search).get('debug') === 'both')
+  }, [])
 
   const readHalves = useCallback(() => new Promise<{ left: number, right: number }>((resolve) => {
     const canvas = hostRef.current?.querySelector('canvas')
@@ -63,12 +68,14 @@ export default function ReactMultiModelHarness() {
       <div ref={hostRef} style={{ height: 640, width: 640 }}>
         <Live2DCanvas coreUrl={CORE_URL} pauseWhenOffscreen={false} resolution={1}>
           <Live2DModel
+            debug={bothDebug}
             fit={{ offsetX: -0.25, scale: 0.5, units: 'stage' }}
             src={LEFT}
             onLoad={() => setLoaded(count => count + 1)}
           />
           {showRight && (
             <Live2DModel
+              debug={bothDebug}
               fit={{ offsetX: 0.25, scale: 0.5, units: 'stage' }}
               src={RIGHT}
               onLoad={() => setLoaded(count => count + 1)}

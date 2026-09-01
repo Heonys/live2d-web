@@ -442,7 +442,18 @@ export class Live2DRuntime implements Live2DInstance {
   private accessibility: Live2DCanvasAccessibility | undefined
   private fit: ModelFit
   private debug: boolean
-  private debugOverlay: { dispose: () => void, refresh: () => void } | undefined
+  // The overlay covers the canvas and takes the pointer, so only one can exist.
+  // It belongs to the model that asked for it, and goes when that model does.
+  private debugOverlay: {
+    dispose: () => void
+    refresh: () => void
+    owner: ModelRecord
+  } | undefined
+
+  // Who asked last, recorded synchronously. Mounting waits on a dynamic import,
+  // so without this the winner was whichever model's import resumed last rather
+  // than whichever one asked last.
+  private debugWanted: ModelRecord | undefined
   private intersectionObserver: IntersectionObserver | undefined
   private listeners = new Set<Listener>()
   private models: ModelRecord[] = []
@@ -548,6 +559,7 @@ export class Live2DRuntime implements Live2DInstance {
     // then model, then stage, and a model added through addModel() keeps its
     // features on its record rather than in the list above.
     for (const record of this.models) {
+      this.releaseDebugOverlay(record)
       for (const feature of record.features.splice(0).reverse())
         feature.detach()
       record.handle.dispose()
@@ -772,8 +784,8 @@ export class Live2DRuntime implements Live2DInstance {
           container.removeEventListener('pointerleave', onPointerLeave)
         })
       }
-      if (this.debug)
-        await this.mountDebugOverlay(stage)
+      if (this.debug && this.models[0])
+        await this.mountDebugOverlay(stage, this.models[0])
       this.updateState({
         error: undefined,
         loadingStage: undefined,
@@ -853,50 +865,67 @@ export class Live2DRuntime implements Live2DInstance {
     return this.model
   }
 
-  private async mountDebugOverlay(stage: StageHandle, record?: ModelRecord) {
+  private async mountDebugOverlay(stage: StageHandle, record: ModelRecord) {
     // Kept out of the root bundle: the overlay is a development tool and most
     // pages never turn it on.
     const { mountLive2DDebugOverlay } = await import('../debug')
-    if (this.disposed || this.stage !== stage || !this.debug || this.debugOverlay)
+    if (this.disposed || this.stage !== stage || !this.models.includes(record))
       return
-    // The overlay edits one model's layout, so it edits the one that asked for
-    // it. Without a record it is the instance-level `debug`, which means the
-    // model `src` created.
+    if (this.debugWanted !== record || this.debugOverlay?.owner === record)
+      return
+    this.releaseDebugOverlay()
     const overlay = mountLive2DDebugOverlay({
       container: this.options.container,
-      onChange: fit => (record?.onFitChange ?? this.options.onFitChange)?.(fit),
-      target: record
-        ? {
-            getFit: () => (typeof record.fit === 'object' ? { ...record.fit } : record.fit),
-            setFit: (fit) => {
-              record.fit = fit
-              this.applyFit()
-            },
-          }
-        : {
-            getFit: () => this.getFit(),
-            setFit: fit => this.setFit(fit),
-          },
+      onChange: fit => (record.onFitChange ?? this.options.onFitChange)?.(fit),
+      target: {
+        getFit: () => (typeof record.fit === 'object' ? { ...record.fit } : record.fit),
+        setFit: (fit) => {
+          record.fit = fit
+          this.applyFit()
+        },
+      },
     })
-    this.debugOverlay = overlay
-    this.stageCleanup.push(() => {
-      overlay.dispose()
-      if (this.debugOverlay === overlay)
-        this.debugOverlay = undefined
-    })
+    this.debugOverlay = { dispose: overlay.dispose, owner: record, refresh: overlay.refresh }
+    this.stageCleanup.push(() => this.releaseDebugOverlay(record))
+  }
+
+  /** Removes the overlay, or leaves it alone when `owner` does not hold it. */
+  private releaseDebugOverlay(owner?: ModelRecord) {
+    const current = this.debugOverlay
+    if (!current || (owner !== undefined && current.owner !== owner))
+      return
+    this.debugOverlay = undefined
+    current.dispose()
   }
 
   setDebug(enabled: boolean, record?: ModelRecord) {
     if (typeof enabled !== 'boolean')
       throw new Live2DError('invalid-props', 'debug must be a boolean.')
-    this.debug = enabled
+    const target = record ?? this.models[0]
     if (!enabled) {
-      this.debugOverlay?.dispose()
-      this.debugOverlay = undefined
+      // Only the model holding the overlay can take it away. Without this a
+      // model mounting with `debug` off would remove another model's.
+      if (this.debugWanted === target)
+        this.debugWanted = undefined
+      this.releaseDebugOverlay(target)
+      if (!record)
+        this.debug = false
       return
     }
-    if (this.stage && (record ?? this.model))
-      void this.mountDebugOverlay(this.stage, record)
+    if (!record)
+      this.debug = true
+    if (!this.stage || !target)
+      return
+    const previous = this.debugWanted
+    this.debugWanted = target
+    if (previous && previous !== target) {
+      console.warn(
+        '[live2d-web] The placement overlay moved to the model that asked for '
+        + 'it last. It covers the canvas to take the pointer, so only one '
+        + 'model can have it at a time.',
+      )
+    }
+    void this.mountDebugOverlay(this.stage, target)
   }
 
   private applyFit() {
@@ -1096,6 +1125,9 @@ export class Live2DRuntime implements Live2DInstance {
         if (index < 0)
           return
         this.models.splice(index, 1)
+        if (this.debugWanted === record)
+          this.debugWanted = undefined
+        this.releaseDebugOverlay(record)
         for (const feature of record.features.splice(0))
           feature.detach()
         record.handle.dispose()

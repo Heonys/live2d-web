@@ -1341,3 +1341,65 @@ test('draws two React models on one canvas', async ({ page }) => {
   const after = await page.evaluate(() => window.__live2dWebReactMulti!.readHalves())
   expect(after.left).toBeGreaterThan(1_000)
 })
+
+// The demo is the library's first consumer, and multi-model was the one feature
+// that reached main without going through it. Pixels rather than a canvas count,
+// because the defect this feature already produced once was a model that stopped
+// drawing while everything else still looked right.
+test('adds and removes models on the playground canvas', async ({ page }) => {
+  await page.goto('/playground')
+  await expect(page.getByTestId('stage-status')).toContainText('ready')
+
+  const opaquePixels = () => page.evaluate(() => {
+    const canvas = document.querySelector('canvas')!
+    const gl = canvas.getContext('webgl2')!
+    return new Promise<number>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        // Cubism leaves its mask framebuffer bound after a draw that used one.
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+        const buffer = new Uint8Array(canvas.width * canvas.height * 4)
+        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, buffer)
+        let count = 0
+        for (let index = 3; index < buffer.length; index += 4) {
+          if (buffer[index] > 16)
+            count++
+        }
+        resolve(count)
+      }))
+    })
+  })
+
+  // One model, and no selector to choose between.
+  const alone = await opaquePixels()
+  expect(alone).toBeGreaterThan(1_000)
+  await expect(page.getByLabel('Model to control')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Add a model' }).click()
+  await expect(page.getByLabel('Model to control')).toBeVisible()
+  await expect(page.locator('canvas')).toHaveCount(1)
+  await expect.poll(opaquePixels, { timeout: 20_000 }).toBeGreaterThan(alone * 1.4)
+
+  await page.getByRole('button', { name: 'Remove' }).click()
+  await expect(page.getByLabel('Model to control')).toHaveCount(0)
+  await expect.poll(opaquePixels, { timeout: 20_000 }).toBeLessThan(alone * 1.2)
+  // The one that stayed is still drawing.
+  expect(await opaquePixels()).toBeGreaterThan(1_000)
+})
+
+// The overlay covers the canvas to take the pointer, so two cannot share it.
+// It used to mount for whichever model finished loading first and drop the
+// others without a word, and any model could remove another's.
+test('gives the placement overlay to one model and says so', async ({ page }) => {
+  const warnings: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'warning')
+      warnings.push(message.text())
+  })
+  await page.goto('/e2e/multi?debug=both')
+  await page.waitForFunction(() => window.__live2dWebReactMulti?.loaded === 2)
+
+  await expect(page.locator('[data-live2d-debug]')).toHaveCount(1)
+  await expect
+    .poll(() => warnings.some(warning => warning.includes('placement overlay')))
+    .toBe(true)
+})

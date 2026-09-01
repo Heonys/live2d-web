@@ -37,6 +37,16 @@ live2d.setDebug(false)
 
 The overlay entry loads on demand, so leaving `debug` off costs nothing in the root bundle. Mount it yourself with `mountLive2DDebugOverlay()` from `live2d-web/debug` if you want it somewhere else.
 
+## One model at a time
+
+The overlay covers the canvas to take the pointer, so two of them cannot share
+it. Turning `debug` on for a model **moves the overlay to that model**, and it
+goes when that model does.
+
+Put `debug` on whichever model you are adjusting. Your app already knows which
+one that is, so it is a prop to move rather than something the library has to
+pick for you.
+
 ## Drag, scroll, nudge
 
 Drag to move, scroll to zoom around the cursor, arrow keys to nudge (hold Shift for finer steps), `+` and `-` to zoom from the anchor. **Full** and **Upper body** jump to the presets, and the one the placement is currently on is marked. **Reset** returns to where the placement stood when the overlay opened, or to the last one the app applied, and is disabled when there is nothing to undo.
