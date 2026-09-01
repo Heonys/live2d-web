@@ -70,6 +70,16 @@ dispose하고, React 컴포넌트는 unmount 시 스스로 정리합니다.
 [pixi-live2d-display에서 옮겨오기](https://live2d-web.heonys.dev/docs/ko/pixi-live2d-display)를
 보세요. 함수 대응표와 넘어오지 않는 것을 정리해 뒀습니다.
 
+## Live2D Devtools
+
+`live2d-web/devtools`는 불러온 모델에 패널을 붙여, 그 모델이 실제로 선언한 것을
+보여줍니다. 파라미터, 모션 그룹, 표정, 히트 영역입니다. 파라미터를 끌면 모델이
+바로 반응하므로, 남이 내보낸 모델을 짐작으로 다루지 않아도 됩니다.
+
+<p align="center">
+  <img src="apps/playground/public/brand/demo-devtools.webp" alt="devtools 패널에서 파라미터를 끌자 모델이 반응하는 화면" width="860">
+</p>
+
 ## 자세한 문서와 예제
 
 [한국어 문서 사이트](https://live2d-web.heonys.dev/docs/ko)는 Core·모델

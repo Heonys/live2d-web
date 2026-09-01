@@ -71,6 +71,17 @@ dispose します。React component は unmount 時に自動で破棄します�
 [pixi-live2d-display からの移行](https://live2d-web.heonys.dev/docs/ja/pixi-live2d-display)を
 見てください。関数の対応表と、移せないものをまとめています。
 
+## Live2D Devtools
+
+`live2d-web/devtools` は読み込んだモデルにパネルを取り付け、そのモデルが実際に
+宣言しているものを一覧します。パラメーター、モーショングループ、表情、ヒット
+エリアです。パラメーターをドラッグすればモデルがすぐ応えるので、他人が書き出した
+モデルを当て推量で扱わずに済みます。
+
+<p align="center">
+  <img src="apps/playground/public/brand/demo-devtools.webp" alt="devtools パネルでパラメーターをドラッグし、モデルが応える画面" width="860">
+</p>
+
 ## 詳細ドキュメントとサンプル
 
 [日本語ドキュメント](https://live2d-web.heonys.dev/docs/ja)では Core・

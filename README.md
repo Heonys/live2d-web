@@ -72,6 +72,17 @@ Coming from `pixi-live2d-display`? The method-by-method mapping, and what does n
 come across, are in
 [Migrating from pixi-live2d-display](https://live2d-web.heonys.dev/docs/en/pixi-live2d-display).
 
+## Live2D Devtools
+
+`live2d-web/devtools` mounts a panel on a loaded model and lists what that
+model actually declares: its parameters, motion groups, expressions and hit
+areas. Drag a parameter and the model answers, which beats guessing at a model
+someone else exported.
+
+<p align="center">
+  <img src="apps/playground/public/brand/demo-devtools.webp" alt="Dragging parameters in the devtools panel while the model responds" width="860">
+</p>
+
 ## Learn and verify
 
 The localized guides cover Core/model preparation, JavaScript, React,
